@@ -1,34 +1,36 @@
 /**
  * @file app_uart_dma_debug.c
- * @brief UART_DMA_DEBUG 任务：双缓冲 + DMA 发送（Step 2b + Step 4）
+ * @brief 双缓冲 + DMA 发送（Step 6a：ISR 写缓冲，任务发 DMA）
  *
- * 发送路径（仅 RTOS 任务，不在 ISR 里启动 DMA）：
- *   telem_bringup_tick()  — 写入小帧到双缓冲（当前在任务里调用，后期可改 TIM1 ISR）
- *   telem_bringup_try_send() — READY 且 UART 空闲时 HAL_UART_Transmit_DMA
- *   HAL_UART_TxCpltCallback — SENDING → UNLOCKED
+ * 数据路径：
+ *   TIM1 ISR：telem_bringup_tick() — 仅写双缓冲
+ *   RTOS 任务：telem_bringup_try_send() — READY 时 DMA 发送
+ *   TxCplt：SENDING → UNLOCKED
  *
- * 测试通道（不接电机）：
- *   ch0=(float)cnt  ch1=斜坡  ch2=2.0  ch3=4.0
+ * 测试通道（CH_COUNT=4，ch1/ch2 为 uint32 原样小端，VOFA 勿当 float 看）：
+ *   ch0=(float)cnt  ch1=上一拍 cyccnt_end  ch2=上一拍 isr_delta  ch3=4.0
  *
- * VOFA+：6000000，JustFloat，CH_COUNT=4（INCLUDE_SEQ=0）或 5（=1 且隐藏 ch0）
+ * VOFA+：6000000，JustFloat，△t ≈ D / 20000 秒（TIM1 20kHz 基准）
  */
 
+#include "app_uart_dma_debug.h"
 #include "cmsis_os.h"
 #include "usart.h"
+#include "bsp_dwt.h"
 #include <string.h>
 
 extern volatile uint8_t cnt;
 
 #define TELEM_BRINGUP_K           4u
 #define TELEM_BRINGUP_INCLUDE_SEQ 0u
-#define TELEM_BRINGUP_RAMP_STEP   0.1f
+#define TELEM_CPU_MHZ             160u
 
 /** 单缓冲 4KB，双缓冲共 8KB SRAM */
 #define TELEM_BUF_BYTES           4096u
 
 /**
- * 写缓冲降采样：任务每 1ms 调一次 tick，D=100 → 约 100Hz 写入小帧
- * 填满满缓冲(20B/帧)约 2s；D=1000 → 约 10Hz 写入，约 20s 填满
+ * TIM1 20kHz 下每 D 次 tick 写 1 个小帧。
+ * D=100 → 200Hz 写帧，满包 204 帧 ≈ 1.0s
  */
 #define TELEM_BRINGUP_DECIMATION  100u
 
@@ -36,6 +38,14 @@ extern volatile uint8_t cnt;
 #define TELEM_SMALL_FRAME_BYTES   (4u + TELEM_BRINGUP_K * 4u + 4u)
 #else
 #define TELEM_SMALL_FRAME_BYTES   (TELEM_BRINGUP_K * 4u + 4u)
+#endif
+
+#if TELEM_BRINGUP_INCLUDE_SEQ
+#define TELEM_CH1_BYTE_OFF        8u
+#define TELEM_CH2_BYTE_OFF        12u
+#else
+#define TELEM_CH1_BYTE_OFF        4u
+#define TELEM_CH2_BYTE_OFF        8u
 #endif
 
 static const uint8_t s_justfloat_tail[4] = {0x00u, 0x00u, 0x80u, 0x7fu};
@@ -61,8 +71,12 @@ static telem_buf_t *s_sending_buf;
 static uint32_t s_seq;
 #endif
 
-static float s_ramp_ch1;
 static uint32_t s_decim_cnt;
+
+telem_dbg_t g_telem_dbg;
+
+/** 调试：最近一次 ch2_wire（isr_delta） */
+volatile uint32_t time_cnt;
 
 static uint8_t telem_dma_busy(void)
 {
@@ -115,9 +129,8 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     uint8_t *p;
 
     vals[0] = (float)cnt;
-    vals[1] = s_ramp_ch1;
-    s_ramp_ch1 += TELEM_BRINGUP_RAMP_STEP;
-    vals[2] = 2.0f;
+    vals[1] = 0.0f;
+    vals[2] = 0.0f;
     vals[3] = 4.0f;
 
     p = &buf->data[offset];
@@ -159,7 +172,18 @@ void telem_bringup_tick(void)
         buf = s_write_buf;
     }
 
-    telem_write_small_frame(buf, buf->used_bytes);
+    {
+        uint16_t off = buf->used_bytes;
+        uint32_t ch1_raw = g_telem_dbg.cyccnt_end;
+        uint32_t ch2_raw = g_telem_dbg.isr_delta;
+
+        telem_write_small_frame(buf, off);
+        g_telem_dbg.ch1_wire = ch1_raw;
+        g_telem_dbg.ch2_wire = ch2_raw;
+        time_cnt = ch2_raw;
+        memcpy(&buf->data[off + TELEM_CH1_BYTE_OFF], &ch1_raw, sizeof(ch1_raw));
+        memcpy(&buf->data[off + TELEM_CH2_BYTE_OFF], &ch2_raw, sizeof(ch2_raw));
+    }
     buf->used_bytes = (uint16_t)(buf->used_bytes + TELEM_SMALL_FRAME_BYTES);
 
     if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
@@ -206,9 +230,11 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
-static void telem_bringup_init(void)
+void telem_bringup_init(void)
 {
     uint32_t i;
+
+    DWT_Init(TELEM_CPU_MHZ);
 
     for (i = 0u; i < 2u; i++) {
         s_bufs[i].used_bytes = 0u;
@@ -217,8 +243,14 @@ static void telem_bringup_init(void)
 
     s_write_buf = NULL;
     s_sending_buf = NULL;
-    s_ramp_ch1 = 0.0f;
     s_decim_cnt = 0u;
+    g_telem_dbg.isr_t0 = 0u;
+    g_telem_dbg.isr_t1 = 0u;
+    g_telem_dbg.cyccnt_end = 0u;
+    g_telem_dbg.isr_delta = 0u;
+    g_telem_dbg.ch1_wire = 0u;
+    g_telem_dbg.ch2_wire = 0u;
+    time_cnt = 0u;
 #if TELEM_BRINGUP_INCLUDE_SEQ
     s_seq = 0u;
 #endif
@@ -228,10 +260,7 @@ void UART_DMA_DEBUG_TASK(void *argument)
 {
     (void)argument;
 
-    telem_bringup_init();
-
     for (;;) {
-        telem_bringup_tick();
         telem_bringup_try_send();
         osDelay(1);
     }

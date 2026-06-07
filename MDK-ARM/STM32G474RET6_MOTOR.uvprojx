@@ -1190,6 +1190,11 @@
               <FileType>1</FileType>
               <FilePath>..\bringup\app_uart_dma_debug.c</FilePath>
             </File>
+            <File>
+              <FileName>bsp_dwt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\bsp_dwt.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

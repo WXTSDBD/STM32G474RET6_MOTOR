@@ -1,8 +1,9 @@
 stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
+  ../bringup/app_uart_dma_debug.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2\cmsis_os.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\stddef.h \
-  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
   ../Core/Inc\FreeRTOSConfig.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
@@ -53,4 +54,4 @@ stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
-  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h
+  ../bringup/bsp_dwt.h D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h

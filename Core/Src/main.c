@@ -35,6 +35,7 @@
 #include "as5047.h"
 #include "trans.h"
 #include "FOC_CAL.h"
+#include "app_uart_dma_debug.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -172,6 +173,7 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   AS5047_Init(&AS5047_spi1_PORT, &hspi1, GPIOA, GPIO_PIN_4);
     AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();
+  telem_bringup_init();
 #if !BRINGUP_ADC_TEST
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
@@ -333,6 +335,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
   }
   /* USER CODE BEGIN Callback 1 */
   if (htim == &htim1) {
+    volatile uint32_t isr_t0 = *(volatile uint32_t *)&DWT->CYCCNT;
+
     cnt++;
     if (cnt >= 200) {
     }
@@ -344,6 +348,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
 #endif
     adc_read[3] = hadc2.Instance->JDR1;
+    telem_bringup_tick();
+    __DSB();
+    {
+      volatile uint32_t isr_t1 = *(volatile uint32_t *)&DWT->CYCCNT;
+
+      g_telem_dbg.isr_t0 = isr_t0;
+      g_telem_dbg.isr_t1 = isr_t1;
+      g_telem_dbg.cyccnt_end = isr_t1;
+      g_telem_dbg.isr_delta = isr_t1 - isr_t0;
+    }
   }
   /* USER CODE END Callback 1 */
 }
