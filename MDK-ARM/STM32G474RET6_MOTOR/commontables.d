@@ -1,0 +1,14 @@
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\CommonTables\CommonTables.c
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\CommonTables\arm_common_tables.c
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
+stm32g474ret6_motor\commontables.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
+stm32g474ret6_motor\commontables.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\ARMCC\Bin\..\include\string.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\ARMCC\Bin\..\include\math.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\ARMCC\Bin\..\include\float.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\ARMCC\Bin\..\include\limits.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_common_tables.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\CommonTables\arm_const_structs.c
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_const_structs.h
+stm32g474ret6_motor\commontables.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\CommonTables\arm_mve_tables.c
