@@ -23,7 +23,7 @@ CubeMX 在 `app_freertos.c` 中提供 `__weak` 任务桩（例如 `UART_DMA_DEBU
 
 ## HAL 回调
 
-与具体外设/业务绑定的回调（如 `HAL_UART_TxCpltCallback` 用于 LPUART 遥测）放在对应 **BSP/驱动** 源文件（如 `bringup/bsp_telem_tx.c`），不要写在 `main.c` 的 `USER CODE 4`。
+与具体外设/业务绑定的回调（如 `HAL_UART_TxCpltCallback` 用于 LPUART 遥测）放在 **bringup/** 对应模块源文件（如 `bringup/app_uart_dma_debug.c` 或后续 `bsp_telem_tx.c`），不要写在 `main.c` 的 `USER CODE 4`。
 
 ## 集成入口（允许的最小改动）
 
