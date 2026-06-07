@@ -46,6 +46,7 @@
 "stm32g474ret6_motor\as5047.o"
 "stm32g474ret6_motor\foc_cal.o"
 "stm32g474ret6_motor\trans.o"
+"stm32g474ret6_motor\app_uart_dma_debug.o"
 "stm32g474ret6_motor\croutine.o"
 "stm32g474ret6_motor\event_groups.o"
 "stm32g474ret6_motor\list.o"

@@ -171,7 +171,6 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 	dbg_snapshot_all();
 
  FDCAN1_Config();
- HAL_UART_Transmit_DMA(&hlpuart1,tx_uart_data,sizeof(tx_uart_data));
   AS5047_Init(&AS5047_spi1_PORT, &hspi1, GPIOA, GPIO_PIN_4);
     AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();

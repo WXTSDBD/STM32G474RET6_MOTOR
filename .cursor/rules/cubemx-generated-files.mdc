@@ -1,0 +1,38 @@
+---
+description: CubeMX 生成文件禁止写业务代码；RTOS 任务与 HAL 回调放在 bringup/ 等自研目录
+globs: Core/Src/app_freertos.c,Core/Src/main.c,Core/Src/*.c,Core/Inc/*.h
+alwaysApply: false
+---
+
+# CubeMX 生成文件：禁止写业务代码
+
+## 原则
+
+`Core/Src/`、`Core/Inc/` 中由 **STM32CubeMX 生成或再生成** 的文件，**不得在 `USER CODE` 块内添加或修改业务逻辑**（含 `#include` 业务头文件、任务循环、遥测/FOC 等）。
+
+Generate 会保留 USER CODE 块，但业务代码应放在自研目录，避免与生成骨架纠缠、便于 Code Review 与迁移。
+
+## RTOS 任务
+
+CubeMX 在 `app_freertos.c` 中提供 `__weak` 任务桩（例如 `UART_DMA_DEBUG_TASK`）。**强符号实现**写在 `bringup/`：
+
+- 示例：`bringup/app_uart_dma_debug.c` 实现 `void UART_DMA_DEBUG_TASK(void *argument)`
+- `app_freertos.c` 仅保留 `osThreadNew(...)` 与空的 `__weak` 循环（`osDelay(1)`）
+
+不要改 `app_freertos.c` 里任务函数的 `USER CODE` 来加业务。
+
+## HAL 回调
+
+与具体外设/业务绑定的回调（如 `HAL_UART_TxCpltCallback` 用于 LPUART 遥测）放在对应 **BSP/驱动** 源文件（如 `bringup/bsp_telem_tx.c`），不要写在 `main.c` 的 `USER CODE 4`。
+
+## 集成入口（允许的最小改动）
+
+若必须在生成文件中挂钩，仅限 **一行** 调用自研模块初始化，且优先放在 `bringup/` 的 `MX_*_Init` 之后由独立 `app_*_init()` 完成；新功能默认不扩写 `main.c` USER CODE。
+
+## 新代码放哪
+
+| 类型 | 目录 |
+|------|------|
+| RTOS 任务实现 | `bringup/app_*.c` |
+| BSP / 遥测 / 电机 | `bringup/` |
+| 工具链脚本 | `tools/` |
