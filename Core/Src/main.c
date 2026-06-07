@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
 #include "fdcan.h"
@@ -59,6 +60,7 @@
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
+void MX_FREERTOS_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -199,6 +201,17 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 
   /* USER CODE END 2 */
 
+  /* Init scheduler */
+  osKernelInitialize();
+
+  /* Call init function for freertos objects (in cmsis_os2.c) */
+  MX_FREERTOS_Init();
+
+  /* Start scheduler */
+  osKernelStart();
+
+  /* We should never get here as control is now taken by the scheduler */
+
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
@@ -270,27 +283,6 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-UNUSED(htim);
-	    if (htim == &htim1) {
-			cnt++;
-			if(cnt>=200)
-			{
-//			FDCAN_MOTER_START(&hfdcan1,100,200,300,400);
-			}
-			as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
-			
-#if !BRINGUP_ADC_TEST
-			setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
-			as5047_spi3.get = AS5047_GetAngle(&AS5047_spi3_PORT) * 7;
-			setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
-#endif
-			adc_read[3] = hadc2.Instance->JDR1;
-			
-		}
-
-}
 void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
     UNUSED(hadc);
@@ -325,6 +317,39 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 
 }
 /* USER CODE END 4 */
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM7 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM7) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+  if (htim == &htim1) {
+    cnt++;
+    if (cnt >= 200) {
+    }
+    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
+
+#if !BRINGUP_ADC_TEST
+    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
+    as5047_spi3.get = AS5047_GetAngle(&AS5047_spi3_PORT) * 7;
+    setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
+#endif
+    adc_read[3] = hadc2.Instance->JDR1;
+  }
+  /* USER CODE END Callback 1 */
+}
 
 /**
   * @brief  This function is executed in case of error occurrence.

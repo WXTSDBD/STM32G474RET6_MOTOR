@@ -1,27 +1,29 @@
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\ComplexMathFunctions.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_conj_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
-stm32g474ret6_motor\complexmathfunctions.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
-stm32g474ret6_motor\complexmathfunctions.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\string.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\math.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\float.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\limits.h
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_conj_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_conj_q31.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_dot_prod_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_dot_prod_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_dot_prod_q31.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_q31.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_squared_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_squared_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mag_squared_q31.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_cmplx_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_cmplx_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_cmplx_q31.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_real_f32.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_real_q15.c
-stm32g474ret6_motor\complexmathfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ComplexMathFunctions\arm_cmplx_mult_real_q31.c
+stm32g474ret6_motor/complexmathfunctions.o: \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/ComplexMathFunctions.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_conj_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_math.h \
+  ../Drivers/CMSIS/Include\cmsis_compiler.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  ../Drivers/CMSIS/Include/cmsis_armclang_ltm.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\arm_compat.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\float.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\limits.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_conj_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_conj_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_dot_prod_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_dot_prod_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_dot_prod_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_squared_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_squared_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mag_squared_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_cmplx_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_cmplx_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_cmplx_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_real_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_real_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ComplexMathFunctions/arm_cmplx_mult_real_q31.c

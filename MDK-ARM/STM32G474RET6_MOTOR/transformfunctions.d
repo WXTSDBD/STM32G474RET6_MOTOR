@@ -1,50 +1,52 @@
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\TransformFunctions.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_bitreversal.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
-stm32g474ret6_motor\transformfunctions.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
-stm32g474ret6_motor\transformfunctions.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\string.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\math.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\float.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\limits.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_common_tables.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_bitreversal2.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_f64.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_const_structs.h
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_init_f64.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_init_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_init_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_init_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_init_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix2_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_init_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_init_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix4_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_cfft_radix8_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_init_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_init_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_dct4_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_fast_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_fast_f64.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_fast_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_fast_init_f64.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_init_f32.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_init_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_init_q31.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_q15.c
-stm32g474ret6_motor\transformfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\TransformFunctions\arm_rfft_q31.c
+stm32g474ret6_motor/transformfunctions.o: \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/TransformFunctions.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_bitreversal.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_math.h \
+  ../Drivers/CMSIS/Include\cmsis_compiler.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  ../Drivers/CMSIS/Include/cmsis_armclang_ltm.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\arm_compat.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\float.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\limits.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_common_tables.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_bitreversal2.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_f64.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_const_structs.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_init_f64.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix2_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix4_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_cfft_radix8_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_dct4_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_f64.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_fast_init_f64.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/TransformFunctions/arm_rfft_q31.c

@@ -1,32 +1,31 @@
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\DistanceFunctions.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_boolean_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
-stm32g474ret6_motor\distancefunctions.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
-stm32g474ret6_motor\distancefunctions.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\string.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\math.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\float.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\limits.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_boolean_distance_template.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_boolean_distance_template.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_boolean_distance_template.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_boolean_distance_template.h
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_braycurtis_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_canberra_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_chebyshev_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_cityblock_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_correlation_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_cosine_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_dice_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_euclidean_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_hamming_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_jaccard_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_jensenshannon_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_kulsinski_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_minkowski_distance_f32.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_rogerstanimoto_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_russellrao_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_sokalmichener_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_sokalsneath_distance.c
-stm32g474ret6_motor\distancefunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\DistanceFunctions\arm_yule_distance.c
+stm32g474ret6_motor/distancefunctions.o: \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/DistanceFunctions.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_boolean_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_math.h \
+  ../Drivers/CMSIS/Include\cmsis_compiler.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  ../Drivers/CMSIS/Include/cmsis_armclang_ltm.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\arm_compat.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\float.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\limits.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_boolean_distance_template.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_braycurtis_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_canberra_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_chebyshev_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_cityblock_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_correlation_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_cosine_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_dice_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_euclidean_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_hamming_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_jaccard_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_jensenshannon_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_kulsinski_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_minkowski_distance_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_rogerstanimoto_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_russellrao_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_sokalmichener_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_sokalsneath_distance.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/DistanceFunctions/arm_yule_distance.c

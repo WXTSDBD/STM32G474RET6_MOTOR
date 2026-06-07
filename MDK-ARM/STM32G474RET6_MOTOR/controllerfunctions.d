@@ -1,18 +1,20 @@
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\ControllerFunctions.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_init_f32.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_math.h
-stm32g474ret6_motor\controllerfunctions.o: ../Drivers/CMSIS/Include/cmsis_compiler.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\stdint.h
-stm32g474ret6_motor\controllerfunctions.o: ../Drivers/CMSIS/Include/cmsis_armcc.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\string.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\math.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\float.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\ARMCC\Bin\..\include\limits.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_init_q15.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_init_q31.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_reset_f32.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_reset_q15.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_pid_reset_q31.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_sin_cos_f32.c
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Include\arm_common_tables.h
-stm32g474ret6_motor\controllerfunctions.o: D:\keil5\ARM\PACK\ARM\CMSIS\5.7.0\CMSIS\DSP\Source\ControllerFunctions\arm_sin_cos_q31.c
+stm32g474ret6_motor/controllerfunctions.o: \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/ControllerFunctions.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_init_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_math.h \
+  ../Drivers/CMSIS/Include\cmsis_compiler.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  ../Drivers/CMSIS/Include/cmsis_armclang_ltm.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\arm_compat.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\float.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\limits.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_init_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_init_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_reset_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_reset_q15.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_pid_reset_q31.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_sin_cos_f32.c \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_common_tables.h \
+  D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Source/ControllerFunctions/arm_sin_cos_q31.c
