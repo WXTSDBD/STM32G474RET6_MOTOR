@@ -58,7 +58,7 @@ const osThreadAttr_t defaultTask_attributes = {
 osThreadId_t UART_DMA_DEBUGHandle;
 const osThreadAttr_t UART_DMA_DEBUG_attributes = {
   .name = "UART_DMA_DEBUG",
-  .priority = (osPriority_t) osPriorityLow,
+  .priority = (osPriority_t) osPriorityHigh,
   .stack_size = 128 * 4
 };
 

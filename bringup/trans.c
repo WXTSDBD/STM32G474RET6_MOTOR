@@ -67,7 +67,7 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
     U_beta = Ud * arm_sin_f32(angle_el) + Uq * arm_cos_f32(angle_el);
 
 //    // 2. 电压矢量幅值计算与限幅
-    Uref = sqrt(U_alpha*U_alpha + U_beta*U_beta) / voltage_power_supply;
+//    Uref = sqrt(U_alpha*U_alpha + U_beta*U_beta) / voltage_power_supply;
 //    if(Uref> 0.577)Uref= 0.577;                     			//六边形的内切圆(SVPWM最大不失真旋转电压矢量赋值)根号3/3
 //	if(Uref<-0.577)Uref=-0.577; 
 	
@@ -85,7 +85,8 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
 	
 	
   // 正确方法：通过atan2计算电压矢量的实际角度
-float angle_ref = atan2f(U_beta, U_alpha);
+float angle_ref =0; 
+	//atan2f(U_beta, U_alpha);
 angle_ref = _normalizeAngle(angle_ref); // 归一化到0-2π
 sector = (int)(angle_ref / _PI_3) % 6 + 1;
     // 4. 矢量作用时间计算

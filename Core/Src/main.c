@@ -174,14 +174,16 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
     AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();
   telem_bringup_init();
-#if !BRINGUP_ADC_TEST
-	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
+  
+  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
 	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_1);
 	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
 	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_3);
 	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+#if !BRINGUP_ADC_TEST
+	
 
 	HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
@@ -340,14 +342,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     cnt++;
     if (cnt >= 200) {
     }
-    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
-
+//    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
+    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get+as5047_spi1.add);
 #if !BRINGUP_ADC_TEST
-    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
-    as5047_spi3.get = AS5047_GetAngle(&AS5047_spi3_PORT) * 7;
-    setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
+//    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
+//    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
+//    setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
 #endif
-    adc_read[3] = hadc2.Instance->JDR1;
+//    adc_read[3] = hadc2.Instance->JDR1;
     telem_bringup_tick();
     __DSB();
     {

@@ -8,7 +8,7 @@
  *   TxCplt：SENDING → UNLOCKED
  *
  * 测试通道（CH_COUNT=4，ch1/ch2 为 uint32 原样小端，VOFA 勿当 float 看）：
- *   ch0=(float)cnt  ch1=上一拍 cyccnt_end  ch2=上一拍 isr_delta  ch3=4.0
+ *   ch0=(float)cnt  ch1=上一拍 cyccnt_end  ch2=上一拍 isr_delta  ch3=as5047_spi1.get
  *
  * VOFA+：6000000，JustFloat，△t ≈ D / 20000 秒（TIM1 20kHz 基准）
  */
@@ -17,6 +17,7 @@
 #include "cmsis_os.h"
 #include "usart.h"
 #include "bsp_dwt.h"
+#include "FOC_CAL.h"
 #include <string.h>
 
 extern volatile uint8_t cnt;
@@ -114,6 +115,17 @@ static int telem_acquire_write_buf(void)
     return 1;
 }
 
+static void telem_refresh_buf_snapshot(void)
+{
+    g_telem_dbg.buf0_state = (uint8_t)s_bufs[0].state;
+    g_telem_dbg.buf1_state = (uint8_t)s_bufs[1].state;
+    g_telem_dbg.buf0_used = s_bufs[0].used_bytes;
+    g_telem_dbg.buf1_used = s_bufs[1].used_bytes;
+    g_telem_dbg.write_buf_active = (s_write_buf != NULL) ? 1u : 0u;
+    g_telem_dbg.uart_gstate = (uint8_t)hlpuart1.gState;
+    g_telem_dbg.uart_error = hlpuart1.ErrorCode;
+}
+
 static void telem_seal_write_buf_ready(void)
 {
     if (s_write_buf == NULL) {
@@ -121,6 +133,7 @@ static void telem_seal_write_buf_ready(void)
     }
     s_write_buf->state = TELEM_BUF_READY;
     s_write_buf = NULL;
+    g_telem_dbg.seal_cnt++;
 }
 
 static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
@@ -131,7 +144,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[0] = (float)cnt;
     vals[1] = 0.0f;
     vals[2] = 0.0f;
-    vals[3] = 4.0f;
+    vals[3] = as5047_spi1.get;
 
     p = &buf->data[offset];
 
@@ -152,13 +165,16 @@ void telem_bringup_tick(void)
 {
     telem_buf_t *buf;
 
+    g_telem_dbg.tick_total++;
     s_decim_cnt++;
     if (s_decim_cnt < TELEM_BRINGUP_DECIMATION) {
+        g_telem_dbg.tick_decim_skip++;
         return;
     }
     s_decim_cnt = 0u;
 
     if (!telem_acquire_write_buf()) {
+        g_telem_dbg.acquire_fail++;
         return;
     }
 
@@ -167,6 +183,7 @@ void telem_bringup_tick(void)
     if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
         telem_seal_write_buf_ready();
         if (!telem_acquire_write_buf()) {
+            g_telem_dbg.acquire_fail++;
             return;
         }
         buf = s_write_buf;
@@ -189,27 +206,37 @@ void telem_bringup_tick(void)
     if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
         telem_seal_write_buf_ready();
     }
+    g_telem_dbg.tick_frame_ok++;
 }
 
 void telem_bringup_try_send(void)
 {
     telem_buf_t *buf;
 
+    g_telem_dbg.try_send_calls++;
+    telem_refresh_buf_snapshot();
+
     if (telem_dma_busy()) {
+        g_telem_dbg.dma_busy_skip++;
         return;
     }
 
     buf = telem_find_buf(TELEM_BUF_READY);
     if (buf == NULL || buf->used_bytes == 0u) {
+        g_telem_dbg.no_ready_skip++;
         return;
     }
 
     if (HAL_UART_Transmit_DMA(&hlpuart1, buf->data, buf->used_bytes) != HAL_OK) {
+        g_telem_dbg.dma_start_fail++;
         return;
     }
 
+    g_telem_dbg.dma_start_ok++;
+    g_telem_dbg.last_dma_bytes = buf->used_bytes;
     buf->state = TELEM_BUF_SENDING;
     s_sending_buf = buf;
+    telem_refresh_buf_snapshot();
 }
 
 static void telem_bringup_on_dma_done(void)
@@ -226,6 +253,7 @@ static void telem_bringup_on_dma_done(void)
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
 {
     if (huart == &hlpuart1) {
+        g_telem_dbg.tx_cplt_cnt++;
         telem_bringup_on_dma_done();
     }
 }
@@ -250,6 +278,26 @@ void telem_bringup_init(void)
     g_telem_dbg.isr_delta = 0u;
     g_telem_dbg.ch1_wire = 0u;
     g_telem_dbg.ch2_wire = 0u;
+    g_telem_dbg.tick_total = 0u;
+    g_telem_dbg.tick_decim_skip = 0u;
+    g_telem_dbg.tick_frame_ok = 0u;
+    g_telem_dbg.acquire_fail = 0u;
+    g_telem_dbg.seal_cnt = 0u;
+    g_telem_dbg.uart_task_loops = 0u;
+    g_telem_dbg.try_send_calls = 0u;
+    g_telem_dbg.dma_busy_skip = 0u;
+    g_telem_dbg.no_ready_skip = 0u;
+    g_telem_dbg.dma_start_ok = 0u;
+    g_telem_dbg.dma_start_fail = 0u;
+    g_telem_dbg.tx_cplt_cnt = 0u;
+    g_telem_dbg.buf0_state = 0u;
+    g_telem_dbg.buf1_state = 0u;
+    g_telem_dbg.buf0_used = 0u;
+    g_telem_dbg.buf1_used = 0u;
+    g_telem_dbg.write_buf_active = 0u;
+    g_telem_dbg.uart_gstate = 0u;
+    g_telem_dbg.uart_error = 0u;
+    g_telem_dbg.last_dma_bytes = 0u;
     time_cnt = 0u;
 #if TELEM_BRINGUP_INCLUDE_SEQ
     s_seq = 0u;
@@ -261,6 +309,7 @@ void UART_DMA_DEBUG_TASK(void *argument)
     (void)argument;
 
     for (;;) {
+        g_telem_dbg.uart_task_loops++;
         telem_bringup_try_send();
         osDelay(1);
     }
