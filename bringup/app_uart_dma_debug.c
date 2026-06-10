@@ -10,6 +10,13 @@
  * 测试通道（CH_COUNT=4，ch1/ch2 为 uint32 原样小端，VOFA 勿当 float 看）：
  *   ch0=(float)cnt  ch1=上一拍 cyccnt_end  ch2=上一拍 isr_delta  ch3=as5047_spi1.get
  *
+ * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
+ *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
+ *   enc_dma_f1_cb_delta / enc_dma_f2_cb_delta  两次 SPI DMA 回调 CPU
+ *   enc_dma_cpu_delta     f1_cb + f2_cb
+ *   enc_dma_seq_delta     kick→FRAME2 完成（含硬件等待，非纯 CPU）
+ *   enc_total_delta       isr_delta + enc_dma_cpu_delta（整拍参考）
+ *
  * VOFA+：6000000，JustFloat，△t ≈ D / 20000 秒（TIM1 20kHz 基准）
  */
 
@@ -298,6 +305,14 @@ void telem_bringup_init(void)
     g_telem_dbg.uart_gstate = 0u;
     g_telem_dbg.uart_error = 0u;
     g_telem_dbg.last_dma_bytes = 0u;
+    g_telem_dbg.enc_dma_kick_delta = 0u;
+    g_telem_dbg.enc_dma_f1_cb_delta = 0u;
+    g_telem_dbg.enc_dma_f2_cb_delta = 0u;
+    g_telem_dbg.enc_dma_cpu_delta = 0u;
+    g_telem_dbg.enc_dma_seq_delta = 0u;
+    g_telem_dbg.enc_dma_seq_delta_max = 0u;
+    g_telem_dbg.enc_total_delta = 0u;
+    g_telem_dbg.enc_chain_kick_cnt = 0u;
     time_cnt = 0u;
 #if TELEM_BRINGUP_INCLUDE_SEQ
     s_seq = 0u;

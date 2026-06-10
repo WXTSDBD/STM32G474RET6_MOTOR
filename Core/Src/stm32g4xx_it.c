@@ -22,6 +22,10 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "as5047.h"
+#if AS5047_SPI1_LL
+#include "bsp_as5047_spi1_ll.h"
+#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -62,6 +66,8 @@ extern ADC_HandleTypeDef hadc5;
 extern FDCAN_HandleTypeDef hfdcan1;
 extern DMA_HandleTypeDef hdma_lpuart1_tx;
 extern UART_HandleTypeDef hlpuart1;
+extern DMA_HandleTypeDef hdma_spi1_rx;
+extern DMA_HandleTypeDef hdma_spi1_tx;
 extern TIM_HandleTypeDef htim1;
 extern TIM_HandleTypeDef htim8;
 extern TIM_HandleTypeDef htim15;
@@ -181,6 +187,32 @@ void DMA1_Channel1_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel1_IRQn 1 */
 
   /* USER CODE END DMA1_Channel1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles DMA1 channel2 global interrupt.
+  */
+void DMA1_Channel2_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
+#if AS5047_SPI1_LL
+  bsp_as5047_spi1_ll_dma1_ch2_isr();
+#else
+  HAL_DMA_IRQHandler(&hdma_spi1_rx);
+#endif
+  /* USER CODE END DMA1_Channel2_IRQn 0 */
+}
+
+/**
+  * @brief This function handles DMA1 channel3 global interrupt.
+  */
+void DMA1_Channel3_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
+#if !AS5047_SPI1_LL
+  HAL_DMA_IRQHandler(&hdma_spi1_tx);
+#endif
+  /* USER CODE END DMA1_Channel3_IRQn 0 */
 }
 
 /**

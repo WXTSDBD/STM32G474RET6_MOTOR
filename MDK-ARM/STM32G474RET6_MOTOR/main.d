@@ -24,6 +24,7 @@ stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_adc.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_ll_adc.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_adc_ex.h \
+  ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_cordic.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_exti.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_fdcan.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_flash.h \
@@ -52,9 +53,9 @@ stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
-  ../Core/Inc\adc.h ../Core/Inc\dma.h ../Core/Inc\fdcan.h \
-  ../Core/Inc\i2c.h ../Core/Inc\usart.h ../Core/Inc\opamp.h \
-  ../Core/Inc\spi.h ../Core/Inc\tim.h ../Core/Inc\gpio.h \
-  ../bringup\COMMUNICATION_FDCAN.h ../bringup\as5047.h \
-  ../bringup\trans.h ../bringup\FOC_CAL.h \
+  ../Core/Inc\adc.h ../Core/Inc\cordic.h ../Core/Inc\dma.h \
+  ../Core/Inc\fdcan.h ../Core/Inc\i2c.h ../Core/Inc\usart.h \
+  ../Core/Inc\opamp.h ../Core/Inc\spi.h ../Core/Inc\tim.h \
+  ../Core/Inc\gpio.h ../bringup\COMMUNICATION_FDCAN.h \
+  ../bringup\as5047.h ../bringup\trans.h ../bringup\FOC_CAL.h \
   ../bringup/Sliding_Window_Filter.h ../bringup\app_uart_dma_debug.h

@@ -82,6 +82,8 @@ extern volatile DbgMon_t dbg;
 #define LED1_GPIO_Port GPIOC
 #define NTC_MOS1_Pin GPIO_PIN_2
 #define NTC_MOS1_GPIO_Port GPIOA
+#define SPI1_CS_Pin GPIO_PIN_4
+#define SPI1_CS_GPIO_Port GPIOA
 #define LED2_Pin GPIO_PIN_5
 #define LED2_GPIO_Port GPIOC
 #define VBUS_Pin GPIO_PIN_1
@@ -90,6 +92,8 @@ extern volatile DbgMon_t dbg;
 #define NTC_MOS2_GPIO_Port GPIOB
 #define LED3_Pin GPIO_PIN_9
 #define LED3_GPIO_Port GPIOC
+#define SPI3_CS_Pin GPIO_PIN_15
+#define SPI3_CS_GPIO_Port GPIOA
 #define SPI3_FLASH_CS_Pin GPIO_PIN_2
 #define SPI3_FLASH_CS_GPIO_Port GPIOD
 

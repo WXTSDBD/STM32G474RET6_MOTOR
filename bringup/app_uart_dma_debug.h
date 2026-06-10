@@ -4,18 +4,18 @@
 #include <stdint.h>
 
 /**
- * 双缓冲遥测：TIM1 ISR 写缓冲，RTOS 任务 DMA 发送。
- * Keil Watch 添加 g_telem_dbg 展开查看。
+ * ????????TIM1 ISR ???????RTOS ???? DMA ?????
+ * Keil Watch ???? g_telem_dbg ???????
  *
- * 缓冲 state：0=UNLOCKED 1=LOCKED 2=READY 3=SENDING
- * uart_gstate：HAL 状态，0x20=READY 0x21=BUSY_TX
+ * ???? state??0=UNLOCKED 1=LOCKED 2=READY 3=SENDING
+ * uart_gstate??HAL ????0x20=READY 0x21=BUSY_TX
  */
 void telem_bringup_init(void);
 void telem_bringup_tick(void);
 void telem_bringup_try_send(void);
 
 typedef struct {
-    /* --- ISR 计时（DWT）--- */
+    /* --- ISR ?????DWT??--- */
     volatile uint32_t isr_t0;
     volatile uint32_t isr_t1;
     volatile uint32_t cyccnt_end;
@@ -23,36 +23,58 @@ typedef struct {
     volatile uint32_t ch1_wire;
     volatile uint32_t ch2_wire;
 
-    /* --- ISR 写缓冲 --- */
-    volatile uint32_t tick_total;       /**< telem_bringup_tick 入口次数 */
-    volatile uint32_t tick_decim_skip;  /**< 降采样未到，直接 return */
-    volatile uint32_t tick_frame_ok;    /**< 成功写入 1 小帧 */
-    volatile uint32_t acquire_fail;     /**< 拿不到 UNLOCKED 缓冲 */
-    volatile uint32_t seal_cnt;         /**< 封包 READY 次数 */
+    /* --- ISR ?????? --- */
+    volatile uint32_t tick_total;       /**< telem_bringup_tick ?????? */
+    volatile uint32_t tick_decim_skip;  /**< ??????????????? return */
+    volatile uint32_t tick_frame_ok;    /**< ??????? 1 ??? */
+    volatile uint32_t acquire_fail;     /**< ?????? UNLOCKED ???? */
+    volatile uint32_t seal_cnt;         /**< ??? READY ???? */
 
-    /* --- RTOS 发送任务 --- */
-    volatile uint32_t uart_task_loops;  /**< UART_DMA_DEBUG_TASK 循环次数 */
-    volatile uint32_t try_send_calls;   /**< telem_bringup_try_send 入口 */
-    volatile uint32_t dma_busy_skip;    /**< UART 仍 BUSY_TX，跳过 */
-    volatile uint32_t no_ready_skip;    /**< 无 READY 缓冲，跳过 */
-    volatile uint32_t dma_start_ok;     /**< HAL_UART_Transmit_DMA 成功 */
-    volatile uint32_t dma_start_fail;   /**< HAL_UART_Transmit_DMA 失败 */
-    volatile uint32_t tx_cplt_cnt;      /**< TxCplt 回调次数 */
+    /* --- RTOS ???????? --- */
+    volatile uint32_t uart_task_loops;  /**< UART_DMA_DEBUG_TASK ??????? */
+    volatile uint32_t try_send_calls;   /**< telem_bringup_try_send ??? */
+    volatile uint32_t dma_busy_skip;    /**< UART ?? BUSY_TX?????? */
+    volatile uint32_t no_ready_skip;    /**< ?? READY ????????? */
+    volatile uint32_t dma_start_ok;     /**< HAL_UART_Transmit_DMA ??? */
+    volatile uint32_t dma_start_fail;   /**< HAL_UART_Transmit_DMA ??? */
+    volatile uint32_t tx_cplt_cnt;      /**< TxCplt ??????? */
 
-    /* --- 双缓冲快照（每次 try_send 更新）--- */
+    /* --- ???????????? try_send ?????--- */
     volatile uint8_t  buf0_state;
     volatile uint8_t  buf1_state;
     volatile uint16_t buf0_used;
     volatile uint16_t buf1_used;
-    volatile uint8_t  write_buf_active; /**< s_write_buf 非空=1 */
+    volatile uint8_t  write_buf_active; /**< s_write_buf ???=1 */
     volatile uint8_t  uart_gstate;      /**< hlpuart1.gState */
     volatile uint32_t uart_error;      /**< hlpuart1.ErrorCode */
-    volatile uint16_t last_dma_bytes;   /**< 最近一次 DMA 发送字节数 */
+    volatile uint16_t last_dma_bytes;   /**< ?????? DMA ????????? */
+
+    /* --- AS5047 SPI1 DMA??Keil Watch: g_telem_dbg.enc_*??--- */
+    volatile uint8_t  enc_dma_busy;       /**< 1=SPI DMA ?????? */
+    volatile uint8_t  enc_dma_phase;      /**< 0=IDLE 1=FRAME1 2=FRAME2 */
+    volatile uint8_t  enc_spi_state;      /**< hspi1.State??0x01=READY */
+    volatile uint32_t enc_kick_cnt;       /**< FRAME1 kick starts (chain + manual DmaKick) */
+    volatile uint32_t enc_chain_kick_cnt; /**< kicks from DMA chain only */
+    volatile uint32_t enc_kick_skip_busy; /**< manual DmaKick while busy (TIM1 no longer kicks) */
+    volatile uint32_t enc_kick_skip_spi;  /**< kick when SPI not READY */
+    volatile uint32_t enc_cplt_cnt;       /**< TxRxCplt ?????? */
+    volatile uint32_t enc_err_cnt;        /**< SPI Error ??????? */
+    volatile uint16_t enc_rx_word0;       /**< CMD frame rx */
+    volatile uint16_t enc_rx_word1;       /**< NOP frame rx */
+    volatile uint16_t enc_raw;            /**< ????????????? 14bit raw */
+    /* DWT cycle???????? DMA ??????TIM1 ??Keil Watch ?? isr_delta ????????? */
+    volatile uint32_t enc_dma_kick_delta; /**< FRAME1 kick CPU cycle (DMA chain) */
+    volatile uint32_t enc_dma_f1_cb_delta; /**< FRAME1 TxRxCplt ??? CPU cycle */
+    volatile uint32_t enc_dma_f2_cb_delta; /**< FRAME2 TxRxCplt ??? CPU cycle */
+    volatile uint32_t enc_dma_cpu_delta;   /**< ???? f1_cb + f2_cb ?? CPU */
+    volatile uint32_t enc_dma_seq_delta;   /**< kick -> FRAME2 done wall cycle */
+    volatile uint32_t enc_dma_seq_delta_max; /**< max enc_dma_seq_delta since init */
+    volatile uint32_t enc_total_delta;     /**< isr_delta + enc_dma_cpu_delta reference */
 } telem_dbg_t;
 
 extern telem_dbg_t g_telem_dbg;
 
-/** 兼容旧 Watch：最近一次 ch2_wire（isr_delta） */
+/** ????? Watch???????? ch2_wire??isr_delta?? */
 extern volatile uint32_t time_cnt;
 
 #endif

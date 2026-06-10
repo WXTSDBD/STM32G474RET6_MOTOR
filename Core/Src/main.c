@@ -20,6 +20,7 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "adc.h"
+#include "cordic.h"
 #include "dma.h"
 #include "fdcan.h"
 #include "i2c.h"
@@ -150,6 +151,7 @@ int main(void)
   MX_I2C1_Init();
   MX_LPUART1_UART_Init();
   MX_TIM15_Init();
+  MX_CORDIC_Init();
   /* USER CODE BEGIN 2 */
   if (HAL_OPAMP_Start(&hopamp1) != HAL_OK) { Error_Handler(); }
   if (HAL_OPAMP_Start(&hopamp3) != HAL_OK) { Error_Handler(); }
@@ -171,7 +173,8 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 
  FDCAN1_Config();
   AS5047_Init(&AS5047_spi1_PORT, &hspi1, GPIOA, GPIO_PIN_4);
-    AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
+  AS5047_DmaInit(&AS5047_spi1_PORT);
+  AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();
   telem_bringup_init();
   
@@ -342,8 +345,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     cnt++;
     if (cnt >= 200) {
     }
+    AS5047_DmaKick(&AS5047_spi1_PORT);
+    as5047_spi1.raw = (int)AS5047_GetRaw();
 //    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
-    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get+as5047_spi1.add);
+//    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get+as5047_spi1.add);
 #if !BRINGUP_ADC_TEST
 //    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
 //    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
@@ -351,7 +356,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 #endif
 //    adc_read[3] = hadc2.Instance->JDR1;
     telem_bringup_tick();
-    __DSB();
     {
       volatile uint32_t isr_t1 = *(volatile uint32_t *)&DWT->CYCCNT;
 
@@ -360,6 +364,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       g_telem_dbg.cyccnt_end = isr_t1;
       g_telem_dbg.isr_delta = isr_t1 - isr_t0;
     }
+   
   }
   /* USER CODE END Callback 1 */
 }
