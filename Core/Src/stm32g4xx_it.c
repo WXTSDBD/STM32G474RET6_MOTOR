@@ -23,9 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "as5047.h"
-#if AS5047_SPI1_LL
 #include "bsp_as5047_spi1_ll.h"
-#endif
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -195,11 +193,7 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-#if AS5047_SPI1_LL
   bsp_as5047_spi1_ll_dma1_ch2_isr();
-#else
-  HAL_DMA_IRQHandler(&hdma_spi1_rx);
-#endif
   /* USER CODE END DMA1_Channel2_IRQn 0 */
 }
 
@@ -209,9 +203,7 @@ void DMA1_Channel2_IRQHandler(void)
 void DMA1_Channel3_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
-#if !AS5047_SPI1_LL
-  HAL_DMA_IRQHandler(&hdma_spi1_tx);
-#endif
+  /* SPI1 TX Ch3: LL path uses Ch2 TC only; NVIC disabled in bsp_as5047_spi1_ll_init */
   /* USER CODE END DMA1_Channel3_IRQn 0 */
 }
 

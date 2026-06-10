@@ -45,5 +45,4 @@ stm32g474ret6_motor/bsp_as5047_spi1_ll.o: ../bringup/bsp_as5047_spi1_ll.c \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_ll_spi.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_ll_dma.h \
-  ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_ll_dmamux.h \
-  ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_ll_bus.h
+  ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_ll_dmamux.h

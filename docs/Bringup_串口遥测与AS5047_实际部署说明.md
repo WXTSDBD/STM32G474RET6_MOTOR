@@ -75,8 +75,7 @@
 除源码外，确认：
 
 - `bringup/bsp_as5047_spi1_ll.c` 已加入 `MDK-ARM/*.uvprojx`（LL 模式）
-- `Core/Src/stm32g4xx_it.c` USER CODE 已 `#include "as5047.h"`，且 Ch2/Ch3 为 LL 分支
-- `bringup/as5047.h` 中 `AS5047_SPI1_LL` 与预期一致（默认 `1`）
+- `Core/Src/stm32g4xx_it.c` USER CODE：`#include "bsp_as5047_spi1_ll.h"`，Ch2 仅 LL ISR
 
 ---
 
@@ -113,20 +112,14 @@ FRAME2: CS↓ → DMA 发 NOP       → CS↑   （rx & 0x3FFF = 14 bit 角度�
   - 一轮 wall ~8 µs/轮，稳态 **`enc_cplt_cnt / tick_total ≈ 1`**。
   - FOC 视角：角度最多 **1 个 PWM 周期** 旧。
 
-### 3.4 LL 与 HAL 切换
+### 3.4 SPI1 LL 热路径（唯一路径）
 
-`bringup/as5047.h`：
-
-```c
-#define AS5047_SPI1_LL 1   /* 改为 0 可回退 HAL DMA 链 */
-```
-
-| `AS5047_SPI1_LL` | SPI1 热路径 | DMA1 Ch2 中断 |
-|------------------|-------------|---------------|
-| **1**（默认） | `bsp_as5047_spi1_ll_*` | `bsp_as5047_spi1_ll_dma1_ch2_isr()` |
-| 0 | `HAL_SPI_TransmitReceive_DMA` | `HAL_DMA_IRQHandler(&hdma_spi1_rx)` |
-
-LL 模式下 **DMA1 Channel3 不进入 HAL**（init 里 `HAL_NVIC_DisableIRQ(DMA1_Channel3_IRQn)`），仅 Ch2 RX TC 驱动状态机。
+| 组件 | 说明 |
+|------|------|
+| 热路径 | `bsp_as5047_spi1_ll_*`：`start_word` / `restart_word` 轻量重启 |
+| DMA1 Ch2 中断 | `bsp_as5047_spi1_ll_dma1_ch2_isr()` |
+| Ch3 | NVIC 关闭，仅 Ch2 TC 驱动状态机 |
+| 启动 | `DmaInit` 仅 priming + `ll_init`；**首拍 kick 由 TIM1** |
 
 **Priming**：`AS5047_DmaInit()` 内仍用 **一次阻塞 `AS5047_read()`（HAL）** 灌初值，之后 SPI1 角度读仅走 LL 链。
 
