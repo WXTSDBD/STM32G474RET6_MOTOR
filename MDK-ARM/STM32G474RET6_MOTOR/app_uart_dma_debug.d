@@ -1,6 +1,7 @@
 stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
   ../bringup/app_uart_dma_debug.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
+  ../Drivers/encoder\encoder.h ../platform\encoder_spi_bus.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2\cmsis_os.h \
   ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\stddef.h \
@@ -56,5 +57,5 @@ stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
   ../bringup/bsp_dwt.h ../bringup/FOC_CAL.h ../Core/Inc\tim.h \
-  ../bringup/Sliding_Window_Filter.h \
-  D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h
+  ../bringup/Sliding_Window_Filter.h ../Drivers/as5047\as5047.h \
+  ../Core/Inc\spi.h D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h

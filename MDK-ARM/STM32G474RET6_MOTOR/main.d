@@ -57,5 +57,7 @@ stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
   ../Core/Inc\fdcan.h ../Core/Inc\i2c.h ../Core/Inc\usart.h \
   ../Core/Inc\opamp.h ../Core/Inc\spi.h ../Core/Inc\tim.h \
   ../Core/Inc\gpio.h ../bringup\COMMUNICATION_FDCAN.h \
-  ../bringup\as5047.h ../bringup\trans.h ../bringup\FOC_CAL.h \
+  ../Drivers/as5047\as5047.h ../Drivers/encoder\encoder.h \
+  ../platform\encoder_spi_bus.h ../board\board_encoder.h \
+  ../bringup\trans.h ../bringup\FOC_CAL.h \
   ../bringup/Sliding_Window_Filter.h ../bringup\app_uart_dma_debug.h

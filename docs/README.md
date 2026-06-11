@@ -1,28 +1,32 @@
 # 项目文档索引
 
-本目录存放与本仓库相关的设计与 **工具链/工程** 说明，便于后续维护与交接。
+本目录存放与本仓库相关的 **设计/部署** 说明，便于后续维护与交接。
 
-## 工具链与工程配置（必读）
+## 构建与工程配置（必读）
 
 | 文档 | 内容 |
 |------|------|
-| [Keil_AC6_FreeRTOS_CubeMX适配说明.md](./Keil_AC6_FreeRTOS_CubeMX适配说明.md) | CubeMX + Keil AC6 + FreeRTOS 为何需要 `tools/` 脚本、日常 Generate→Rebuild 流程、排错、新工程迁移 |
+| [Keil_AC6_FreeRTOS_CubeMX配置说明.md](./Keil_AC6_FreeRTOS_CubeMX配置说明.md) | CubeMX + Keil AC6 + FreeRTOS 为主要 `tools/` 脚本、日常 Generate、Rebuild 流程、寄存器级工程迁移 |
 
-快捷入口：脚本目录 [`../tools/README.md`](../tools/README.md)
+脚本目录 [`../tools/README.md`](../tools/README.md)
 
 ## 系统与硬件设计
 
 | 文档 | 内容 |
 |------|------|
-| [Bringup_串口遥测与AS5047_实际部署说明.md](./Bringup_串口遥测与AS5047_实际部署说明.md) | **当前已烧录**：LPUART DMA 遥测 + AS5047 LL DMA 链、Watch 字段、实测 cycle |
+| [SPI编码器架构实现说明.md](./SPI编码器架构实现说明.md) | **M1 v1.0 已冻结**；五层架构、API、性能；**§14 故意遗留的技术债务** |
+| [FOC控制环架构设计说明.md](./FOC控制环架构设计说明.md) | FOC 电流环、PLL @ 2 kHz、C/C++ 边界、cycle 预算、迁移阶段 |
+| [Bringup_串口遥测与AS5047_实际部署说明.md](./Bringup_串口遥测与AS5047_实际部署说明.md) | LPUART DMA 遥测 + AS5047 Watch（部分路径以 SPI 架构文档为准） |
 | [串口DMA遥测系统设计文档.md](./串口DMA遥测系统设计文档.md) | UART DMA 遥测（JustFloat、双缓冲、RTOS 线程等） |
-| [遥测BSP分步实施计划.md](./遥测BSP分步实施计划.md) | Bringup 阶段遥测 BSP 分步实现、验收标准、CLI 预留接口（**实施时必读**） |
-| [电机驱动软件框架——完整架构设计文档.md](./电机驱动软件框架——完整架构设计文档.md) | 电机驱动软件架构 |
+| [遥测BSP分层实施计划.md](./遥测BSP分层实施计划.md) | Bringup 阶段遥测 BSP 分层（**实施时必读**） |
+| [编码器驱动与功能、驱动架构设计文档.md](./编码器驱动与功能、驱动架构设计文档.md) | 早期编码器架构设计 |
+| [电机驱动软件框架——完整架构设计文档.md](./电机驱动软件框架——完整架构设计文档.md) | 通信域 + 控制域长期愿景 |
 | [Foundation v1.0.0 硬件设计文档.md](./Foundation%20v1.0.0%20硬件设计文档.md) | 硬件设计 |
 
-## 新人上手顺序（建议）
+## 推荐阅读顺序（建议）
 
-1. 读 **Keil AC6 FreeRTOS 适配说明** → 会 Generate、会排 RVDS/BOM 类错误  
-2. 读 **电机驱动软件框架** → 理解代码结构  
-3. 做遥测 / 编码器联调时读 **Bringup 串口遥测与 AS5047 实际部署说明** → 再对照 **遥测 BSP 分步实施计划** 与 **串口 DMA 遥测系统设计**  
-4. 按需读其他专题文档  
+1. **Keil AC6 FreeRTOS 配置说明** → Generate、Rebuild  
+2. **SPI 编码器架构实现说明** → M1 已冻结，FOC 只调用 API，不改骨架  
+3. **FOC 控制环架构设计说明** → 接电流环 / PLL  
+4. 遥测 bringup → **Bringup 串口遥测与 AS5047 实际部署说明**  
+5. 其余按需查阅  

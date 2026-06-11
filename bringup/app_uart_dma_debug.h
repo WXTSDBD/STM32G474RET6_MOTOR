@@ -10,6 +10,10 @@
  * ???? state??0=UNLOCKED 1=LOCKED 2=READY 3=SENDING
  * uart_gstate??HAL ????0x20=READY 0x21=BUSY_TX
  */
+#include "encoder.h"
+
+void telem_encoder_profile_bind(encoder_t *e);
+
 void telem_bringup_init(void);
 void telem_bringup_tick(void);
 void telem_bringup_try_send(void);

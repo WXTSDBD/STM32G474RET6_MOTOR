@@ -311,7 +311,7 @@
           </ArmAdsMisc>
           <Cads>
             <interw>1</interw>
-            <Optim>7</Optim>
+            <Optim>3</Optim>
             <oTime>0</oTime>
             <SplitLS>0</SplitLS>
             <OneElfS>1</OneElfS>
@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx,ARM_MATH_CM4</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1281,14 +1281,39 @@
               <FilePath>..\bringup\COMMUNICATION_FDCAN.c</FilePath>
             </File>
             <File>
-              <FileName>as5047.c</FileName>
+              <FileName>as5047_protocol.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\as5047.c</FilePath>
+              <FilePath>..\Drivers\as5047\as5047_protocol.c</FilePath>
             </File>
             <File>
-              <FileName>bsp_as5047_spi1_ll.c</FileName>
+              <FileName>as5047_async.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\bsp_as5047_spi1_ll.c</FilePath>
+              <FilePath>..\Drivers\as5047\as5047_async.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\encoder\encoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder_spi_bus.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\encoder_spi_bus.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder_spi_bus_fast_spi1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\encoder_spi_bus_fast_spi1.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder_spi_bus_generic_g4.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\encoder_spi_bus_generic_g4.c</FilePath>
+            </File>
+            <File>
+              <FileName>board_encoder_m1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\board\board_encoder_m1.c</FilePath>
             </File>
             <File>
               <FileName>FOC_CAL.c</FileName>

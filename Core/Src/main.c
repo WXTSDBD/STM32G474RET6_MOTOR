@@ -34,6 +34,8 @@
 /* USER CODE BEGIN Includes */
 #include "COMMUNICATION_FDCAN.h"
 #include "as5047.h"
+#include "board_encoder.h"
+#include "encoder.h"
 #include "trans.h"
 #include "FOC_CAL.h"
 #include "app_uart_dma_debug.h"
@@ -46,6 +48,8 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+#define M1_POLE_PAIRS 14u
 
 /* USER CODE END PD */
 
@@ -172,11 +176,11 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 	dbg_snapshot_all();
 
  FDCAN1_Config();
-  AS5047_Init(&AS5047_spi1_PORT, &hspi1, GPIOA, GPIO_PIN_4);
-  AS5047_DmaInit(&AS5047_spi1_PORT);
+  board_encoder_m1_init();
   AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();
   telem_bringup_init();
+  telem_encoder_profile_bind(&enc_m1);
   
   HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
 	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
@@ -345,8 +349,14 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     cnt++;
     if (cnt >= 200) {
     }
-    AS5047_DmaKick(&AS5047_spi1_PORT);
-    as5047_spi1.raw = (int)AS5047_GetRaw();
+    encoder_kick(&enc_m1);
+    {
+      uint16_t enc_raw = encoder_get_raw(&enc_m1);
+
+      as5047_spi1.raw = (int)enc_raw;
+      /* [0, 2pi) electrical rad; .add added at SVPWM if needed */
+      as5047_spi1.get = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS, 0.0f);
+    }
 //    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
 //    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get+as5047_spi1.add);
 #if !BRINGUP_ADC_TEST

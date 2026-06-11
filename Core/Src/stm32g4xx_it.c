@@ -22,8 +22,7 @@
 #include "stm32g4xx_it.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "as5047.h"
-#include "bsp_as5047_spi1_ll.h"
+#include "board_encoder.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -193,7 +192,7 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-  bsp_as5047_spi1_ll_dma1_ch2_isr();
+  board_encoder_m1_dma_isr();
   /* USER CODE END DMA1_Channel2_IRQn 0 */
 }
 
@@ -203,7 +202,7 @@ void DMA1_Channel2_IRQHandler(void)
 void DMA1_Channel3_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
-  /* SPI1 TX Ch3: LL path uses Ch2 TC only; NVIC disabled in bsp_as5047_spi1_ll_init */
+  /* SPI1 TX Ch3: LL path uses Ch2 TC only; NVIC disabled in encoder_spi_bus_hw_init */
   /* USER CODE END DMA1_Channel3_IRQn 0 */
 }
 

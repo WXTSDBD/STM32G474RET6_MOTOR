@@ -42,5 +42,6 @@ stm32g474ret6_motor/stm32g4xx_it.o: ../Core/Src/stm32g4xx_it.c \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
-  ../Core/Inc\stm32g4xx_it.h ../bringup\as5047.h ../Core/Inc\spi.h \
-  ../bringup\bsp_as5047_spi1_ll.h
+  ../Core/Inc\stm32g4xx_it.h ../board\board_encoder.h \
+  ../Drivers/encoder\encoder.h ../platform\encoder_spi_bus.h \
+  ../Drivers/as5047\as5047.h ../Core/Inc\spi.h
