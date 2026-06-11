@@ -1,4 +1,6 @@
-stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
+stm32g474ret6_motor/motor_trig_cordic.o: ../bringup/motor_trig_cordic.c \
+  ../bringup/motor_trig_cfg.h ../bringup/motor_trig_backend.h \
+  ../Core/Inc\cordic.h ../Core/Inc/main.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal.h \
   ../Core/Inc\stm32g4xx_hal_conf.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_rcc.h \
@@ -41,23 +43,4 @@ stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_tim.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
-  ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2\cmsis_os.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
-  ../Core/Inc\FreeRTOSConfig.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F\portmacro.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
-  ../Core/Inc\adc.h ../Core/Inc\cordic.h ../Core/Inc\dma.h \
-  ../Core/Inc\fdcan.h ../Core/Inc\i2c.h ../Core/Inc\usart.h \
-  ../Core/Inc\opamp.h ../Core/Inc\spi.h ../Core/Inc\tim.h \
-  ../Core/Inc\gpio.h ../bringup\COMMUNICATION_FDCAN.h \
-  ../Drivers/as5047\as5047.h ../Drivers/encoder\encoder.h \
-  ../platform\encoder_spi_bus.h ../board\board_encoder.h \
-  ../bringup\trans.h ../bringup\motor_trig.h ../bringup\FOC_CAL.h \
-  ../bringup/Sliding_Window_Filter.h ../bringup\app_uart_dma_debug.h
+  ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h

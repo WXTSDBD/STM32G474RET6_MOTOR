@@ -37,6 +37,7 @@
 #include "board_encoder.h"
 #include "encoder.h"
 #include "trans.h"
+#include "motor_trig.h"
 #include "FOC_CAL.h"
 #include "app_uart_dma_debug.h"
 /* USER CODE END Includes */
@@ -49,7 +50,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define M1_POLE_PAIRS 14u
+#define M1_POLE_PAIRS 7u
 
 /* USER CODE END PD */
 
@@ -357,8 +358,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       /* [0, 2pi) electrical rad; .add added at SVPWM if needed */
       as5047_spi1.get = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS, 0.0f);
     }
-//    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
-//    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get+as5047_spi1.add);
+    setPhaseVoltage(&htim1, uq, 0.0f,
+                    _normalizeAngle(as5047_spi1.get + as5047_spi1.add));
 #if !BRINGUP_ADC_TEST
 //    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
 //    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;

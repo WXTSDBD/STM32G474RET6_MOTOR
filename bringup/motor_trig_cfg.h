@@ -1,0 +1,12 @@
+#ifndef MOTOR_TRIG_CFG_H
+#define MOTOR_TRIG_CFG_H
+
+/** ????????? trig ?????????§Ó??§Ý???Keil ???? -DMOTOR_TRIG_BACKEND=2 ????? */
+#define MOTOR_TRIG_BACKEND_LUT     1
+#define MOTOR_TRIG_BACKEND_CORDIC  2
+
+#ifndef MOTOR_TRIG_BACKEND
+#define MOTOR_TRIG_BACKEND  MOTOR_TRIG_BACKEND_CORDIC
+#endif
+
+#endif

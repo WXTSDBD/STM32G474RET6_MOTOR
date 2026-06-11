@@ -187,26 +187,6 @@ void DMA1_Channel1_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles DMA1 channel2 global interrupt.
-  */
-void DMA1_Channel2_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel2_IRQn 0 */
-  board_encoder_m1_dma_isr();
-  /* USER CODE END DMA1_Channel2_IRQn 0 */
-}
-
-/**
-  * @brief This function handles DMA1 channel3 global interrupt.
-  */
-void DMA1_Channel3_IRQHandler(void)
-{
-  /* USER CODE BEGIN DMA1_Channel3_IRQn 0 */
-  /* SPI1 TX Ch3: LL path uses Ch2 TC only; NVIC disabled in encoder_spi_bus_hw_init */
-  /* USER CODE END DMA1_Channel3_IRQn 0 */
-}
-
-/**
   * @brief This function handles ADC1 and ADC2 global interrupt.
   */
 void ADC1_2_IRQHandler(void)
@@ -349,5 +329,10 @@ void LPUART1_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+void DMA1_Channel2_IRQHandler(void)
+{
+  board_encoder_m1_dma_isr();
+}
 
 /* USER CODE END 1 */

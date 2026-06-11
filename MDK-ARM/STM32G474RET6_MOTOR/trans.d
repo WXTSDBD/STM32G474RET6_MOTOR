@@ -43,10 +43,9 @@ stm32g474ret6_motor/trans.o: ../bringup/trans.c ../bringup/trans.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
-  ../bringup/FOC_CAL.h ../bringup/Sliding_Window_Filter.h \
+  ../bringup/motor_trig.h D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
   ../Core/Inc\gpio.h ../bringup/bsp_dwt.h \
   D:/keil5/ARM/PACK/ARM/CMSIS/5.7.0/CMSIS/DSP/Include\arm_math.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h \
-  D:\keil5\ARM\ARMCLANG\Bin\..\include\math.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\float.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\limits.h

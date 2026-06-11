@@ -1326,6 +1326,21 @@
               <FilePath>..\bringup\trans.c</FilePath>
             </File>
             <File>
+              <FileName>motor_trig.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\motor_trig.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_trig_cordic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\motor_trig_cordic.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_trig_lut.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\motor_trig_lut.c</FilePath>
+            </File>
+            <File>
               <FileName>app_uart_dma_debug.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\bringup\app_uart_dma_debug.c</FilePath>
