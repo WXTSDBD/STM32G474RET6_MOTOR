@@ -1,137 +1,137 @@
-# Keil AC6 + FreeRTOS + CubeMX ÊÊÅäËµÃ÷
+# Keil AC6 + FreeRTOS + CubeMX ï¿½ï¿½ï¿½ï¿½Ëµï¿½ï¿½
 
-±¾ÎÄµµËµÃ÷±¾¹¤³ÌÎªºÎÐèÒª `tools/` ÏÂµÄºó´¦Àí½Å±¾£¬ÒÔ¼°ÈÕ³£¿ª·¢Óë»»¹¤³ÌÊ±µÄ¹Ì¶¨Á÷³Ì¡£**ÇëÓë `tools/README.md` Ò»²¢Ìá½» git¡£**
+ï¿½ï¿½ï¿½Äµï¿½Ëµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½Òª `tools/` ï¿½ÂµÄºï¿½ï¿½ï¿½ï¿½Å±ï¿½ï¿½ï¿½ï¿½Ô¼ï¿½ï¿½Õ³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë»»ï¿½ï¿½ï¿½ï¿½Ê±ï¿½Ä¹Ì¶ï¿½ï¿½ï¿½ï¿½Ì¡ï¿½**ï¿½ï¿½ï¿½ï¿½ `tools/README.md` Ò»ï¿½ï¿½ï¿½á½» gitï¿½ï¿½**
 
 ---
 
-## ±³¾°£ºÎªÊ²Ã´ CubeMX Éú³ÉµÄ¹¤³ÌÔÚ Keil Àï±à²»¹ý
+## ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ÎªÊ²Ã´ CubeMX ï¿½ï¿½ï¿½ÉµÄ¹ï¿½ï¿½ï¿½ï¿½ï¿½ Keil ï¿½ï¿½à²»ï¿½ï¿½
 
-| ÏîÄ¿ | CubeMX Ä¬ÈÏ£¨MDK-ARM V5.32£© | ±¾¹¤³ÌÊµ¼ÊÊ¹ÓÃ |
+| ï¿½ï¿½Ä¿ | CubeMX Ä¬ï¿½Ï£ï¿½MDK-ARM V5.32ï¿½ï¿½ | ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Êµï¿½ï¿½Ê¹ï¿½ï¿½ |
 |------|------------------------------|----------------|
-| ±àÒëÆ÷ | ÃæÏò AC5 Ï°¹ß | **Keil AC6**£¨ArmClang V6.x£© |
-| FreeRTOS ¶Ë¿Ú | `portable/RVDS/ARM_CM4F` | ±ØÐë **`portable/GCC/ARM_CM4F`** |
-| `portmacro.h` | Ê¹ÓÃ `__forceinline`¡¢`__asm` µÈ AC5 Óï·¨ | AC6 ²»Ê¶±ð ¡ú ±¨ `__forceinline` µÈ´íÎó |
-| `SystemCoreClock` | Ð´ÔÚ `#if defined(__GNUC__)` Àï | **AC6 ²»¶¨Òå `__GNUC__`** ¡ú `port.c` ±¨Î´ÉùÃ÷ |
-| FPU | `configENABLE_FPU 0` | GCC CM4F ¶Ë¿ÚÐèÒª **`configENABLE_FPU 1`** |
+| ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ | ï¿½ï¿½ï¿½ï¿½ AC5 Ï°ï¿½ï¿½ | **Keil AC6**ï¿½ï¿½ArmClang V6.xï¿½ï¿½ |
+| FreeRTOS ï¿½Ë¿ï¿½ | `portable/RVDS/ARM_CM4F` | ï¿½ï¿½ï¿½ï¿½ **`portable/GCC/ARM_CM4F`** |
+| `portmacro.h` | Ê¹ï¿½ï¿½ `__forceinline`ï¿½ï¿½`__asm` ï¿½ï¿½ AC5 ï¿½ï·¨ | AC6 ï¿½ï¿½Ê¶ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ `__forceinline` ï¿½È´ï¿½ï¿½ï¿½ |
+| `SystemCoreClock` | Ð´ï¿½ï¿½ `#if defined(__GNUC__)` ï¿½ï¿½ | **AC6 ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ `__GNUC__`** ï¿½ï¿½ `port.c` ï¿½ï¿½Î´ï¿½ï¿½ï¿½ï¿½ |
+| FPU | `configENABLE_FPU 0` | GCC CM4F ï¿½Ë¿ï¿½ï¿½ï¿½Òª **`configENABLE_FPU 1`** |
 
-CubeMX **Ã¿´Î Generate** ¶¼»á£º
+CubeMX **Ã¿ï¿½ï¿½ Generate** ï¿½ï¿½ï¿½á£º
 
-- °Ñ Keil ¹¤³ÌÖ¸»Ø **RVDS**
-- **É¾³ý** `Middlewares/.../GCC/`£¨Ö»±£Áô RVDS£©
-- ¿ÉÄÜÇå¿Õ²¿·Ö USER CODE£¨½Å±¾»á²¹»Ø¹Ø¼üÏî£©
+- ï¿½ï¿½ Keil ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ï¿½ **RVDS**
+- **É¾ï¿½ï¿½** `Middlewares/.../GCC/`ï¿½ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ RVDSï¿½ï¿½
+- ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Õ²ï¿½ï¿½ï¿½ USER CODEï¿½ï¿½ï¿½Å±ï¿½ï¿½á²¹ï¿½Ø¹Ø¼ï¿½ï¿½î£©
 
-Òò´Ë²»ÄÜÒÀÀµ¡¸ÈËÉú³ÉÒ»´Î¾ÍÓÀ¾ÃÕýÈ·¡¹£¬ÐèÒª **Generate ºó×Ô¶¯ÅÜ½Å±¾**¡£
+ï¿½ï¿½Ë²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª **Generate ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½Ü½Å±ï¿½**ï¿½ï¿½
 
 ---
 
-## ÈÕ³£Á÷³Ì£¨¹Ì¶¨Èý²½£©
+## ï¿½Õ³ï¿½ï¿½ï¿½ï¿½Ì£ï¿½ï¿½Ì¶ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 
 ```
-1. ¹Ø±Õ Keil
-2. STM32CubeMX ¡ú GENERATE CODE
-3. ´ò¿ª Keil ¡ú Rebuild£¨½¨ÒéÏÈ Clean Targets£©
+1. ï¿½Ø±ï¿½ Keil
+2. STM32CubeMX ï¿½ï¿½ GENERATE CODE
+3. ï¿½ï¿½ Keil ï¿½ï¿½ Rebuildï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Clean Targetsï¿½ï¿½
 ```
 
-CubeMX ÔÚ **Project Manager ¡ú Code Generator ¡ú After Code Generation** ÖÐÓ¦ÅäÖÃÎª£º
+CubeMX ï¿½ï¿½ **Project Manager ï¿½ï¿½ Code Generator ï¿½ï¿½ After Code Generation** ï¿½ï¿½Ó¦ï¿½ï¿½ï¿½ï¿½Îªï¿½ï¿½
 
 ```
 tools\fix_keil_ac6_freertos.bat
 ```
 
-½Å±¾ÔÚ Generate **½áÊøºó**×Ô¶¯Ö´ÐÐ£¬ÎÞÐèÊÖ¸Ä `uvprojx` »ò `FreeRTOSConfig.h`¡£
+ï¿½Å±ï¿½ï¿½ï¿½ Generate **ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**ï¿½Ô¶ï¿½Ö´ï¿½Ð£ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ö¸ï¿½ `uvprojx` ï¿½ï¿½ `FreeRTOSConfig.h`ï¿½ï¿½
 
 ---
 
-## ½Å±¾×öÊ²Ã´£¨`tools/fix_keil_ac6_freertos.ps1`£©
+## ï¿½Å±ï¿½ï¿½ï¿½Ê²Ã´ï¿½ï¿½`tools/fix_keil_ac6_freertos.ps1`ï¿½ï¿½
 
-| ²½Öè | ²Ù×÷ |
+| ï¿½ï¿½ï¿½ï¿½ | ï¿½ï¿½ï¿½ï¿½ |
 |------|------|
-| 1 | ´Ó `tools/freertos_port/GCC/ARM_CM4F/` ¸´ÖÆ `port.c`¡¢`portmacro.h` µ½ `Middlewares/.../GCC/ARM_CM4F/` |
-| 2 | ÐÞ¸Ä `MDK-ARM/STM32G474RET6_MOTOR.uvprojx`£ºinclude Â·¾¶Óë `port.c` ÓÉ **RVDS ¡ú GCC** |
-| 3 | È¥µô `uvprojx` µÄ **UTF-8 BOM**£¨·ñÔò Keil ±¨ *Cannot read project file*£© |
-| 4 | ÔÚ `Core/Inc/FreeRTOSConfig.h` µÄ **USER CODE** ÖÐÐ´Èë `extern SystemCoreClock`¡¢`configENABLE_FPU 1`£¨ÈôÈ±Ê§£© |
-| 5 | ´Ó Define ÖÐÒÆ³ý `__CC_ARM`£¨Èô´æÔÚ£© |
+| 1 | ï¿½ï¿½ `tools/freertos_port/GCC/ARM_CM4F/` ï¿½ï¿½ï¿½ï¿½ `port.c`ï¿½ï¿½`portmacro.h` ï¿½ï¿½ `Middlewares/.../GCC/ARM_CM4F/` |
+| 2 | ï¿½Þ¸ï¿½ `MDK-ARM/STM32G474RET6_MOTOR.uvprojx`ï¿½ï¿½include Â·ï¿½ï¿½ï¿½ï¿½ `port.c` ï¿½ï¿½ **RVDS ï¿½ï¿½ GCC** |
+| 3 | È¥ï¿½ï¿½ `uvprojx` ï¿½ï¿½ **UTF-8 BOM**ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ Keil ï¿½ï¿½ *Cannot read project file*ï¿½ï¿½ |
+| 4 | ï¿½ï¿½ `Core/Inc/FreeRTOSConfig.h` ï¿½ï¿½ **USER CODE** ï¿½ï¿½Ð´ï¿½ï¿½ `extern SystemCoreClock`ï¿½ï¿½`configENABLE_FPU 1`ï¿½ï¿½ï¿½ï¿½È±Ê§ï¿½ï¿½ |
+| 5 | ï¿½ï¿½ Define ï¿½ï¿½ï¿½Æ³ï¿½ `__CC_ARM`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú£ï¿½ |
 
-**½Å±¾¹ÊÒâ²»×öµÄÊÂ**£¨±ÜÃâÓë CubeMX ³åÍ»£©£º
+**ï¿½Å±ï¿½ï¿½ï¿½ï¿½â²»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ CubeMX ï¿½ï¿½Í»ï¿½ï¿½ï¿½ï¿½
 
-- ²»ÐÞ¸Ä Keil Before Make ¹³×Ó
-- ²»¸Ä `bringup`¡¢CMSIS-DSP µÈ×Ô¶¨Òå¹¤³Ì×é
-- ²»´ó¸Ä `.mxproject`
-
----
-
-## ³£¼ûÏÖÏóÓë´¦Àí
-
-### CubeMX µ¯´°£º`MDK-ARM V5.32 project generation have a problem`
-
-- **º¬Òå**£ºC Ô´ÂëÒÑÉú³É£¬µ« CubeMX **Ã»ÄÜÍêÕûºÏ²¢** Keil µÄ `.uvprojx`¡£
-- **´¦Àí**£ºµã OK ¼ÌÐø£»È·ÈÏ After ½Å±¾ÒÑÅÜ£»Keil **Rebuild**¡£ÒÔ **0 Error** Îª×¼£¬²»±Ø×·Çóµ¯´°ÏûÊ§¡£
-
-### Keil£º`Cannot read project file ... uvprojx`
-
-- **³£¼ûÔ­Òò**£º`uvprojx` ´ø UTF-8 BOM£¨¾É°æ½Å±¾»ò¹¤¾ßÐ´Èë£©¡£
-- **´¦Àí**£ºË«»÷ `tools\fix_keil_ac6_freertos.bat`£¬ÔÙ¿ª Keil¡£
-
-### ±àÒë£º`unknown type name '__forceinline'` / Â·¾¶º¬ `RVDS`
-
-- **Ô­Òò**£º½Å±¾Î´ÅÜ»ò After Â·¾¶Î´ÅäÖÃ¡£
-- **´¦Àí**£ºË«»÷ `tools\fix_keil_ac6_freertos.bat` ¡ú Rebuild£»¼ì²é CubeMX After ÊÇ·ñÖ¸ÏòÉÏÊö bat¡£
-
-### ±àÒë£º`use of undeclared identifier 'SystemCoreClock'`£¨½ö `port.c`£©
-
-- **Ô­Òò**£º`FreeRTOSConfig.h` USER CODE Includes È±ÉÙÉùÃ÷£¨AC6 ²»×ß `__GNUC__` ·ÖÖ§£©¡£
-- **´¦Àí**£ºÔÙÅÜÒ»´Î½Å±¾£»»ò¼ì²é USER CODE Includes ÊÇ·ñÓÐ `extern uint32_t SystemCoreClock;`¡£
-
-### `main.c`£º`redefinition of HAL_TIM_PeriodElapsedCallback`
-
-- **Ô­Òò**£ºÔÚ `USER CODE 4` ÀïÐ´ÁËÒ»·Ý£¬CubeMX ÓÖÉú³ÉÁËÒ»·Ý¡£
-- **¹æ·¶**£ºFOC µÈÂß¼­Ö»·ÅÔÚ CubeMX Éú³Éº¯ÊýÄÚµÄ **`USER CODE BEGIN Callback 1`**£»`USER CODE 4` ½ö±£Áô ADC µÈÆäËü»Øµ÷¡£
+- ï¿½ï¿½ï¿½Þ¸ï¿½ Keil Before Make ï¿½ï¿½ï¿½ï¿½
+- ï¿½ï¿½ï¿½ï¿½ `bringup`ï¿½ï¿½CMSIS-DSP ï¿½ï¿½ï¿½Ô¶ï¿½ï¿½å¹¤ï¿½ï¿½ï¿½ï¿½
+- ï¿½ï¿½ï¿½ï¿½ï¿½ `.mxproject`
 
 ---
 
-## ÐÂ¹¤³Ì / ÐÂµçÄÔÇ¨ÒÆ
+## ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ë´¦ï¿½ï¿½
 
-1. ½«±¾²Ö¿â **`tools/` Õû¸öÄ¿Â¼** ¸´ÖÆµ½ÐÂ¹¤³Ì¸ùÄ¿Â¼£¨Óë `.ioc` Í¬¼¶£©¡£
-2. CubeMX **After Code Generation** ÉèÎª `tools\fix_keil_ac6_freertos.bat`£¬±£´æ `.ioc`¡£
-3. È·ÈÏ Keil Ê¹ÓÃ **Compiler V6£¨AC6£©**£¬C/C++ Define ÖÐ **ÎÞ** `__CC_ARM`¡£
-4. Èô¹¤³ÌÃû²»ÊÇ `STM32G474RET6_MOTOR`£¬Ðè¸Ä½Å±¾ÄÚ `uvprojx` Â·¾¶£¨»òºóÐø¸ÄÎª×Ô¶¯ËÑË÷ `MDK-ARM\*.uvprojx`£©¡£
-5. °´¡¸ÈÕ³£Á÷³Ì¡¹Generate ¡ú Rebuild ÑéÖ¤¡£
+### CubeMX ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`MDK-ARM V5.32 project generation have a problem`
 
-**½¨ÒéÌá½» git µÄÄÚÈÝ£º**
+- **ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½C Ô´ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½É£ï¿½ï¿½ï¿½ CubeMX **Ã»ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï²ï¿½** Keil ï¿½ï¿½ `.uvprojx`ï¿½ï¿½
+- **ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½ï¿½ï¿½ OK ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½È·ï¿½ï¿½ After ï¿½Å±ï¿½ï¿½ï¿½ï¿½Ü£ï¿½Keil **Rebuild**ï¿½ï¿½ï¿½ï¿½ **0 Error** Îª×¼ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½×·ï¿½óµ¯´ï¿½ï¿½ï¿½Ê§ï¿½ï¿½
 
-- `tools/`£¨º¬ `freertos_port/`£©
-- `STM32G474RET6_MOTOR.ioc`£¨º¬ UAScriptAfterPath£©
-- ±¾ÎÄµµÓë `tools/README.md`
+### Keilï¿½ï¿½`Cannot read project file ... uvprojx`
+
+- **ï¿½ï¿½ï¿½ï¿½Ô­ï¿½ï¿½**ï¿½ï¿½`uvprojx` ï¿½ï¿½ UTF-8 BOMï¿½ï¿½ï¿½É°ï¿½Å±ï¿½ï¿½ò¹¤¾ï¿½Ð´ï¿½ë£©ï¿½ï¿½
+- **ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½Ë«ï¿½ï¿½ `tools\fix_keil_ac6_freertos.bat`ï¿½ï¿½ï¿½Ù¿ï¿½ Keilï¿½ï¿½
+
+### ï¿½ï¿½ï¿½ë£º`unknown type name '__forceinline'` / Â·ï¿½ï¿½ï¿½ï¿½ `RVDS`
+
+- **Ô­ï¿½ï¿½**ï¿½ï¿½ï¿½Å±ï¿½Î´ï¿½Ü»ï¿½ After Â·ï¿½ï¿½Î´ï¿½ï¿½ï¿½Ã¡ï¿½
+- **ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½Ë«ï¿½ï¿½ `tools\fix_keil_ac6_freertos.bat` ï¿½ï¿½ Rebuildï¿½ï¿½ï¿½ï¿½ï¿½ CubeMX After ï¿½Ç·ï¿½Ö¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ batï¿½ï¿½
+
+### ï¿½ï¿½ï¿½ë£º`use of undeclared identifier 'SystemCoreClock'`ï¿½ï¿½ï¿½ï¿½ `port.c`ï¿½ï¿½
+
+- **Ô­ï¿½ï¿½**ï¿½ï¿½`FreeRTOSConfig.h` USER CODE Includes È±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½AC6 ï¿½ï¿½ï¿½ï¿½ `__GNUC__` ï¿½ï¿½Ö§ï¿½ï¿½ï¿½ï¿½
+- **ï¿½ï¿½ï¿½ï¿½**ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Î½Å±ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ USER CODE Includes ï¿½Ç·ï¿½ï¿½ï¿½ `extern uint32_t SystemCoreClock;`ï¿½ï¿½
+
+### `main.c`ï¿½ï¿½`redefinition of HAL_TIM_PeriodElapsedCallback`
+
+- **Ô­ï¿½ï¿½**ï¿½ï¿½ï¿½ï¿½ `USER CODE 4` ï¿½ï¿½Ð´ï¿½ï¿½Ò»ï¿½Ý£ï¿½CubeMX ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ò»ï¿½Ý¡ï¿½
+- **ï¿½æ·¶**ï¿½ï¿½FOC ï¿½ï¿½ï¿½ß¼ï¿½Ö»ï¿½ï¿½ï¿½ï¿½ CubeMX ï¿½ï¿½ï¿½Éºï¿½ï¿½ï¿½ï¿½Úµï¿½ **`USER CODE BEGIN Callback 1`**ï¿½ï¿½`USER CODE 4` ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ADC ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Øµï¿½ï¿½ï¿½
 
 ---
 
-## ºÎÊ±ÐèÒª CubeMX Generate
+## ï¿½Â¹ï¿½ï¿½ï¿½ / ï¿½Âµï¿½ï¿½ï¿½Ç¨ï¿½ï¿½
 
-| ÐèÒª Generate | ²»ÐèÒª Generate |
+1. ï¿½ï¿½ï¿½ï¿½ï¿½Ö¿ï¿½ **`tools/` ï¿½ï¿½ï¿½ï¿½Ä¿Â¼** ï¿½ï¿½ï¿½Æµï¿½ï¿½Â¹ï¿½ï¿½Ì¸ï¿½Ä¿Â¼ï¿½ï¿½ï¿½ï¿½ `.ioc` Í¬ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+2. CubeMX **After Code Generation** ï¿½ï¿½Îª `tools\fix_keil_ac6_freertos.bat`ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ `.ioc`ï¿½ï¿½
+3. È·ï¿½ï¿½ Keil Ê¹ï¿½ï¿½ **Compiler V6ï¿½ï¿½AC6ï¿½ï¿½**ï¿½ï¿½C/C++ Define ï¿½ï¿½ **ï¿½ï¿½** `__CC_ARM`ï¿½ï¿½
+4. ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ `STM32G474RET6_MOTOR`ï¿½ï¿½ï¿½ï¿½Ä½Å±ï¿½ï¿½ï¿½ `uvprojx` Â·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Îªï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ `MDK-ARM\*.uvprojx`ï¿½ï¿½ï¿½ï¿½
+5. ï¿½ï¿½ï¿½ï¿½ï¿½Õ³ï¿½ï¿½ï¿½ï¿½Ì¡ï¿½Generate ï¿½ï¿½ Rebuild ï¿½ï¿½Ö¤ï¿½ï¿½
+
+**ï¿½ï¿½ï¿½ï¿½ï¿½á½» git ï¿½ï¿½ï¿½ï¿½ï¿½Ý£ï¿½**
+
+- `tools/`ï¿½ï¿½ï¿½ï¿½ `freertos_port/`ï¿½ï¿½
+- `STM32G474RET6_MOTOR.ioc`ï¿½ï¿½ï¿½ï¿½ UAScriptAfterPathï¿½ï¿½
+- ï¿½ï¿½ï¿½Äµï¿½ï¿½ï¿½ `tools/README.md`
+
+---
+
+## ï¿½ï¿½Ê±ï¿½ï¿½Òª CubeMX Generate
+
+| ï¿½ï¿½Òª Generate | ï¿½ï¿½ï¿½ï¿½Òª Generate |
 |---------------|-----------------|
-| ¸ÄÒý½Å¡¢Ê±ÖÓ¡¢ÐÂÔöÍâÉè | Ö»¸Ä `main.c`¡¢FOC¡¢Ò£²â¡¢Í¨ÐÅÂß¼­ |
-| ¸Ä FreeRTOS ÈÎÎñ / ÖÐ¶ÏÓÅÏÈ¼¶ | Ö»¸Ä `bringup/` ÏÂÓ¦ÓÃ´úÂë |
-| ¸Ä DMA / UART µÈ CubeMX ÅäÖÃ | µ÷ÊÔ²ÎÊý¡¢VOFA Í¨µÀµÈ |
+| ï¿½ï¿½ï¿½ï¿½ï¿½Å¡ï¿½Ê±ï¿½Ó¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ | Ö»ï¿½ï¿½ `main.c`ï¿½ï¿½FOCï¿½ï¿½Ò£ï¿½â¡¢Í¨ï¿½ï¿½ï¿½ß¼ï¿½ |
+| ï¿½ï¿½ FreeRTOS ï¿½ï¿½ï¿½ï¿½ / ï¿½Ð¶ï¿½ï¿½ï¿½ï¿½È¼ï¿½ | Ö»ï¿½ï¿½ `bringup/` ï¿½ï¿½Ó¦ï¿½Ã´ï¿½ï¿½ï¿½ |
+| ï¿½ï¿½ DMA / UART ï¿½ï¿½ CubeMX ï¿½ï¿½ï¿½ï¿½ | ï¿½ï¿½ï¿½Ô²ï¿½ï¿½ï¿½ï¿½ï¿½VOFA Í¨ï¿½ï¿½ï¿½ï¿½ |
 
-Ó¦ÓÃ²ã¿ª·¢£º**Ö±½Ó Keil Rebuild** ¼´¿É¡£
-
----
-
-## Ïà¹ØÎÄ¼þË÷Òý
-
-| Â·¾¶ | ËµÃ÷ |
-|------|------|
-| `tools/fix_keil_ac6_freertos.bat` | CubeMX After Èë¿Ú |
-| `tools/fix_keil_ac6_freertos.ps1` | Êµ¼ÊÐÞ²¹Âß¼­ |
-| `tools/freertos_port/GCC/ARM_CM4F/` | GCC ¶Ë¿ÚÓÀ¾Ã±¸·Ý |
-| `MDK-ARM/STM32G474RET6_MOTOR.uvprojx` | Keil ¹¤³Ì£¨Generate ºóÓÉ½Å±¾¸ÄÎª GCC£© |
-| `Core/Inc/FreeRTOSConfig.h` | USER CODE ÓÉ½Å±¾Î¬»¤ AC6 Ïà¹ØÏî |
-| `Core/Src/main.c` | TIM »Øµ÷£ºFOC ÔÚ Callback 1 |
+Ó¦ï¿½Ã²ã¿ªï¿½ï¿½ï¿½ï¿½**Ö±ï¿½ï¿½ Keil Rebuild** ï¿½ï¿½ï¿½É¡ï¿½
 
 ---
 
-## ÐÞ¶©¼ÇÂ¼
+## ï¿½ï¿½ï¿½ï¿½Ä¼ï¿½ï¿½ï¿½ï¿½ï¿½
 
-| ÈÕÆÚ | ËµÃ÷ |
+| Â·ï¿½ï¿½ | Ëµï¿½ï¿½ |
 |------|------|
-| 2026-06-07 | ³õ°æ£ºRVDS¡úGCC ½Å±¾¡¢BOM ÐÞ¸´¡¢FreeRTOSConfig USER CODE ×Ô¶¯²¹¶¡ |
+| `tools/fix_keil_ac6_freertos.bat` | CubeMX After ï¿½ï¿½ï¿½ |
+| `tools/fix_keil_ac6_freertos.ps1` | Êµï¿½ï¿½ï¿½Þ²ï¿½ï¿½ß¼ï¿½ |
+| `tools/freertos_port/GCC/ARM_CM4F/` | GCC ï¿½Ë¿ï¿½ï¿½ï¿½ï¿½Ã±ï¿½ï¿½ï¿½ |
+| `MDK-ARM/STM32G474RET6_MOTOR.uvprojx` | Keil ï¿½ï¿½ï¿½Ì£ï¿½Generate ï¿½ï¿½ï¿½É½Å±ï¿½ï¿½ï¿½Îª GCCï¿½ï¿½ |
+| `Core/Inc/FreeRTOSConfig.h` | USER CODE ï¿½É½Å±ï¿½Î¬ï¿½ï¿½ AC6 ï¿½ï¿½ï¿½ï¿½ï¿½ |
+| `Core/Src/main.c` | TIM ï¿½Øµï¿½ï¿½ï¿½FOC ï¿½ï¿½ Callback 1 |
+
+---
+
+## ï¿½Þ¶ï¿½ï¿½ï¿½Â¼
+
+| ï¿½ï¿½ï¿½ï¿½ | Ëµï¿½ï¿½ |
+|------|------|
+| 2026-06-07 | ï¿½ï¿½ï¿½æ£ºRVDSï¿½ï¿½GCC ï¿½Å±ï¿½ï¿½ï¿½BOM ï¿½Þ¸ï¿½ï¿½ï¿½FreeRTOSConfig USER CODE ï¿½Ô¶ï¿½ï¿½ï¿½ï¿½ï¿½ |

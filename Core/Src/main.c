@@ -183,29 +183,24 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
   
-  HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim1,TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim1,TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+  /* M1 motor: TIM8 PWM + CH4 triggers ADC2; encoder stays SPI1 */
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
+  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_1);
+  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
+  HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
+  HAL_TIM_Base_Start_IT(&htim8);
 #if !BRINGUP_ADC_TEST
-	
-
-	HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_1);
-	HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_2);
-	HAL_TIM_PWM_Start(&htim8,TIM_CHANNEL_3);
-	HAL_TIMEx_PWMN_Start(&htim8,TIM_CHANNEL_1);
-	HAL_TIMEx_PWMN_Start(&htim8,TIM_CHANNEL_2);
-	HAL_TIMEx_PWMN_Start(&htim8,TIM_CHANNEL_3);
-	HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
-#endif
-	/* BRINGUP_ADC_TEST ??? TIM1 CH4 ???? ADC ??? */
-	HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
-	HAL_TIM_Base_Start_IT(&htim1);
-#if !BRINGUP_ADC_TEST
-	HAL_TIM_Base_Start_IT(&htim8);
+  /* Second axis (TIM1) �� no ISR control loop here */
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_1);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_2);
+  HAL_TIMEx_PWMN_Start(&htim1, TIM_CHANNEL_3);
+  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
 #endif
 
   /* USER CODE END 2 */
@@ -344,7 +339,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim == &htim1) {
+  if (htim == &htim8) {
     volatile uint32_t isr_t0 = *(volatile uint32_t *)&DWT->CYCCNT;
 
     cnt++;
@@ -355,16 +350,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
       uint16_t enc_raw = encoder_get_raw(&enc_m1);
 
       as5047_spi1.raw = (int)enc_raw;
-      /* [0, 2pi) electrical rad; .add added at SVPWM if needed */
-      as5047_spi1.get = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS, 0.0f);
+      /* [0, 2pi) el rad; offset via as5047_spi1.add (no _normalizeAngle) */
+      as5047_spi1.get = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS,
+                                             as5047_spi1.add);
     }
-    setPhaseVoltage(&htim1, uq, 0.0f,
-                    _normalizeAngle(as5047_spi1.get + as5047_spi1.add));
-#if !BRINGUP_ADC_TEST
-//    setPhaseVoltage(&htim1, uq, 0, as5047_spi1.get);
-//    as5047_spi1.get = AS5047_GetAngle(&AS5047_spi1_PORT) * 7;
-//    setPhaseVoltage(&htim8, uq, 0, as5047_spi3.get);
-#endif
+    setPhaseVoltage(&htim8, uq, 0.0f, as5047_spi1.get);
 //    adc_read[3] = hadc2.Instance->JDR1;
     telem_bringup_tick();
     {
