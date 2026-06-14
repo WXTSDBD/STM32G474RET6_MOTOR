@@ -8,7 +8,7 @@
  *   TxCplt：SENDING → UNLOCKED
  *
  * 测试通道（JustFloat ×4）：
- *   ch0=foc_iq  ch1=foc_id  ch2/ch3 未用（0）
+ *   ch0=foc_iq  ch1=foc_id  ch2=as5047_spi1.raw  ch3=as5047_spi1.add
  *
  * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
  *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
@@ -25,6 +25,7 @@
 #include "usart.h"
 #include "bsp_dwt.h"
 #include "main.h"
+#include "FOC_CAL.h"
 #include "as5047.h"
 #include "encoder_spi_bus.h"
 #include <string.h>
@@ -212,8 +213,8 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 
     vals[0] = dbg.foc_iq;
     vals[1] = dbg.foc_id;
-    vals[2] = 0.0f;
-    vals[3] = 0.0f;
+    vals[2] = (float)as5047_spi1.raw;
+    vals[3] = as5047_spi1.add;
 
     p = &buf->data[offset];
 

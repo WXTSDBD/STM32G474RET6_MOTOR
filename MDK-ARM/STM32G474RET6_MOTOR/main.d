@@ -62,4 +62,5 @@ stm32g474ret6_motor/main.o: ../Core/Src/main.c ../Core/Inc\main.h \
   ../bringup\trans.h ../bringup\motor_trig.h ../bringup\FOC_CAL.h \
   ../bringup/Sliding_Window_Filter.h ../bringup\app_uart_dma_debug.h \
   ../config\bsp_axes.h D:\keil5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
-  ../bringup/adc_sample\adc_sample.h
+  ../bringup/adc_sample\adc_sample.h \
+  ../bringup/encoder_cal\encoder_cal.h

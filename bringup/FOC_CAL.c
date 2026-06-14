@@ -7,6 +7,7 @@
 #include "bsp_dwt.h"
 //#include "ADC_TASK.H"
 #include "trans.h"
+#include "main.h"
 typedef struct
 {
     float speed_target;
@@ -28,8 +29,8 @@ foc_control motor_now_TIM1;
 foc_control motor_now_TIM8;
 void angle_init()
 {
-    as5047_spi1.add=2.1;
-    as5047_spi3.add=1.2;
+    as5047_spi1.add = M1_ENCODER_OFFSET_RAD;
+    as5047_spi3.add = 1.2f;
 }
 #define Iu ADC_DATA.IA
 #define Iv ADC_DATA.IB

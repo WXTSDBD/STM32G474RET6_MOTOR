@@ -1,20 +1,9 @@
-stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
-  ../bringup/app_uart_dma_debug.h \
+stm32g474ret6_motor/encoder_cal.o: ../bringup/encoder_cal/encoder_cal.c \
+  ../bringup/encoder_cal/encoder_cal.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stdbool.h \
   D:\keil5\ARM\ARMCLANG\Bin\..\include\stdint.h \
   ../Drivers/encoder\encoder.h ../platform\encoder_spi_bus.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2\cmsis_os.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include\FreeRTOS.h \
-  D:\keil5\ARM\ARMCLANG\Bin\..\include\stddef.h \
-  ../Core/Inc\FreeRTOSConfig.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/projdefs.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/portable.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/deprecated_definitions.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F\portmacro.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/mpu_wrappers.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include\task.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/include/list.h \
-  ../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.h \
-  ../Core/Inc\usart.h ../Core/Inc/main.h \
+  ../Core/Inc\tim.h ../Core/Inc/main.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal.h \
   ../Core/Inc\stm32g4xx_hal_conf.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_rcc.h \
@@ -29,6 +18,7 @@ stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
   ../Drivers/CMSIS/Include/mpu_armv7.h \
   ../Drivers/CMSIS/Device/ST/STM32G4xx/Include/system_stm32g4xx.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy/stm32_hal_legacy.h \
+  D:\keil5\ARM\ARMCLANG\Bin\..\include\stddef.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_rcc_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_gpio.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_gpio_ex.h \
@@ -56,6 +46,4 @@ stm32g474ret6_motor/app_uart_dma_debug.o: ../bringup/app_uart_dma_debug.c \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_tim_ex.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc\stm32g4xx_hal_uart.h \
   ../Drivers/STM32G4xx_HAL_Driver/Inc/stm32g4xx_hal_uart_ex.h \
-  ../bringup/bsp_dwt.h ../bringup/FOC_CAL.h ../Core/Inc\tim.h \
-  ../bringup/Sliding_Window_Filter.h ../Drivers/as5047\as5047.h \
-  ../Core/Inc\spi.h D:\keil5\ARM\ARMCLANG\Bin\..\include\string.h
+  ../Drivers/as5047\as5047.h ../Core/Inc\spi.h ../bringup\trans.h

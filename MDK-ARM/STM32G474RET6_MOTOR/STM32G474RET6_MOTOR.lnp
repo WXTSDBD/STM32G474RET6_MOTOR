@@ -60,6 +60,7 @@
 "stm32g474ret6_motor\app_uart_dma_debug.o"
 "stm32g474ret6_motor\bsp_dwt.o"
 "stm32g474ret6_motor\adc_sample.o"
+"stm32g474ret6_motor\encoder_cal.o"
 "stm32g474ret6_motor\bsp_axes.o"
 "stm32g474ret6_motor\bridge_cubemx.o"
 "stm32g474ret6_motor\croutine.o"

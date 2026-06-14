@@ -59,11 +59,20 @@ typedef struct {
   float foc_theta_el;        /* ?? Park/SVPWM ????rad? */
   float foc_id;              /* ???? dq ???A? */
   float foc_iq;
+  float enc_cal_add;         /* final add after pi offset (rad) */
+  float enc_cal_add_raw;     /* lock-rotor raw add before pi (rad) */
 } DbgMon_t;
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
+
+/** 1=???????? add?0 ? M1_ENCODER_OFFSET_RAD?????? */
+#define M1_RUN_ENCODER_CAL 0
+
+#ifndef M1_ENCODER_OFFSET_RAD
+#define M1_ENCODER_OFFSET_RAD 6.0f
+#endif
 
 /* USER CODE END EC */
 

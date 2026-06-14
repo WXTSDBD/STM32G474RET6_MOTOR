@@ -41,6 +41,7 @@
 #include "FOC_CAL.h"
 #include "app_uart_dma_debug.h"
 #include "bsp_axes.h"
+#include "encoder_cal.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -252,12 +253,11 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 
  FDCAN1_Config();
   AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
-	angle_init();
+  angle_init();
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
-  encoder_kick(&enc_m1);
 
-  /* M1: TIM8 PWM + CH4→ADC2；控制/kick/telem 在 ADC2 JEOC，无 TIM8 Update IT */
+  /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+相 PWM 运行后进行 */
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
@@ -266,6 +266,23 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
   HAL_TIM_Base_Start(&htim8);
+
+#if M1_RUN_ENCODER_CAL
+  {
+    float add_raw;
+    float add_final;
+
+    if (!encoder_cal_run_lock_default(&enc_m1, &htim8, M1_POLE_PAIRS, &add_raw)) {
+      Error_Handler();
+    }
+    dbg.enc_cal_add_raw = add_raw;
+    add_final = encoder_cal_apply_pi_offset(add_raw);
+    as5047_spi1.add = add_final;
+    dbg.enc_cal_add = add_final;
+  }
+#else
+  encoder_kick(&enc_m1);
+#endif
 #if !BRINGUP_ADC_TEST
   /* Second axis (TIM1) �� no ISR control loop here */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -377,6 +394,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 
 		if (m1->adc.cal_active) {
 			adc_sample_on_injected(&m1->adc, hadc);
+		} else if (g_encoder_cal_active) {
+			encoder_cal_jeoc_tick(&htim8);
 		} else {
 			m1_jeoc_control_tick(m1, hadc);
 		}
