@@ -27,7 +27,7 @@
 
 **目标**：电机未使能时，Id/Iq 读数为零（不是 ADC 零漂对应的偏置）。
 
-**方法**：PWM 未启动、电机自然静止。连续采 100 拍 `adc_read[3]/[4]/[5]`，取平均作为三路偏移值。
+**方法**：PWM 未启动、电机自然静止。前 20 帧丢弃，后 100 帧在 JEOC 内对 `adc_read[3]/[4]/[5]`（经 `adc_sample` 的 raw）做 **递推增量均值** → 写入 `offset`（与批处理 `sum/100` 等价，见 [ADC采样与config层部署计划_2026-06-09.md §3.1](./ADC采样与config层部署计划_2026-06-09.md)）。
 
 **存放位置**：放入 `MotorContext.ia_offset/ib_offset/ic_offset`。
 

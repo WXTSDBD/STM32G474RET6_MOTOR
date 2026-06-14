@@ -40,6 +40,7 @@
 #include "motor_trig.h"
 #include "FOC_CAL.h"
 #include "app_uart_dma_debug.h"
+#include "bsp_axes.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,7 +75,7 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/* 1=?? TIM+ADC ?????????????? PWM/?????? setPhaseVoltage??????? dbg ??? */
+/* M1 20kHz 控制节拍在 ADC2 JEOC；TIM8 仅 PWM+CH4 触发，无 Update IT */
 #define BRINGUP_ADC_TEST 1
 
 uint16_t A,B;
@@ -91,6 +92,74 @@ static void dbg_snapshot_opamp_ch(uint8_t idx, OPAMP_TypeDef *opamp)
   dbg.opamp[idx].en = (csr & OPAMP_CSR_OPAMPxEN) ? 1U : 0U;
   dbg.opamp[idx].intout = (csr & OPAMP_CSR_OPAMPINTEN) ? 1U : 0U;
   dbg.opamp[idx].pggain = (uint16_t)((csr & OPAMP_CSR_PGGAIN_Msk) >> OPAMP_CSR_PGGAIN_Pos);
+}
+
+static void dbg_snapshot_m1_adc(const bsp_axis_t *m1)
+{
+  uint8_t i;
+
+  for (i = 0U; i < 3U; i++) {
+    dbg.adc_offset[i] = m1->adc_cfg.ch[i].offset;
+    dbg.adc_zeroed[i] = (int16_t)((int32_t)m1->adc.raw[i] - m1->adc_cfg.ch[i].offset);
+    dbg.adc_reg[i] = m1->adc.raw[i];
+  }
+  dbg.adc_ia = m1->adc.ia;
+  dbg.adc_ib = m1->adc.ib;
+  dbg.adc_ic = m1->adc.ic;
+}
+
+/**
+ * @brief M1 电流环节拍（ADC2 JEOC）：θ → 采样 → Park 观测 → SVPWM → encoder kick → telem。
+ *
+ * sin/cos：本拍只对电角 θ 调 1 次 motor_trig_sincos，供 Park；SVPWM 扇区角在
+ * setPhaseVoltage 内另算（角不同，不能合并）。
+ */
+static void m1_jeoc_control_tick(bsp_axis_t *m1, ADC_HandleTypeDef *hadc)
+{
+  volatile uint32_t isr_t0 = *(volatile uint32_t *)&DWT->CYCCNT;
+  uint16_t enc_raw;
+  float i_alpha;
+  float i_beta;
+  float ia;
+  float ib;
+  float ic;
+  float theta;
+  float sin_el;
+  float cos_el;
+  float id;
+  float iq;
+
+  if (m1->adc.cal_active) {
+    return;
+  }
+
+  enc_raw = encoder_get_raw(&enc_m1);
+  as5047_spi1.raw = (int)enc_raw;
+  theta = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS, as5047_spi1.add);
+  as5047_spi1.get = theta;
+  dbg.foc_theta_el = theta;
+
+  adc_sample_jeoc_foc(&m1->adc, hadc);
+  adc_sample_get_abc(&m1->adc, &ia, &ib, &ic);
+  Clarke_Transform(ia, ib, ic, &i_alpha, &i_beta);
+
+  motor_trig_sincos(theta, &cos_el, &sin_el);
+  Park_Transform_sc(i_alpha, i_beta, sin_el, cos_el, &id, &iq);
+  dbg.foc_id = id;
+  dbg.foc_iq = iq;
+
+  setPhaseVoltage(&htim8, uq, 0.0f, theta);
+  encoder_kick(&enc_m1);
+  telem_bringup_tick();
+
+  {
+    volatile uint32_t isr_t1 = *(volatile uint32_t *)&DWT->CYCCNT;
+
+    g_telem_dbg.isr_t0 = isr_t0;
+    g_telem_dbg.isr_t1 = isr_t1;
+    g_telem_dbg.cyccnt_end = isr_t1;
+    g_telem_dbg.isr_delta = isr_t1 - isr_t0;
+  }
 }
 
 static void dbg_snapshot_all(void)
@@ -174,16 +243,21 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 	__HAL_ADC_CLEAR_FLAG(&hadc3, ADC_FLAG_JEOC);
 	HAL_ADCEx_InjectedStart_IT(&hadc5);
 	__HAL_ADC_CLEAR_FLAG(&hadc5, ADC_FLAG_JEOC);
+	bsp_init();
+	if (!bsp_axis_adc_calibrate_zero(BSP_AXIS_M1, 20, 100, 50)) {
+		Error_Handler();
+	}
+	dbg_snapshot_m1_adc(bsp_axis(BSP_AXIS_M1));
 	dbg_snapshot_all();
 
  FDCAN1_Config();
-  board_encoder_m1_init();
   AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
 	angle_init();
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
-  
-  /* M1 motor: TIM8 PWM + CH4 triggers ADC2; encoder stays SPI1 */
+  encoder_kick(&enc_m1);
+
+  /* M1: TIM8 PWM + CH4→ADC2；控制/kick/telem 在 ADC2 JEOC，无 TIM8 Update IT */
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
@@ -191,7 +265,7 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIMEx_PWMN_Start(&htim8, TIM_CHANNEL_3);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
-  HAL_TIM_Base_Start_IT(&htim8);
+  HAL_TIM_Base_Start(&htim8);
 #if !BRINGUP_ADC_TEST
   /* Second axis (TIM1) �� no ISR control loop here */
   HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
@@ -299,12 +373,17 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
          dbg_snapshot_all();
     }
 	if (hadc == &hadc2) {
-		adc_read[3] = (int16_t)hadc2.Instance->JDR1;
-		adc_read[4] = (int16_t)hadc2.Instance->JDR2;
-		adc_read[5] = (int16_t)hadc2.Instance->JDR3;
-		dbg.adc_reg[0] = adc_read[3];
-		dbg.adc_reg[1] = adc_read[4];
-		dbg.adc_reg[2] = adc_read[5];
+		bsp_axis_t *m1 = bsp_axis(BSP_AXIS_M1);
+
+		if (m1->adc.cal_active) {
+			adc_sample_on_injected(&m1->adc, hadc);
+		} else {
+			m1_jeoc_control_tick(m1, hadc);
+		}
+		adc_read[3] = m1->adc.raw[0];
+		adc_read[4] = m1->adc.raw[1];
+		adc_read[5] = m1->adc.raw[2];
+		dbg_snapshot_m1_adc(m1);
 	}
 	if (hadc == &hadc3) {
 		adc_read[1] = (int16_t)hadc3.Instance->JDR1;
@@ -339,34 +418,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  if (htim == &htim8) {
-    volatile uint32_t isr_t0 = *(volatile uint32_t *)&DWT->CYCCNT;
-
-    cnt++;
-    if (cnt >= 200) {
-    }
-    encoder_kick(&enc_m1);
-    {
-      uint16_t enc_raw = encoder_get_raw(&enc_m1);
-
-      as5047_spi1.raw = (int)enc_raw;
-      /* [0, 2pi) el rad; offset via as5047_spi1.add (no _normalizeAngle) */
-      as5047_spi1.get = encoder_get_theta_el(&enc_m1, enc_raw, M1_POLE_PAIRS,
-                                             as5047_spi1.add);
-    }
-    setPhaseVoltage(&htim8, uq, 0.0f, as5047_spi1.get);
-//    adc_read[3] = hadc2.Instance->JDR1;
-    telem_bringup_tick();
-    {
-      volatile uint32_t isr_t1 = *(volatile uint32_t *)&DWT->CYCCNT;
-
-      g_telem_dbg.isr_t0 = isr_t0;
-      g_telem_dbg.isr_t1 = isr_t1;
-      g_telem_dbg.cyccnt_end = isr_t1;
-      g_telem_dbg.isr_delta = isr_t1 - isr_t0;
-    }
-   
-  }
+  /* M1 控制已迁至 ADC2 JEOC；TIM8 无 Update IT */
   /* USER CODE END Callback 1 */
 }
 

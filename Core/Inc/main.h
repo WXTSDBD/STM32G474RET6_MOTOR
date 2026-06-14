@@ -36,7 +36,7 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-/** Debug monitor: Watch 窗口只加 dbg �?项即可展�? */
+/** Debug monitor: Watch ???? dbg ???????? */
 typedef struct {
   uint32_t csr;
   uint8_t en;
@@ -49,8 +49,16 @@ typedef struct {
 
 typedef struct {
   DbgOpampChan_t opamp[3]; /* [0]=OPAMP1/ADC1 [1]=OPAMP3/ADC3 [2]=OPAMP4/ADC5 */
-  int16_t adc_shunt[3];      /* �? adc_read[0..2] 对应 */
-  int16_t adc_reg[3];        /* �? adc_read[3..5] 对应(ADC2) */
+  int16_t adc_shunt[3];      /* ? adc_read[0..2] ?? */
+  int16_t adc_reg[3];        /* ? adc_read[3..5] ??(ADC2) */
+  int32_t adc_offset[3];     /* M1 ???????? */
+  int16_t adc_zeroed[3];     /* raw[i] - offset[i]?LSB? */
+  float adc_ia;              /* M1 ????A? */
+  float adc_ib;
+  float adc_ic;
+  float foc_theta_el;        /* ?? Park/SVPWM ????rad? */
+  float foc_id;              /* ???? dq ???A? */
+  float foc_iq;
 } DbgMon_t;
 /* USER CODE END ET */
 

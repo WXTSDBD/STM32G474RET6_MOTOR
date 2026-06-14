@@ -16,6 +16,7 @@
 #define _3PI_2 4.71238898038f
 #define _PI_6 0.52359877559f
 #define _SQRT3 1.73205080757f
+#define INV_SQRT3 (1.0f / _SQRT3)
 #define INV_VBUS   (1.0f / (float)voltage_power_supply)
 #define INV_PI3    (1.0f / _PI_3)
 #define HALF_F     0.5f
@@ -50,6 +51,18 @@ void Park_Transform(float Ialpha, float Ibeta, float theta, float *Id, float *Iq
     *Iq = -Ialpha * sin_val + Ibeta * cos_val;
 }
 
+/**
+ * @brief Park（热路径）：调用方已用 motor_trig_sincos 算好 sin_el/cos_el。
+ *        SVPWM 扇区角不同，setPhaseVoltage 内仍单独 CORDIC，与此处无关。
+ */
+void Park_Transform_sc(float Ialpha, float Ibeta,
+                       float sin_el, float cos_el,
+                       float *Id, float *Iq)
+{
+    *Id = Ialpha * cos_el + Ibeta * sin_el;
+    *Iq = -Ialpha * sin_el + Ibeta * cos_el;
+}
+
 void Anti_Park_Transform(float mod_d, float mod_q, float theta, float *mod_alpha, float *mod_beta)
 {
     float sin_val = arm_sin_f32(theta);
@@ -59,10 +72,21 @@ void Anti_Park_Transform(float mod_d, float mod_q, float theta, float *mod_alpha
     *mod_beta = mod_d * sin_val + mod_q * cos_val;
 }
 
+/**
+ * @brief 反 Park（热路径）：与 Park_Transform_sc 共用 sin_el/cos_el（PI 阶段用）。
+ */
+void Anti_Park_Transform_sc(float mod_d, float mod_q,
+                            float sin_el, float cos_el,
+                            float *mod_alpha, float *mod_beta)
+{
+    *mod_alpha = mod_d * cos_el - mod_q * sin_el;
+    *mod_beta = mod_d * sin_el + mod_q * cos_el;
+}
+
 void Clarke_Transform(float Ia, float Ib, float Ic, float *Ialpha, float *Ibeta)
 {
     *Ialpha = Ia;
-    *Ibeta = (Ib - Ic) * _SQRT3;
+    *Ibeta = (Ib - Ic) * INV_SQRT3;
 }
 
 float _normalizeAngle(float angle)

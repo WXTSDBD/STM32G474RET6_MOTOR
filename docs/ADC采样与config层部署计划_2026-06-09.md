@@ -13,7 +13,7 @@
 
 **本阶段范围（Step 1.1～1.2）：**
 
-- 零电流偏置标定（discard 20 + 平均 100，方案 B：仅 TIM8 Base + CH4）
+- 零电流偏置标定（discard 20 + **递推增量均值** 100 帧，方案 B：仅 TIM8 Base + CH4）
 - ADC2 三 rank 注入采样（`T8_CC4` 触发）
 - **不**做 OPAMP/ADC1/3/5 路径
 - **不**删 `FOC_CAL`（并存过渡，后续绞杀删除）
@@ -39,7 +39,7 @@ Core/Src/main.c         薄集成：MX_*_Init → bsp_init → cal → PWM → R
 |---|------|
 | 1 | 驱动层（`adc_sample.c`）**不出现** `hadc2`、`htim8` 等 CubeMX 符号 |
 | 2 | **全工程仅** `bridge_cubemx.c` 填写 HAL 指针（encoder board 除外） |
-| 3 | **offset 存 runtime**（`adc_sample_t`），标定结果不写回 const 表 |
+| 3 | **offset 写入 `adc_cfg.ch[i].offset`**（标定结果）；`adc_sample_t` 存 raw/ia/ib/ic 与标定过程状态 |
 | 4 | CANopen / OTA / OLED **不得**并入 `bsp_axis_t` 或 `adc_sample_config_t` |
 
 ### 2.3 与 encoder 对齐
@@ -63,6 +63,38 @@ Core/Src/main.c         薄集成：MX_*_Init → bsp_init → cal → PWM → R
 | HAL 芯片校准 | `HAL_ADCEx_Calibration_Start(&hadc2)`（已有，与零偏标定不同） |
 
 **方案 B 标定：** 标定阶段只开 TIM8 **Base + CH4**，**不开** CH1～3 PWM，**不开** `Base_Start_IT`（避免 `setPhaseVoltage` / encoder kick 干扰零偏）。
+
+### 3.1 零偏标定算法（递推增量均值）
+
+与「先累加 `cal_sum` 再除以 N」的批处理平均 **数学等价**，实现上在 JEOC 里 **来一帧更新一帧**，标定结束 `offset` 已收敛，无需最后再除。
+
+**参数（默认）：**
+
+| 参数 | 值 | 含义 |
+|------|-----|------|
+| `discard` | 20 | 丢弃 TIM 刚启动的前 20 帧（不进均值） |
+| `samples` | 100 | 参与递推的有效帧数 |
+| `timeout_ms` | 50 | 等待 `discard + samples` 帧的超时 |
+
+**每帧 JEOC（标定态 `cal_active=1`）：**
+
+```text
+cal_done++                                    /* 总帧计数 */
+若 cal_done <= discard：return                /* 去掉不稳定数据 */
+k = cal_done - discard                        /* 有效帧序号 1..samples */
+对每相 i：
+  offset[i] += (raw[i] - offset[i]) / k       /* int32 递推增量均值 */
+```
+
+**标定前后：**
+
+- 标定开始：`offset[i] = 0`（或先赋首帧 raw，实现可选；当前从 0 递推）
+- 标定结束：`cal_done >= discard + samples` 时 **停止 TIM8 Base+CH4**，`offset` 即为零电流偏置
+- 运行时：`adc_sample_update` 做 `(raw - offset) * scale`
+
+**不用 EMA（`offset += α*(raw-offset)`）：** 一次性上电标定要用 **有限 N 帧的均值**，不用常驻低通。
+
+**与 HAL 校准区别：** `HAL_ADCEx_Calibration_Start` 修正 ADC 内部；本节修正 **零电流 shunt 偏置点**（你 Watch 里 ~2058 那一档）。
 
 ---
 
@@ -175,9 +207,10 @@ adc_sample_on_injected(&bsp_axis(BSP_AXIS_M1)->adc, hadc);
 
 ### Step C — 零偏标定（Step 1.1）
 
-1. 在 **PWM CH1～3 启动前** 调用 `bsp_axis_adc_calibrate_zero(M1)`  
-2. 标定参数：discard=20，samples=100，timeout=50 ms  
-3. Watch / VOFA：记录 `offset[3]`；运行后 `raw - offset` 接近 0  
+1. 在 **PWM CH1～3 与 `Base_IT` 启动前** 调用 `bsp_axis_adc_calibrate_zero(M1, 20, 100, 50)`  
+2. 标定期间仅 TIM8 **Base + CH4**；电机 **可不转**  
+3. 算法见 §3.1（discard 20 + 递推 100 帧）；标定结束 `offset[i]` ≈ 空载 raw（~2048 一带）  
+4. 验收：`raw[i] - offset[i]` 接近 0（±几十 LSB）；再开 PWM / VOFA 验证  
 
 ### Step D — 标度（Step 1.2）
 
@@ -242,7 +275,7 @@ app_init.c（可选）          聚合各域 init 顺序
 | 风险 | 对策 |
 |------|------|
 | 标定时开了 motor PWM | 严格 init 顺序；标定只用 Base+CH4 |
-| offset 写在 const 表 | 只写入 `adc_sample_t` runtime |
+| offset 写在 const 表 | 写入 `adc_cfg.ch[i].offset`（`bsp_axis` 内运行时配置） |
 | `bsp_axes` 膨胀塞 CAN/OLED | 禁止；各域独立 config 文件 |
 | CubeMX Generate 改 handle 名 | 只改 `bridge_cubemx.c` |
 | PER_PHASE（ADC1/3/5） | schema 预留 `topo`；M1 用 SCAN |
@@ -279,3 +312,4 @@ app_init.c（可选）          聚合各域 init 顺序
 | 日期 | 说明 |
 |------|------|
 | 2026-06-09 | 初版：ADC 采样 + config/bridge 部署计划（架构评审通过） |
+| 2026-06-09 | 零偏标定改为 discard + **递推增量均值**（§3.1），替代 cal_sum 批处理 |
