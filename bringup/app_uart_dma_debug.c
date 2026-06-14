@@ -7,8 +7,8 @@
  *   RTOS 任务：telem_bringup_try_send() — READY 时 DMA 发送
  *   TxCplt：SENDING → UNLOCKED
  *
- * 测试通道（CH_COUNT=4，ch1/ch2 为 uint32 原样小端，VOFA 勿当 float 看）：
- *   ch0=(float)cnt  ch1=上一拍 cyccnt_end  ch2=上一拍 isr_delta  ch3=as5047_spi1.get
+ * 测试通道（JustFloat ×4）：
+ *   ch0=foc_iq  ch1=foc_id  ch2/ch3 未用（0）
  *
  * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
  *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
@@ -24,12 +24,10 @@
 #include "cmsis_os.h"
 #include "usart.h"
 #include "bsp_dwt.h"
-#include "FOC_CAL.h"
+#include "main.h"
 #include "as5047.h"
 #include "encoder_spi_bus.h"
 #include <string.h>
-
-extern volatile uint8_t cnt;
 
 #define TELEM_BRINGUP_K           4u
 #define TELEM_BRINGUP_INCLUDE_SEQ 0u
@@ -212,10 +210,10 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     float vals[4];
     uint8_t *p;
 
-    vals[0] = (float)cnt;
-    vals[1] = 0.0f;
+    vals[0] = dbg.foc_iq;
+    vals[1] = dbg.foc_id;
     vals[2] = 0.0f;
-    vals[3] = as5047_spi1.get;
+    vals[3] = 0.0f;
 
     p = &buf->data[offset];
 
@@ -269,8 +267,6 @@ void telem_bringup_tick(void)
         g_telem_dbg.ch1_wire = ch1_raw;
         g_telem_dbg.ch2_wire = ch2_raw;
         time_cnt = ch2_raw;
-        memcpy(&buf->data[off + TELEM_CH1_BYTE_OFF], &ch1_raw, sizeof(ch1_raw));
-        memcpy(&buf->data[off + TELEM_CH2_BYTE_OFF], &ch2_raw, sizeof(ch2_raw));
     }
     buf->used_bytes = (uint16_t)(buf->used_bytes + TELEM_SMALL_FRAME_BYTES);
 
