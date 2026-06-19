@@ -7,8 +7,12 @@
  *   RTOS 任务：telem_bringup_try_send() — READY 时 DMA 发送
  *   TxCplt：SENDING → UNLOCKED
  *
- * 测试通道（JustFloat ×4）：
- *   ch0=foc_iq  ch1=foc_id  ch2=as5047_spi1.raw  ch3=as5047_spi1.add
+ * 测试通道（JustFloat ×6）：
+ *   正常运行（M1_VOFA_FOC_ABC=1）：ch0–2=foc_ia/b/c(A)  ch3=Iq  ch4=Id  ch5=θ_el
+ *   正常运行（M1_VOFA_FOC_ABC=0）：ch0–2=adc_zeroed(JDR rank, LSB)
+ *             ch3=Iq  ch4=Id 或 sector(1..6)  ch5=θ_el
+ *             M1_VOFA_SECTOR_DIAG=1 时 ch4=SVPWM 扇区（与 setPhaseVoltage 同公式）
+ *   相序/增益诊断：ch0–2=adc_zeroed(LSB) ch3=pwm_idx ch4=Δ档 ch5=cal_st
  *
  * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
  *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
@@ -27,10 +31,14 @@
 #include "main.h"
 #include "FOC_CAL.h"
 #include "as5047.h"
+#include "trans.h"
+#include "bsp_axes.h"
+#include "motor_current.h"
 #include "encoder_spi_bus.h"
+#include "phase_detect.h"
 #include <string.h>
 
-#define TELEM_BRINGUP_K           4u
+#define TELEM_BRINGUP_K           6u
 #define TELEM_BRINGUP_INCLUDE_SEQ 0u
 #define TELEM_CPU_MHZ             160u
 
@@ -38,10 +46,13 @@
 #define TELEM_BUF_BYTES           4096u
 
 /**
- * TIM1 20kHz 下每 D 次 tick 写 1 个小帧。
- * D=100 → 200Hz 写帧，满包 204 帧 ≈ 1.0s
+ * JEOC 20kHz 下每 D 次 tick 写 1 个小帧（与 motor_current_tick 同拍）。
+ * D=1  → 20kHz 写帧（6ch×28B ≈ 560KB/s @ 6Mbps，满包 ~146 帧 ≈ 7.3ms）
+ * D=100 → 200Hz（bringup 低压联调用）
  */
-#define TELEM_BRINGUP_DECIMATION  100u
+#ifndef TELEM_BRINGUP_DECIMATION
+#define TELEM_BRINGUP_DECIMATION  1u
+#endif
 
 #if TELEM_BRINGUP_INCLUDE_SEQ
 #define TELEM_SMALL_FRAME_BYTES   (4u + TELEM_BRINGUP_K * 4u + 4u)
@@ -208,13 +219,36 @@ static void telem_seal_write_buf_ready(void)
 
 static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 {
-    float vals[4];
+    float vals[TELEM_BRINGUP_K];
     uint8_t *p;
 
-    vals[0] = dbg.foc_iq;
-    vals[1] = dbg.foc_id;
-    vals[2] = (float)as5047_spi1.raw;
-    vals[3] = as5047_spi1.add;
+    if (g_phase_cal_active || g_cal_hold) {
+        vals[0] = (float)dbg.adc_zeroed[0];
+        vals[1] = (float)dbg.adc_zeroed[1];
+        vals[2] = (float)dbg.adc_zeroed[2];
+        vals[3] = (float)dbg.phase_cal_pwm_idx;
+        vals[4] = (float)dbg.phase_cal_delta_idx;
+        vals[5] = (float)dbg.phase_cal_st;
+    } else {
+#if M1_VOFA_FOC_ABC
+        vals[0] = dbg.foc_ia;
+        vals[1] = dbg.foc_ib;
+        vals[2] = dbg.foc_ic;
+#else
+        vals[0] = (float)dbg.adc_zeroed[0];
+        vals[1] = (float)dbg.adc_zeroed[1];
+        vals[2] = (float)dbg.adc_zeroed[2];
+#endif
+        vals[3] = dbg.foc_iq;
+#if M1_VOFA_FOC_ABC
+        vals[4] = dbg.foc_id;
+#elif M1_VOFA_SECTOR_DIAG
+        vals[4] = (float)svpwm_sector_from_uq_ud(dbg.foc_uq_out, 0.0f, dbg.foc_theta_el);
+#else
+        vals[4] = dbg.foc_id;
+#endif
+        vals[5] = dbg.foc_theta_el;
+    }
 
     p = &buf->data[offset];
 

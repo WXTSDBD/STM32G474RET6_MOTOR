@@ -1,4 +1,7 @@
 #include "trans.h"
+
+#include "deadband.h"
+#include "motor_phase_binding.h"
 #include "motor_trig.h"
 #include <math.h>
 #include "gpio.h"
@@ -104,7 +107,47 @@ float _normalizeAngle(float angle)
 
 int cct = 0;
 
-void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el)
+static void svpwm_write_ccr(TIM_HandleTypeDef *htim, float Ta, float Tb, float Tc)
+{
+    motor_phase_binding_write_ccr(htim, Ta, Tb, Tc, PWM_Period);
+}
+
+int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el)
+{
+    float angle_ref;
+    int sector;
+
+    if (Ud == 0.0f) {
+        angle_ref = angle_el + _PI_2;
+        if (Uq < 0.0f) {
+            angle_ref += _PI;
+        }
+        if (angle_ref >= _2PI) {
+            angle_ref -= _2PI;
+        }
+    } else {
+        float U_alpha;
+        float U_beta;
+        float sin_val = arm_sin_f32(angle_el);
+        float cos_val = arm_cos_f32(angle_el);
+
+        U_alpha = Ud * cos_val - Uq * sin_val;
+        U_beta = Ud * sin_val + Uq * cos_val;
+        angle_ref = atan2f(U_beta, U_alpha);
+        if (angle_ref < 0.0f) {
+            angle_ref += _2PI;
+        }
+    }
+
+    sector = (int)(angle_ref * INV_PI3);
+    sector = (sector % 6) + 1;
+    return sector;
+}
+
+static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
+                                 float Uq, float Ud, float angle_el,
+                                 float ia, float ib, float ic,
+                                 int apply_deadband)
 {
     float Uref;
     float T1, T2, T0;
@@ -122,6 +165,7 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
             Uref = 0.577f;
         }
 
+        sector = svpwm_sector_from_uq_ud(Uq, Ud, angle_el);
         angle_ref = angle_el + _PI_2;
         if (Uq < 0.0f) {
             angle_ref += _PI;
@@ -129,9 +173,6 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
         if (angle_ref >= _2PI) {
             angle_ref -= _2PI;
         }
-
-        sector = (int)(angle_ref * INV_PI3);
-        sector = (sector % 6) + 1;
 
         theta = angle_ref - (float)(sector - 1) * _PI_3;
         svpwm_t1_t2_from_theta(theta, Uref, &T1, &T2);
@@ -155,8 +196,7 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
             angle_ref += _2PI;
         }
 
-        sector = (int)(angle_ref * INV_PI3);
-        sector = (sector % 6) + 1;
+        sector = svpwm_sector_from_uq_ud(Uq, Ud, angle_el);
 
         theta = angle_ref - (float)(sector - 1) * _PI_3;
         svpwm_t1_t2_from_theta(theta, Uref, &T1, &T2);
@@ -223,13 +263,21 @@ void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el
             break;
     }
 
-    {
-        uint16_t pwm_a = (uint16_t)(Ta * (float)PWM_Period);
-        uint16_t pwm_b = (uint16_t)(Tb * (float)PWM_Period);
-        uint16_t pwm_c = (uint16_t)(Tc * (float)PWM_Period);
-
-        htim->Instance->CCR1 = pwm_a;
-        htim->Instance->CCR2 = pwm_b;
-        htim->Instance->CCR3 = pwm_c;
+    if (apply_deadband) {
+        deadband_apply_duty(ia, ib, ic, &Ta, &Tb, &Tc);
     }
+
+    svpwm_write_ccr(htim, Ta, Tb, Tc);
+}
+
+void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el)
+{
+    setPhaseVoltage_core(htim, Uq, Ud, angle_el, 0.0f, 0.0f, 0.0f, 0);
+}
+
+void setPhaseVoltage_abc(TIM_HandleTypeDef *htim,
+                         float Uq, float Ud, float angle_el,
+                         float ia, float ib, float ic)
+{
+    setPhaseVoltage_core(htim, Uq, Ud, angle_el, ia, ib, ic, 1);
 }

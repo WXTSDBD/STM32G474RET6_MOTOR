@@ -9,10 +9,24 @@
 
 #define MOTOR_TRIG_Q31_SCALE  2147483648.0f
 #define MOTOR_TRIG_INV_PI     0.31830988618f
+#define MOTOR_TRIG_PI         3.14159265359f
+#define MOTOR_TRIG_TWO_PI     6.28318530718f
 
 extern CORDIC_HandleTypeDef hcordic;
 
 static uint8_t s_cordic_ready;
+
+/** CORDIC Cosine: WDATA = angle/π in Q1.31, valid only for angle ∈ [-π, +π]. */
+static float motor_trig_wrap_pm_pi(float rad)
+{
+    while (rad > MOTOR_TRIG_PI) {
+        rad -= MOTOR_TRIG_TWO_PI;
+    }
+    while (rad <= -MOTOR_TRIG_PI) {
+        rad += MOTOR_TRIG_TWO_PI;
+    }
+    return rad;
+}
 
 static float motor_trig_q31_to_float(int32_t q31)
 {
@@ -21,6 +35,7 @@ static float motor_trig_q31_to_float(int32_t q31)
 
 static int32_t motor_trig_rad_to_q31(float rad)
 {
+    rad = motor_trig_wrap_pm_pi(rad);
     return (int32_t)(rad * (MOTOR_TRIG_Q31_SCALE * MOTOR_TRIG_INV_PI));
 }
 

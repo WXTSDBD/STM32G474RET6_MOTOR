@@ -21,7 +21,19 @@ void Anti_Park_Transform_sc(float mod_d, float mod_q,
 void Clarke_Transform(float Ia, float Ib, float Ic, float *Ialpha, float *Ibeta);
 float speed_cal_angle(float angle_use,float angle_use_last);
 float _normalizeAngle(float angle) ;
-void setPhaseVoltage(TIM_HandleTypeDef*htim, float Uq, float Ud, float angle_el) ;
+/** SVPWM 输出；无死区补偿（标定/开环兼容）。 */
+void setPhaseVoltage(TIM_HandleTypeDef *htim, float Uq, float Ud, float angle_el);
+
+/**
+ * @brief SVPWM + 三相占空比死区补偿（电流环热路径）。
+ *        ia/ib/ic 为相电流（A）；补偿在 Ta/Tb/Tc 归一化占空比上施加。
+ */
+void setPhaseVoltage_abc(TIM_HandleTypeDef *htim,
+                         float Uq, float Ud, float angle_el,
+                         float ia, float ib, float ic);
+
+/** SVPWM 扇区 1..6，与 setPhaseVoltage_core 中 angle_ref 划分一致（Uq>0 开环用 Ud=0）。 */
+int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el);
 
 #endif
 

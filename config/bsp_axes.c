@@ -33,13 +33,13 @@ static void bsp_axis_bind_defaults(bsp_axis_id_t id, bsp_axis_t *axis)
         cfg->n_ch = 3U;
         cfg->ch[0].jdr_index = 1U;
         cfg->ch[0].offset = 0;
-        cfg->ch[0].scale = M1_ADC_SCALE_A_LSB;
+        cfg->ch[0].scale = M1_ADC_SCALE_A_LSB * M1_ADC_GAIN_CH0;
         cfg->ch[1].jdr_index = 2U;
         cfg->ch[1].offset = 0;
-        cfg->ch[1].scale = M1_ADC_SCALE_A_LSB;
+        cfg->ch[1].scale = M1_ADC_SCALE_A_LSB * M1_ADC_GAIN_CH1;
         cfg->ch[2].jdr_index = 3U;
         cfg->ch[2].offset = 0;
-        cfg->ch[2].scale = M1_ADC_SCALE_A_LSB;
+        cfg->ch[2].scale = M1_ADC_SCALE_A_LSB * M1_ADC_GAIN_CH2;
     } else if (id == BSP_AXIS_M2) {
         axis->enabled = false;
         axis->enc = &enc_m2;

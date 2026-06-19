@@ -180,7 +180,7 @@ void MX_TIM8_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.Pulse = 1998;
+  sConfigOC.Pulse = 2998;
   if (HAL_TIM_PWM_ConfigChannel(&htim8, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
