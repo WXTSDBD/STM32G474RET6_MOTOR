@@ -8,12 +8,22 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "deadband_cal.h"
 #include "stm32g4xx_hal_flash.h"
 #include "stm32g4xx_hal_flash_ex.h"
 
 #define FACTORY_NVM_BASE_ADDR  0x0807F000u
 #define FACTORY_NVM_PAGE_SIZE  0x800u
 #define FACTORY_NVM_PAGE_COUNT 2u
+
+typedef struct {
+    uint32_t magic;
+    uint32_t version;
+    motor_phase_binding_t phase;
+    float encoder_add;
+    uint32_t reserved;
+    uint32_t crc32;
+} factory_nvm_record_v1_t;
 
 static uint32_t factory_nvm_crc32(const uint8_t *data, uint32_t len)
 {
@@ -48,22 +58,71 @@ static uint32_t factory_nvm_record_crc(const factory_nvm_record_t *rec)
     return factory_nvm_crc32((const uint8_t *)&tmp, sizeof(tmp));
 }
 
+static uint32_t factory_nvm_record_v1_crc(const factory_nvm_record_v1_t *rec)
+{
+    factory_nvm_record_v1_t tmp;
+
+    if (rec == NULL) {
+        return 0u;
+    }
+
+    tmp = *rec;
+    tmp.crc32 = 0u;
+    return factory_nvm_crc32((const uint8_t *)&tmp, sizeof(tmp));
+}
+
+static bool factory_nvm_read_v1(factory_nvm_record_t *out,
+                                const factory_nvm_record_v1_t *v1)
+{
+    if (out == NULL || v1 == NULL) {
+        return false;
+    }
+
+    if (v1->magic != FACTORY_NVM_MAGIC || v1->version != FACTORY_NVM_VERSION_V1) {
+        return false;
+    }
+
+    if (v1->crc32 != factory_nvm_record_v1_crc(v1)) {
+        return false;
+    }
+
+    memset(out, 0, sizeof(*out));
+    out->magic = v1->magic;
+    out->version = v1->version;
+    out->phase = v1->phase;
+    out->encoder_add = v1->encoder_add;
+    return true;
+}
+
 static bool factory_nvm_read_raw(factory_nvm_record_t *out)
 {
-    const factory_nvm_record_t *flash_rec;
+    const factory_nvm_record_t *flash_v2;
+    const factory_nvm_record_v1_t *flash_v1;
+    uint32_t magic;
+    uint32_t version;
 
     if (out == NULL) {
         return false;
     }
 
-    flash_rec = (const factory_nvm_record_t *)FACTORY_NVM_BASE_ADDR;
-    *out = *flash_rec;
-
-    if (out->magic != FACTORY_NVM_MAGIC || out->version != FACTORY_NVM_VERSION) {
+    magic = *(const uint32_t *)FACTORY_NVM_BASE_ADDR;
+    if (magic != FACTORY_NVM_MAGIC) {
         return false;
     }
 
-    return (out->crc32 == factory_nvm_record_crc(out));
+    version = *(const uint32_t *)(FACTORY_NVM_BASE_ADDR + 4u);
+    if (version == FACTORY_NVM_VERSION) {
+        flash_v2 = (const factory_nvm_record_t *)FACTORY_NVM_BASE_ADDR;
+        *out = *flash_v2;
+        return (out->crc32 == factory_nvm_record_crc(out));
+    }
+
+    if (version == FACTORY_NVM_VERSION_V1) {
+        flash_v1 = (const factory_nvm_record_v1_t *)FACTORY_NVM_BASE_ADDR;
+        return factory_nvm_read_v1(out, flash_v1);
+    }
+
+    return false;
 }
 
 static bool factory_nvm_erase_tail(void)
@@ -150,7 +209,30 @@ bool factory_nvm_write_phase(const motor_phase_binding_t *phase)
         rec.encoder_add = 0.0f;
     }
 
+    rec.version = FACTORY_NVM_VERSION;
     rec.phase = *phase;
+    rec.crc32 = factory_nvm_record_crc(&rec);
+
+    return factory_nvm_program_record(&rec);
+}
+
+bool factory_nvm_write_deadband(const factory_nvm_deadband_t *deadband)
+{
+    factory_nvm_record_t rec;
+
+    if (deadband == NULL || deadband->valid == 0u || deadband->len < 2u) {
+        return false;
+    }
+
+    if (!factory_nvm_read_raw(&rec)) {
+        memset(&rec, 0, sizeof(rec));
+        rec.magic = FACTORY_NVM_MAGIC;
+        rec.version = FACTORY_NVM_VERSION;
+        rec.encoder_add = 0.0f;
+    }
+
+    rec.version = FACTORY_NVM_VERSION;
+    rec.deadband = *deadband;
     rec.crc32 = factory_nvm_record_crc(&rec);
 
     return factory_nvm_program_record(&rec);
@@ -170,4 +252,19 @@ bool factory_nvm_apply_phase_binding(void)
 
     motor_phase_binding_set_active(&rec.phase, true);
     return true;
+}
+
+bool factory_nvm_apply_deadband(void)
+{
+    factory_nvm_record_t rec;
+
+    if (!factory_nvm_read_raw(&rec)) {
+        return false;
+    }
+
+    if (rec.deadband.valid == 0u || rec.deadband.len < 2u) {
+        return false;
+    }
+
+    return deadband_cal_apply_nvm(&rec.deadband);
 }

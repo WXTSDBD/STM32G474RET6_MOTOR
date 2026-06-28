@@ -18,7 +18,7 @@ static bsp_axis_t s_axes[BSP_AXIS_COUNT];
 
 /**
  * @brief 填写与 CubeMX 无关的语义配置（JDR rank、scale、topo、enc 指针）。
- *        hadc/trig_tim/pwm_tim 指针由 bridge 填写。
+ *        hadc/trig_tim/pwm_tim 指针与 Port 实例由 bridge 填写。
  */
 static void bsp_axis_bind_defaults(bsp_axis_id_t id, bsp_axis_t *axis)
 {

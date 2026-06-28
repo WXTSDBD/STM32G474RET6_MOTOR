@@ -1,23 +1,18 @@
 /**
  ******************************************************************************
- * @file	bsp_dwt.h
- * @author  Wang Hongxi
- * @version V1.1.0
- * @date    2022/3/8
- * @brief
- ******************************************************************************
- * @attention
- *
+ * @file    bsp_dwt.h
+ * @brief   DWT 高精度计时（legacy API；新代码优先 time_port_*）。
  ******************************************************************************
  */
-#ifndef _BSP_DWT_H
-#define _BSP_DWT_H
 
-#include "main.h"
-#include "stdint.h"
+#ifndef BSP_DWT_H
+#define BSP_DWT_H
 
-typedef struct
-{
+#include <stdint.h>
+
+#include "stm32g474xx.h"
+
+typedef struct {
     uint32_t s;
     uint16_t ms;
     uint16_t us;
@@ -32,6 +27,5 @@ uint64_t DWT_GetTimeline_us(void);
 void DWT_Delay(float Delay);
 void DWT_SysTimeUpdate(void);
 void DWT_Delay_us(uint32_t us);
-extern DWT_Time_t SysTime;
 
-#endif /* BSP_DWT_H_ */
+#endif

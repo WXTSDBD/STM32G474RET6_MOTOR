@@ -4,6 +4,8 @@
 
 #include "motor_phase_binding.h"
 
+#include "pwm_port.h"
+
 #include <stddef.h>
 
 static motor_phase_binding_t s_binding;
@@ -119,10 +121,18 @@ void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
                                    float ta, float tb, float tc,
                                    uint16_t pwm_period)
 {
+    pwm_port_t port = {
+        .ops = &pwm_port_ops_stm32g4_reg,
+        .hw = htim,
+        .user_ctx = NULL,
+    };
     float duty_logical[3];
     float duty_phys[3];
     uint8_t i;
     uint8_t ch;
+    uint32_t ccr1;
+    uint32_t ccr2;
+    uint32_t ccr3;
 
     if (htim == NULL) {
         return;
@@ -131,23 +141,19 @@ void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
     duty_logical[0] = ta;
     duty_logical[1] = tb;
     duty_logical[2] = tc;
-    duty_phys[0] = 0.5f;
-    duty_phys[1] = 0.5f;
-    duty_phys[2] = 0.5f;
+    duty_phys[0] = ta;
+    duty_phys[1] = tb;
+    duty_phys[2] = tc;
 
-    if (!s_active) {
-        htim->Instance->CCR1 = (uint16_t)(ta * (float)pwm_period);
-        htim->Instance->CCR2 = (uint16_t)(tb * (float)pwm_period);
-        htim->Instance->CCR3 = (uint16_t)(tc * (float)pwm_period);
-        return;
+    if (s_active) {
+        for (i = 0u; i < 3u; i++) {
+            ch = s_binding.pwm_ch_to_phase[i];
+            duty_phys[ch] = duty_logical[i];
+        }
     }
 
-    for (i = 0u; i < 3u; i++) {
-        ch = s_binding.pwm_ch_to_phase[i];
-        duty_phys[ch] = duty_logical[i];
-    }
-
-    htim->Instance->CCR1 = (uint16_t)(duty_phys[0] * (float)pwm_period);
-    htim->Instance->CCR2 = (uint16_t)(duty_phys[1] * (float)pwm_period);
-    htim->Instance->CCR3 = (uint16_t)(duty_phys[2] * (float)pwm_period);
+    ccr1 = (uint32_t)(duty_phys[0] * (float)pwm_period);
+    ccr2 = (uint32_t)(duty_phys[1] * (float)pwm_period);
+    ccr3 = (uint32_t)(duty_phys[2] * (float)pwm_period);
+    pwm_port_set_duty3(&port, ccr1, ccr2, ccr3);
 }

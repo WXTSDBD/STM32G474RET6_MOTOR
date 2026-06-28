@@ -9,7 +9,7 @@
 #include <string.h>
 
 #include "factory_nvm.h"
-#include "main.h"
+#include "hal_bridge.h"
 
 #define PHASE_PWM_PERIOD      3999u
 #define PHASE_PWM_CENTER      2000u

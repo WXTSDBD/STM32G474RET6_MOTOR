@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx,ARM_MATH_CM4</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/adc_sample;../bringup/encoder_cal;../cal;../config;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>../Core/Inc;../debug;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/math_tables;../Drivers/adc;../cal;../config;../motor/deadband;../motor/ident;../motor;../drivers/foc;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1273,6 +1273,16 @@
           </Files>
         </Group>
         <Group>
+          <GroupName>debug</GroupName>
+          <Files>
+            <File>
+              <FileName>dbg_monitor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\debug\dbg_monitor.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
           <GroupName>bringup</GroupName>
           <Files>
             <File>
@@ -1316,34 +1326,44 @@
               <FilePath>..\board\board_encoder_m1.c</FilePath>
             </File>
             <File>
-              <FileName>FOC_CAL.c</FileName>
+              <FileName>board_axis_ports.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\FOC_CAL.c</FilePath>
+              <FilePath>..\board\board_axis_ports.c</FilePath>
             </File>
             <File>
-              <FileName>trans.c</FileName>
+              <FileName>foc_svpwm.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\trans.c</FilePath>
+              <FilePath>..\motor\foc_svpwm.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_open_sweep.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_open_sweep.c</FilePath>
             </File>
             <File>
               <FileName>motor_trig.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\motor_trig.c</FilePath>
+              <FilePath>..\Drivers\foc\motor_trig.c</FilePath>
             </File>
             <File>
               <FileName>motor_trig_cordic.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\motor_trig_cordic.c</FilePath>
+              <FilePath>..\Drivers\foc\motor_trig_cordic.c</FilePath>
             </File>
             <File>
               <FileName>motor_trig_lut.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\motor_trig_lut.c</FilePath>
+              <FilePath>..\Drivers\foc\motor_trig_lut.c</FilePath>
+            </File>
+            <File>
+              <FileName>math_tables_sincos.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\math_tables\math_tables_sincos.c</FilePath>
             </File>
             <File>
               <FileName>app_uart_dma_debug.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\app_uart_dma_debug.c</FilePath>
+              <FilePath>..\debug\app_uart_dma_debug.c</FilePath>
             </File>
             <File>
               <FileName>bsp_dwt.c</FileName>
@@ -1351,14 +1371,79 @@
               <FilePath>..\bringup\bsp_dwt.c</FilePath>
             </File>
             <File>
-              <FileName>adc_sample.c</FileName>
+              <FileName>adc_sample_stm32g4.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\adc_sample\adc_sample.c</FilePath>
+              <FilePath>..\platform\adc_sample_stm32g4.c</FilePath>
+            </File>
+            <File>
+              <FileName>pwm_port_stm32g4_reg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\pwm_port_stm32g4_reg.c</FilePath>
+            </File>
+            <File>
+              <FileName>adc_foc_port_stm32g4_reg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\adc_foc_port_stm32g4_reg.c</FilePath>
+            </File>
+            <File>
+              <FileName>time_port_cortex_dwt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\platform\time_port_cortex_dwt.c</FilePath>
             </File>
             <File>
               <FileName>encoder_cal.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\bringup\encoder_cal\encoder_cal.c</FilePath>
+              <FilePath>..\cal\encoder_cal.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_foc_loop.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_foc_loop.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_current.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_current.c</FilePath>
+            </File>
+            <File>
+              <FileName>ident_module.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\ident\ident_module.c</FilePath>
+            </File>
+            <File>
+              <FileName>ident_flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\ident\ident_flow.c</FilePath>
+            </File>
+            <File>
+              <FileName>telem_lut_dump.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\telem_lut_dump.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_startup.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_startup.c</FilePath>
+            </File>
+            <File>
+              <FileName>foc_pi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\drivers\foc\foc_pi.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_phase_binding.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\cal\motor_phase_binding.c</FilePath>
+            </File>
+            <File>
+              <FileName>factory_nvm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\cal\factory_nvm.c</FilePath>
+            </File>
+            <File>
+              <FileName>phase_detect.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\cal\phase_detect.c</FilePath>
             </File>
             <File>
               <FileName>bsp_axes.c</FileName>
@@ -1369,6 +1454,46 @@
               <FileName>bridge_cubemx.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\config\bridge_cubemx.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>motor/deadband</GroupName>
+          <Files>
+            <File>
+              <FileName>deadband.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_cal.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_cal.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_geo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_geo.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_lut_baked_m1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_lut_baked_m1.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_id_cal.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_id_cal.c</FilePath>
+            </File>
+            <File>
+              <FileName>deadband_flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\deadband\deadband_flow.c</FilePath>
             </File>
           </Files>
         </Group>

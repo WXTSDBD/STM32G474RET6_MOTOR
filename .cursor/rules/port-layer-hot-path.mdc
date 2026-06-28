@@ -1,0 +1,26 @@
+---
+description: Port 分层与 20 kHz 热路径 HAL/LL 边界
+globs: motor/**/*.c,motor/**/*.h,platform/**/*.c,platform/**/*.h,board/**/*.c,board/**/*.h,config/**/*.c,config/**/*.h
+alwaysApply: false
+---
+
+# Port 分层与热路径规则
+
+## 分层
+
+- `motor/`：算法与编排，零 HAL、零 LL、零 `main.h`。
+- `Drivers/`：芯片无关语义（如 `adc_sample.h` 类型/API，无 HAL）。
+- `platform/`：Port 契约头文件（无 HAL）+ 各芯片 backend `.c`（可 HAL/寄存器/LL）。
+- `board/`：板级实例与 ops 绑定。
+- `config/`：`bridge_*` 与 `hal_bridge.h`——CubeMX HAL 句柄只从这里进 board/platform。
+
+## 热路径（20 kHz JEOC 链）
+
+- 允许：直接寄存器访问、`__HAL_*` 等 HAL 宏。
+- 禁止：在 JEOC 链中 `#include` LL 驱动头并调用 LL API。
+- LL 仅用于 init、标定阻塞路径、RTOS 任务、编码器 DMA 配置等非实时路径。
+
+## 引用
+
+- HAL 句柄：`#include "hal_bridge.h"`（勿从 `main.h` 拿）。
+- PWM/ADC 热路径：经 `pwm_port_*` / `adc_foc_port_*`（P1/P3 起逐步接入）。

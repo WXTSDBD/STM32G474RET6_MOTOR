@@ -20,9 +20,9 @@ typedef enum {
     M1_CTRL_CURRENT_LOOP,
 } m1_ctrl_mode_t;
 
-/** 相序标定后默认开环观测 Uq；电流环联调时再改 CURRENT_LOOP */
+/** 2026-06-19 电流环联调：上电即 CURRENT_LOOP；开环死区扫参改 OBSERVE_ONLY */
 #ifndef M1_CTRL_MODE_DEFAULT
-#define M1_CTRL_MODE_DEFAULT M1_CTRL_OBSERVE_ONLY
+#define M1_CTRL_MODE_DEFAULT M1_CTRL_CURRENT_LOOP
 #endif
 
 typedef struct {

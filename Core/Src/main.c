@@ -35,10 +35,10 @@
 #include "COMMUNICATION_FDCAN.h"
 #include "board_encoder.h"
 #include "encoder.h"
-#include "FOC_CAL.h"
 #include "app_uart_dma_debug.h"
 #include "bsp_axes.h"
 #include "encoder_cal.h"
+#include "adc_foc_port.h"
 #include "factory_nvm.h"
 #include "motor_current.h"
 #include "motor_params_m1.h"
@@ -82,8 +82,6 @@ void MX_FREERTOS_Init(void);
 uint16_t A,B;
 volatile uint8_t cnt=0;
 int16_t adc_read[6];
-
-volatile DbgMon_t dbg;
 
 static void dbg_snapshot_opamp_ch(uint8_t idx, OPAMP_TypeDef *opamp)
 {
@@ -234,7 +232,6 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 
  FDCAN1_Config();
   AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
-  angle_init();
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
 
@@ -303,16 +300,16 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
     float add_raw;
     float add_final;
 
-    if (!encoder_cal_run_lock_default(&enc_m1, &htim8, M1_POLE_PAIRS, &add_raw)) {
+    if (!encoder_cal_run_lock_default(bsp_axis(BSP_AXIS_M1), &enc_m1, M1_POLE_PAIRS, &add_raw)) {
       Error_Handler();
     }
     dbg.enc_cal_add_raw = add_raw;
     add_final = encoder_cal_apply_pi_offset(add_raw);
-    as5047_spi1.add = add_final;
+    encoder_set_theta_el_offset(&enc_m1, add_final);
     dbg.enc_cal_add = add_final;
   }
 #else
-  as5047_spi1.add = M1_ENCODER_OFFSET_RAD;
+  encoder_set_theta_el_offset(&enc_m1, M1_ENCODER_OFFSET_RAD);
   dbg.enc_cal_add_raw = M1_ENCODER_OFFSET_RAD;
   dbg.enc_cal_add = M1_ENCODER_OFFSET_RAD;
   encoder_kick(&enc_m1);
@@ -433,9 +430,10 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 		} else if (g_cal_hold) {
 			phase_detect_hold_jeoc_tick(&m1->adc, hadc, &htim8);
 		} else if (g_encoder_cal_active) {
-			encoder_cal_jeoc_tick(&htim8);
+			encoder_cal_jeoc_tick(m1);
 		} else {
-			motor_current_tick(m1, hadc);
+			adc_foc_port_on_jeoc(m1->adc_foc, &m1->adc, hadc);
+			motor_current_tick(m1);
 		}
 		adc_read[3] = m1->adc.raw[0];
 		adc_read[4] = m1->adc.raw[1];

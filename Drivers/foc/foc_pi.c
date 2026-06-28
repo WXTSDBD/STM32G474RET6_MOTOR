@@ -41,6 +41,16 @@ void foc_pi_reset(foc_pi_t *pi)
     pi->integrator = 0.0f;
 }
 
+void foc_pi_bumpless(foc_pi_t *pi, float u_prev, float ref, float fb)
+{
+    if (pi == NULL) {
+        return;
+    }
+
+    pi->integrator = u_prev - pi->kp * (ref - fb);
+    foc_pi_clamp_integrator(pi);
+}
+
 float foc_pi_step(foc_pi_t *pi, float ref, float fb)
 {
     float err;

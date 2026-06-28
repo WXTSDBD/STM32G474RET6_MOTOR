@@ -26,6 +26,9 @@ void foc_pi_init(foc_pi_t *pi, float kp, float ki,
 
 void foc_pi_reset(foc_pi_t *pi);
 
+/** 无扰动预加载：使 u_prev ≈ kp*(ref-fb) + integrator 在下一步成立 */
+void foc_pi_bumpless(foc_pi_t *pi, float u_prev, float ref, float fb);
+
 float foc_pi_step(foc_pi_t *pi, float ref, float fb);
 
 #ifdef __cplusplus

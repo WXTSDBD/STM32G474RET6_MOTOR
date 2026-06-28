@@ -31,64 +31,12 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "dbg_monitor.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-/** Debug monitor: Watch ???? dbg ???????? */
-typedef struct {
-  uint32_t csr;
-  uint8_t en;
-  uint8_t intout;
-  uint16_t pggain;
-  uint16_t adc_jdr1;
-  uint32_t adc_irq_cnt;
-  uint32_t hal_state;   /* HAL_OPAMP_StateTypeDef, READY=1 BUSY=2 */
-} DbgOpampChan_t;
-
-typedef struct {
-  DbgOpampChan_t opamp[3]; /* [0]=OPAMP1/ADC1 [1]=OPAMP3/ADC3 [2]=OPAMP4/ADC5 */
-  int16_t adc_shunt[3];      /* ? adc_read[0..2] ?? */
-  int16_t adc_reg[3];        /* ? adc_read[3..5] ??(ADC2) */
-  int32_t adc_offset[3];     /* M1 ???????? */
-  int16_t adc_zeroed[3];     /* raw[i] - offset[i]?LSB? */
-  float adc_ia;              /* M1 ????A? */
-  float adc_ib;
-  float adc_ic;
-  float foc_ia;              /* binding ?? A/B/C ?A? */
-  float foc_ib;
-  float foc_ic;
-  float foc_theta_el;        /* ?? Park/SVPWM ????rad? */
-  float foc_id;              /* ???? dq ???A? */
-  float foc_iq;
-  float foc_ud_pi;           /* PI ??/?? Ud?V? */
-  float foc_uq_pi;           /* PI ??/?? Uq?V? */
-  float foc_uq_out;          /* SVPWM 实际 Uq (V) */
-  uint8_t open_seq_phase;    /* M1_OPEN_SEQ: 0=idle Uq=0  1=run */
-  float enc_cal_add;         /* final add after pi offset (rad) */
-  float enc_cal_add_raw;     /* lock-rotor raw add before pi (rad) */
-  uint8_t phase_cal_ok;
-  uint8_t binding_loaded;
-  uint8_t phase_cal_fail;
-  /** 0=? 1=OC 2=SNR 3=PERM 4=FLASH 5=TIMEOUT */
-  uint8_t phase_cal_fail_reason;
-  uint8_t phase_cal_channels_done;
-  float phase_cal_last_snr;
-  uint8_t pwm_ch_to_phase_dbg[3];
-  uint8_t adc_rank_to_phase_dbg[3];
-  int8_t phase_sign_dbg[3];
-  /** VOFA 标定态：ch3 pwm 0..2  ch4 Δ�? 0..2  ch5 st 0=中�?? 1=�? 2=�? 4=hold */
-  uint8_t phase_cal_pwm_idx;
-  uint8_t phase_cal_delta_idx;
-  uint8_t phase_cal_st;
-  /** [pwm_ch][Δ�? 0=400/1=600/2=800][adc_rank] bipolar LSB */
-  float phase_cal_bipolar_lsb[3][3][3];
-  /** 中档 Δ 评估�? dominant rank �? |S| LSB */
-  float phase_cal_dom_s_lsb[3];
-  float id_acdc;
-  float iq_acdc;
-} DbgMon_t;
+/* DbgMon_t → debug/dbg_monitor.h */
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
@@ -145,7 +93,7 @@ typedef struct {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-extern volatile DbgMon_t dbg;
+/* extern dbg → debug/dbg_monitor.h */
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

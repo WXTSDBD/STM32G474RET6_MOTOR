@@ -1,6 +1,6 @@
 #include "board_encoder.h"
 
-#include "main.h"
+#include "hal_bridge.h"
 #include "spi.h"
 #include "stm32g4xx_ll_dma.h"
 

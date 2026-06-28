@@ -10,6 +10,7 @@ void encoder_init(encoder_t *e, const encoder_driver_t *drv, void *chip_ctx, enc
     e->chip_ctx = chip_ctx;
     e->bus = bus;
     e->profile_cb = NULL;
+    e->theta_el_offset_rad = 0.0f;
 
     if (e->drv != NULL && e->drv->init != NULL) {
         (void)e->drv->init(e);
@@ -70,6 +71,21 @@ float encoder_get_theta_el(const encoder_t *e, uint16_t raw, uint8_t pole_pairs,
 {
     (void)e;
     return as5047_raw_to_theta_el(raw, pole_pairs, offset_rad);
+}
+
+void encoder_set_theta_el_offset(encoder_t *e, float offset_rad)
+{
+    if (e != NULL) {
+        e->theta_el_offset_rad = offset_rad;
+    }
+}
+
+float encoder_get_theta_el_offset(const encoder_t *e)
+{
+    if (e == NULL) {
+        return 0.0f;
+    }
+    return e->theta_el_offset_rad;
 }
 
 void encoder_profile_notify(const encoder_t *e, enc_event_t ev, uint32_t cyccnt, uint32_t aux)

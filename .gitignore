@@ -1,0 +1,47 @@
+# --- Keil / ARM build outputs ---
+MDK-ARM/**/*.o
+MDK-ARM/**/*.d
+MDK-ARM/**/*.axf
+MDK-ARM/**/*.hex
+MDK-ARM/**/*.htm
+MDK-ARM/**/*.map
+MDK-ARM/**/*.lnp
+MDK-ARM/**/*.dep
+MDK-ARM/**/*_sct.Bak
+MDK-ARM/**/ExtDll.iex
+MDK-ARM/**/EventRecorderStub.scvd
+MDK-ARM/JLinkLog.txt
+MDK-ARM/build*.log
+MDK-ARM/build_*.log
+MDK-ARM/build_log.txt
+
+# Keil per-user UI (keep uvprojx / uvoptx if team shares debug presets)
+MDK-ARM/**/*.uvguix*
+
+# --- VOFA / bench captures ---
+VOFA+CSV/
+vofa+*.csv
+*_processed.csv
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+.mypy_cache/
+
+# One-off scratch scripts (keep tools/ident/ and named analyzers)
+tools/_*.py
+
+# Local reference material
+tools/*.pdf
+
+# --- IDE / editor ---
+.vscode/
+*.swp
+*~
+
+# --- OS ---
+Thumbs.db
+Desktop.ini
+.DS_Store

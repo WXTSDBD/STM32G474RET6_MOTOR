@@ -38,6 +38,7 @@ struct encoder {
     void *chip_ctx;
     encoder_spi_bus_t *bus;
     encoder_profile_cb_t profile_cb;
+    float theta_el_offset_rad;
 };
 
 void encoder_init(encoder_t *e, const encoder_driver_t *drv, void *chip_ctx, encoder_spi_bus_t *bus);
@@ -52,6 +53,9 @@ float encoder_get_angle(encoder_t *e, uint16_t raw);
 
 /** Single-turn electrical angle [0, 2pi) rad from raw; for SVPWM @ 20kHz. */
 float encoder_get_theta_el(const encoder_t *e, uint16_t raw, uint8_t pole_pairs, float offset_rad);
+
+void encoder_set_theta_el_offset(encoder_t *e, float offset_rad);
+float encoder_get_theta_el_offset(const encoder_t *e);
 
 void encoder_profile_notify(const encoder_t *e, enc_event_t ev, uint32_t cyccnt, uint32_t aux);
 
