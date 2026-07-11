@@ -7,7 +7,9 @@
 
 #include "tim.h"
 
+#include "dbg_monitor.h"
 #include "deadband.h"
+#include "motor_params_m1.h"
 #include "motor_phase_binding.h"
 #include "motor_trig.h"
 
@@ -102,6 +104,36 @@ float _normalizeAngle(float angle)
 static void svpwm_write_ccr(TIM_HandleTypeDef *htim, float Ta, float Tb, float Tc)
 {
     motor_phase_binding_write_ccr(htim, Ta, Tb, Tc, PWM_Period);
+}
+
+static float svpwm_duty_dev(float ta, float tb, float tc)
+{
+    float da = ta - HALF_F;
+
+    if (da < 0.0f) {
+        da = -da;
+    }
+    {
+        float db = tb - HALF_F;
+
+        if (db < 0.0f) {
+            db = -db;
+        }
+        if (db > da) {
+            da = db;
+        }
+    }
+    {
+        float dc = tc - HALF_F;
+
+        if (dc < 0.0f) {
+            dc = -dc;
+        }
+        if (dc > da) {
+            da = dc;
+        }
+    }
+    return da;
 }
 
 int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el)
@@ -261,6 +293,39 @@ static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
 
     if (apply_deadband) {
         deadband_apply_duty(ia, ib, ic, angle_el, id_dq, iq_dq, &Ta, &Tb, &Tc);
+    }
+
+    dbg.foc_duty_ta = Ta;
+    dbg.foc_duty_tb = Tb;
+    dbg.foc_duty_tc = Tc;
+    dbg.foc_svpwm_uref = Uref;
+    dbg.foc_svpwm_duty_dev = svpwm_duty_dev(Ta, Tb, Tc);
+    {
+        float dab = Ta - Tb;
+
+        if (dab < 0.0f) {
+            dab = -dab;
+        }
+        dbg.foc_svpwm_duty_ab = dab;
+    }
+    dbg.foc_svpwm_sector = (uint8_t)sector;
+    {
+        float sin_el;
+        float cos_el;
+        float va;
+        float vb;
+        float vc;
+        float valpha;
+        float vbeta;
+
+        motor_trig_sincos(angle_el, &cos_el, &sin_el);
+        va = (Ta - HALF_F) * M1_VBUS_V;
+        vb = (Tb - HALF_F) * M1_VBUS_V;
+        vc = (Tc - HALF_F) * M1_VBUS_V;
+        valpha = va;
+        vbeta = (vb - vc) * INV_SQRT3;
+        dbg.foc_vd_est = valpha * cos_el + vbeta * sin_el;
+        dbg.foc_vq_est = -valpha * sin_el + vbeta * cos_el;
     }
 
     svpwm_write_ccr(htim, Ta, Tb, Tc);

@@ -1,6 +1,8 @@
 /**
  * @file deadband_lut_baked_m1.c
- * @brief phase LUT from VOFA vofa+202606281745 (proto 3.4, geo=152, scale=1).
+ * @brief 硬编码 phase LUT（Pass0 commit 后由 parse_lut_vofa.py --emit-baked 生成）。
+ *
+ * STALE：下方数据为旧表，三步联调 ② 完成后必须 --emit-baked 覆盖本文件再跑 ③。
  */
 
 #include "deadband_lut_baked_m1.h"

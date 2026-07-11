@@ -18,8 +18,8 @@
           <Vendor>STMicroelectronics</Vendor>
           <PackID>Keil.STM32G4xx_DFP.1.5.0</PackID>
           <PackURL>https://www.keil.com/pack/</PackURL>
-          <Cpu>IRAM(0x20000000-0x2001FFFF) IROM(0x8000000-0x807FFFF)  CLOCK(8000000) FPU2 CPUTYPE("Cortex-M4") TZ</Cpu>
-          <FlashUtilSpec></FlashUtilSpec>
+          <Cpu>IRAM(0x20000000-0x2001FFFF) IROM(0x8000000-0x807EFFF)  CLOCK(8000000) FPU2 CPUTYPE("Cortex-M4") TZ</Cpu>
+          <FlashUtilSpec>STM32G47x-8x_512.FLM</FlashUtilSpec>
           <StartupFile></StartupFile>
           <FlashDriverDll></FlashDriverDll>
           <DeviceId>0</DeviceId>
@@ -249,7 +249,7 @@
               <IROM>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x80000</Size>
+                <Size>0x7f000</Size>
               </IROM>
               <XRAM>
                 <Type>0</Type>
@@ -274,7 +274,7 @@
               <OCR_RVCT4>
                 <Type>1</Type>
                 <StartAddress>0x8000000</StartAddress>
-                <Size>0x80000</Size>
+                <Size>0x7f000</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx,ARM_MATH_CM4</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../debug;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/math_tables;../Drivers/adc;../cal;../config;../motor/deadband;../motor/ident;../motor;../drivers/foc;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>../Core/Inc;../debug;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/math_tables;../Drivers/adc;../cal;../config;../motor/deadband;../motor/ident;../motor/speed_ident;../motor;../drivers/foc;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -358,16 +358,16 @@
             </VariousControls>
           </Aads>
           <LDads>
-            <umfTarg>1</umfTarg>
+            <umfTarg>0</umfTarg>
             <Ropi>0</Ropi>
             <Rwpi>0</Rwpi>
             <noStLib>0</noStLib>
             <RepFail>1</RepFail>
-            <useFile>0</useFile>
+            <useFile>1</useFile>
             <TextAddressRange></TextAddressRange>
             <DataAddressRange></DataAddressRange>
             <pXoBase></pXoBase>
-            <ScatterFile></ScatterFile>
+            <ScatterFile>STM32G474RET6_MOTOR\STM32G474RET6_MOTOR.sct</ScatterFile>
             <IncludeLibs></IncludeLibs>
             <IncludeLibsPath></IncludeLibsPath>
             <Misc></Misc>
@@ -1401,6 +1401,16 @@
               <FilePath>..\motor\motor_foc_loop.c</FilePath>
             </File>
             <File>
+              <FileName>motor_pll.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_pll.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_outer_loop.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_outer_loop.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_current.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_current.c</FilePath>
@@ -1411,14 +1421,39 @@
               <FilePath>..\motor\ident\ident_module.c</FilePath>
             </File>
             <File>
+              <FileName>rs_ident.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\ident\rs_ident.c</FilePath>
+            </File>
+            <File>
+              <FileName>ld_lq_ident.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\ident\ld_lq_ident.c</FilePath>
+            </File>
+            <File>
               <FileName>ident_flow.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\ident\ident_flow.c</FilePath>
             </File>
             <File>
+              <FileName>speed_ident_module.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\speed_ident\speed_ident_module.c</FilePath>
+            </File>
+            <File>
+              <FileName>speed_ident_flow.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\speed_ident\speed_ident_flow.c</FilePath>
+            </File>
+            <File>
               <FileName>telem_lut_dump.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\telem_lut_dump.c</FilePath>
+            </File>
+            <File>
+              <FileName>telem_ident_dump.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\telem_ident_dump.c</FilePath>
             </File>
             <File>
               <FileName>motor_startup.c</FileName>

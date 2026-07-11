@@ -73,15 +73,29 @@ void telem_lut_dump_arm(void)
     s_data_frame_idx = 0u;
 }
 
-int telem_lut_dump_next(float vals[6])
+uint8_t telem_lut_dump_is_busy(void)
+{
+    return (s_dump_state == TELEM_LUT_DUMP_HDR ||
+            s_dump_state == TELEM_LUT_DUMP_DATA ||
+            s_dump_state == TELEM_LUT_DUMP_TAIL) ?
+           1u :
+           0u;
+}
+
+int telem_lut_dump_next(float vals[], uint8_t lut_dump_ch)
 {
     const float *amps;
     const float *lut_vals;
     uint8_t len;
     uint8_t base;
     uint8_t n_data;
+    uint8_t k;
 
-    if (vals == NULL || s_dump_state == TELEM_LUT_DUMP_IDLE ||
+    if (vals == NULL || lut_dump_ch == 0u) {
+        return 0;
+    }
+
+    if (s_dump_state == TELEM_LUT_DUMP_IDLE ||
         s_dump_state == TELEM_LUT_DUMP_DONE) {
         return 0;
     }
@@ -120,6 +134,9 @@ int telem_lut_dump_next(float vals[6])
         vals[4] = M1_VOFA_LUT_PROTO_VER;
         vals[5] = 0.0f;
 #endif
+        for (k = 6u; k < lut_dump_ch; k++) {
+            vals[k] = 0.0f;
+        }
         s_dump_state = TELEM_LUT_DUMP_DATA;
         s_data_frame_idx = 0u;
         return 1;
@@ -148,6 +165,9 @@ int telem_lut_dump_next(float vals[6])
             vals[4] = (base + 2u < len) ? amps[base + 2u] : 0.0f;
             vals[5] = (base + 2u < len) ? lut_vals[base + 2u] : 0.0f;
         }
+        for (k = 6u; k < lut_dump_ch; k++) {
+            vals[k] = 0.0f;
+        }
         s_data_frame_idx++;
         if (s_data_frame_idx >= n_data) {
             s_dump_state = TELEM_LUT_DUMP_TAIL;
@@ -161,6 +181,9 @@ int telem_lut_dump_next(float vals[6])
         vals[3] = 0.0f;
         vals[4] = 0.0f;
         vals[5] = 0.0f;
+        for (k = 6u; k < lut_dump_ch; k++) {
+            vals[k] = 0.0f;
+        }
         s_dump_state = TELEM_LUT_DUMP_DONE;
         return 1;
 
@@ -175,9 +198,15 @@ void telem_lut_dump_arm(void)
 {
 }
 
-int telem_lut_dump_next(float vals[6])
+uint8_t telem_lut_dump_is_busy(void)
+{
+    return 0u;
+}
+
+int telem_lut_dump_next(float vals[], uint8_t lut_dump_ch)
 {
     (void)vals;
+    (void)lut_dump_ch;
     return 0;
 }
 

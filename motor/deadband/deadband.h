@@ -24,7 +24,7 @@ typedef enum {
     M1_DEADBAND_MODE_LUT,
 } m1_deadband_mode_t;
 
-#define M1_DEADBAND_LUT_MAX 32u
+#define M1_DEADBAND_LUT_MAX 160u
 
 typedef struct {
     m1_deadband_mode_t mode;

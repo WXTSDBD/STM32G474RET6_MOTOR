@@ -2,8 +2,7 @@
  * @file ident_module.h
  * @brief 堵转辨识激励发生器：Iq 阶跃 / Bode sin 扫频（不含 deadband 切换）。
  *
- * VOFA Bode：ch3=Iq_fb ch4=Iq_ref ch5=Uq_pi
- * open_seq 由 ident_flow 维护：60=HOLD 62/63/64=Bode 73=DONE
+ * VOFA unified12：ch4=Iq ch9=Iq_ref ch7=Uq_pi；open_seq 由 ident_flow 维护
  */
 
 #ifndef IDENT_MODULE_H
@@ -30,7 +29,11 @@ uint8_t ident_module_get_round(void);
 uint8_t ident_module_get_phase_in_round(void);
 
 float ident_module_iq_ref_cmd(void);
+float ident_module_id_ref_cmd(void);
 float ident_module_bode_freq_hz(void);
+
+/** BODE 当前频点下标 0..N-1；非 BODE 返回 0 */
+uint16_t ident_module_bode_freq_idx(void);
 
 /** STEP 段轮次；非 STEP 返回 0 */
 uint8_t ident_module_step_round(void);

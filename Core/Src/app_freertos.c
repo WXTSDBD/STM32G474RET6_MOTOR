@@ -61,6 +61,13 @@ const osThreadAttr_t UART_DMA_DEBUG_attributes = {
   .priority = (osPriority_t) osPriorityHigh,
   .stack_size = 128 * 4
 };
+/* Definitions for CLI_ShellTask */
+osThreadId_t CLI_ShellTaskHandle;
+const osThreadAttr_t CLI_ShellTask_attributes = {
+  .name = "CLI_ShellTask",
+  .priority = (osPriority_t) osPriorityLow,
+  .stack_size = 256 * 4
+};
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN FunctionPrototypes */
@@ -69,6 +76,7 @@ const osThreadAttr_t UART_DMA_DEBUG_attributes = {
 
 void StartDefaultTask(void *argument);
 void UART_DMA_DEBUG_TASK(void *argument);
+void CLI_Shell_Task(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -104,6 +112,9 @@ void MX_FREERTOS_Init(void) {
 
   /* creation of UART_DMA_DEBUG */
   UART_DMA_DEBUGHandle = osThreadNew(UART_DMA_DEBUG_TASK, NULL, &UART_DMA_DEBUG_attributes);
+
+  /* creation of CLI_ShellTask */
+  CLI_ShellTaskHandle = osThreadNew(CLI_Shell_Task, NULL, &CLI_ShellTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -149,6 +160,24 @@ __weak void UART_DMA_DEBUG_TASK(void *argument)
     osDelay(1);
   }
   /* USER CODE END UART_DMA_DEBUG_TASK */
+}
+
+/* USER CODE BEGIN Header_CLI_Shell_Task */
+/**
+* @brief Function implementing the CLI_ShellTask thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_CLI_Shell_Task */
+__weak void CLI_Shell_Task(void *argument)
+{
+  /* USER CODE BEGIN CLI_Shell_Task */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END CLI_Shell_Task */
 }
 
 /* Private application code --------------------------------------------------*/

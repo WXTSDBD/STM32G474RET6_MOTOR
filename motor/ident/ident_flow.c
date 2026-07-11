@@ -42,16 +42,46 @@ static ident_flow_db_seg_t ident_flow_db_seg_from_layout(uint8_t round,
 #endif
 }
 
+#if M1_IDENT_STEP_BANDS > 1u
+static ident_flow_db_seg_t ident_flow_step_db_seg_multi_band(uint8_t round)
+{
+    const uint8_t pair = round / (uint8_t)M1_IDENT_STEP_ROUNDS_PER_PROFILE;
+
+    return (pair % 2u == 0u) ? IDENT_FLOW_DB_OFF : IDENT_FLOW_DB_LUT;
+}
+#endif
+
+#if M1_IDENT_BODE_BANDS > 1u
+static ident_flow_db_seg_t ident_flow_bode_db_seg_multi_band(uint8_t round)
+{
+#if !M1_IDENT_BODE_LUT_ENABLE
+    (void)round;
+    return IDENT_FLOW_DB_OFF;
+#else
+    return (round % 2u == 0u) ? IDENT_FLOW_DB_OFF : IDENT_FLOW_DB_LUT;
+#endif
+}
+#endif
+
 #if M1_IDENT_IQ_STEP_ENABLE
 static ident_flow_db_seg_t ident_flow_step_db_seg(uint8_t round)
 {
+#if M1_IDENT_STEP_BANDS > 1u
+    return ident_flow_step_db_seg_multi_band(round);
+#else
     return ident_flow_db_seg_from_layout(round,
                                          (uint8_t)M1_IDENT_STEP_OFF_ROUNDS,
                                          (uint8_t)M1_IDENT_STEP_FIXED_ROUNDS);
+#endif
 }
 
 static void ident_flow_sync_dbg_step(uint8_t round)
 {
+#if M1_IDENT_STEP_BANDS > 1u
+    /* 双频段 8 轮：round 0..ROUNDS-1 → open_seq 61..(60+ROUNDS)，
+     * 与 VOFA ch3/ch4=Iq/Iq_ref 窗口对齐（勿复用 80/81 开环验收相） */
+    dbg.open_seq_phase = (uint8_t)(61u + round);
+#else
     if (round < M1_IDENT_STEP_OFF_ROUNDS) {
         dbg.open_seq_phase = (uint8_t)(61u + round);
     } else if (round < (M1_IDENT_STEP_OFF_ROUNDS + M1_IDENT_STEP_FIXED_ROUNDS)) {
@@ -61,15 +91,20 @@ static void ident_flow_sync_dbg_step(uint8_t round)
         dbg.open_seq_phase = (uint8_t)(74u + (round - M1_IDENT_STEP_OFF_ROUNDS -
                                               M1_IDENT_STEP_FIXED_ROUNDS));
     }
+#endif
 }
 #endif
 
 #if M1_IDENT_IQ_BODE_ENABLE
 static ident_flow_db_seg_t ident_flow_bode_db_seg(uint8_t round)
 {
+#if M1_IDENT_BODE_BANDS > 1u
+    return ident_flow_bode_db_seg_multi_band(round);
+#else
     return ident_flow_db_seg_from_layout(round,
                                          (uint8_t)M1_IDENT_BODE_OFF_ROUNDS,
                                          (uint8_t)M1_IDENT_BODE_FIXED_ROUNDS);
+#endif
 }
 
 static void ident_flow_sync_dbg_bode(uint8_t round)

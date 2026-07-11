@@ -346,7 +346,8 @@ static void deadband_geo_fallback_30(float id_amp, float ud_res,
 
 /**
  * 单档 Id_k（proposed merge）：
- * amp = Pass0-A（30°）max|i|；val = 双角 |u'| median（merge 不用 OUTLIER）。
+ * amp = Pass0-A（30°）max|i|；
+ * val = MERGE_VAL30_ONLY ? 仅 30° |u'| median : 双角 |u'| median。
  */
 static uint8_t deadband_geo_merge_id_bin(const deadband_geo_sample_t *samples,
                                          uint16_t n, float id_k,
@@ -366,14 +367,23 @@ static uint8_t deadband_geo_merge_id_bin(const deadband_geo_sample_t *samples,
             continue;
         }
 
-        if (deadband_geo_theta_is_pass0_a(samples[i].theta_el) &&
-            samples[i].i_abs > amp_max) {
-            amp_max = samples[i].i_abs;
+        if (deadband_geo_theta_is_pass0_a(samples[i].theta_el)) {
+            if (samples[i].i_abs > amp_max) {
+                amp_max = samples[i].i_abs;
+            }
+#if M1_DEADBAND_GEO_MERGE_VAL30_ONLY
+            if (u_n < DEADBAND_GEO_MERGE_U_MAX) {
+                u_pool[u_n] = samples[i].u_abs;
+                u_n++;
+            }
+#endif
         }
+#if !M1_DEADBAND_GEO_MERGE_VAL30_ONLY
         if (u_n < DEADBAND_GEO_MERGE_U_MAX) {
             u_pool[u_n] = samples[i].u_abs;
             u_n++;
         }
+#endif
     }
 
     if (amp_max <= 0.0f || u_n == 0u) {
@@ -460,6 +470,31 @@ static void deadband_geo_enforce_val_monotone(float *vals, uint8_t len)
     }
 }
 
+/** 合并 amp 近邻重复点（排序后），保留较大 val */
+static uint8_t deadband_geo_dedupe_plut_pairs(float *amps, float *vals, uint8_t len)
+{
+    uint8_t w = 0u;
+    uint8_t r;
+
+    if (len < 2u) {
+        return len;
+    }
+
+    for (r = 0u; r < len; r++) {
+        if (w > 0u &&
+            deadband_geo_fabsf(amps[r] - amps[w - 1u]) < M1_ID_CAL_LUT_DEDUP_AMP_EPS_A) {
+            if (vals[r] > vals[w - 1u]) {
+                vals[w - 1u] = vals[r];
+            }
+            continue;
+        }
+        amps[w] = amps[r];
+        vals[w] = vals[r];
+        w++;
+    }
+    return w;
+}
+
 /**
  * 单档 Id_k、单相：amp=Pass0-A（30°）该相 max|i|；val=双角该相 |u'| median。
  */
@@ -493,10 +528,19 @@ static uint8_t deadband_geo_merge_id_bin_phase(const deadband_geo_sample_t *samp
         if (samples[i].i_abs > amp_any) {
             amp_any = samples[i].i_abs;
         }
+#if M1_DEADBAND_GEO_MERGE_VAL30_ONLY
+        if (deadband_geo_theta_is_pass0_a(samples[i].theta_el)) {
+            if (u_n < DEADBAND_GEO_MERGE_U_MAX) {
+                u_pool[u_n] = samples[i].u_abs;
+                u_n++;
+            }
+        }
+#else
         if (u_n < DEADBAND_GEO_MERGE_U_MAX) {
             u_pool[u_n] = samples[i].u_abs;
             u_n++;
         }
+#endif
     }
 
     if (amp_max <= 0.0f) {
@@ -596,6 +640,7 @@ uint8_t deadband_geo_build_plut(const deadband_geo_sample_t *samples, uint16_t n
     }
 
     deadband_geo_sort_plut_pairs(plut_amps, plut_vals, out_len);
+    out_len = deadband_geo_dedupe_plut_pairs(plut_amps, plut_vals, out_len);
     deadband_geo_enforce_val_monotone(plut_vals, out_len);
 
     return out_len;
@@ -634,6 +679,7 @@ uint8_t deadband_geo_build_plut_cluster(const deadband_geo_sample_t *samples,
     }
 
     deadband_geo_sort_plut_pairs(plut_amps, plut_vals, out_len);
+    out_len = deadband_geo_dedupe_plut_pairs(plut_amps, plut_vals, out_len);
     deadband_geo_enforce_val_monotone(plut_vals, out_len);
 
     return out_len;

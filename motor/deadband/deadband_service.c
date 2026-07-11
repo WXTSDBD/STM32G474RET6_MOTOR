@@ -33,6 +33,8 @@ void deadband_service_boot(deadband_service_boot_t *boot)
     /* ident_module_init → deadband_service_reset_runtime */
 #elif M1_ID_LOCK_CAL_SWEEP || (M1_IDENT_ENABLE && M1_IDENT_ID_CAL_BEFORE_STEP)
     deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
+#elif M1_SPEED_IDENT_ENABLE
+    deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_DEADBAND_ENABLE && \
     M1_DEADBAND_LUT_BAKED_ENABLE
     if (!deadband_lut_baked_m1_apply()) {

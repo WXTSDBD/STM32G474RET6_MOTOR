@@ -8,6 +8,8 @@
 #ifndef TELEM_LUT_DUMP_H
 #define TELEM_LUT_DUMP_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,11 +36,14 @@ extern "C" {
 /** 标定 DONE 后调用一次，启动突发发送状态机 */
 void telem_lut_dump_arm(void);
 
+/** 1=突发进行中（HDR/DATA/TAIL），发完前勿进入 Pass1/Iq */
+uint8_t telem_lut_dump_is_busy(void);
+
 /**
- * @brief 若处于 LUT 突发，填充下一帧 6 通道
+ * @brief 若处于 LUT 突发，填充下一帧前 lut_dump_ch 个通道（通常 6）
  * @return 1=vals 有效（替代正常 telem）；0=未突发或已发完
  */
-int telem_lut_dump_next(float vals[6]);
+int telem_lut_dump_next(float vals[], uint8_t lut_dump_ch);
 
 #ifdef __cplusplus
 }

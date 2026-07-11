@@ -40,6 +40,20 @@ uint8_t deadband_flow_in_ident(void);
 static inline uint8_t deadband_flow_in_ident(void) { return 0u; }
 #endif
 
+#if M1_DEADBAND_FLOW_ONE_SHOT && M1_SPEED_LOOP_ENABLE
+/** ONE_SHOT 段②③：速度阶梯，非 Id 标定 */
+uint8_t deadband_flow_speed_ladder_active(void);
+#else
+static inline uint8_t deadband_flow_speed_ladder_active(void) { return 0u; }
+#endif
+
+#if M1_SPEED_IDENT_ENABLE
+/** 速度环阶跃/Bode 段：deadband OFF，ω_ref 由 speed_ident 产生 */
+uint8_t deadband_flow_speed_ident_active(void);
+#else
+static inline uint8_t deadband_flow_speed_ident_active(void) { return 0u; }
+#endif
+
 #ifdef __cplusplus
 }
 #endif

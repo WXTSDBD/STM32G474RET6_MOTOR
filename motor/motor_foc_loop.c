@@ -10,7 +10,10 @@
 #include "deadband_id_cal.h"
 #include "dbg_monitor.h"
 #include "foc_pi.h"
+#include "ld_lq_ident.h"
+#include "motor_current.h"
 #include "motor_params_m1.h"
+#include "speed_ident_flow.h"
 
 static float motor_foc_loop_clamp_ref(float ref)
 {
@@ -23,6 +26,7 @@ static float motor_foc_loop_clamp_ref(float ref)
     return ref;
 }
 
+#if M1_IDENT_ENABLE
 static void motor_foc_loop_pi_apply_ident_limits(motor_context_t *ctx)
 {
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
@@ -32,6 +36,7 @@ static void motor_foc_loop_pi_apply_ident_limits(motor_context_t *ctx)
                 M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                 M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
 }
+#endif
 
 void motor_foc_loop_pi_init(motor_context_t *ctx)
 {
@@ -101,16 +106,23 @@ void motor_foc_loop_dbg_id_ref(const motor_context_t *ctx)
 
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
 #if M1_ID_LOCK_CAL_SWEEP
-        if (deadband_id_cal_use_cal_pi_limits()) {
+        if (deadband_flow_speed_ladder_active()) {
+            dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+            dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+        } else if (deadband_id_cal_use_cal_pi_limits()) {
             dbg.foc_id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
+            dbg.foc_iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
         } else {
             dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+            dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
         }
 #else
         dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+        dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
 #endif
     } else {
         dbg.foc_id_ref = 0.0f;
+        dbg.foc_iq_ref = 0.0f;
     }
 }
 
@@ -154,8 +166,17 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             id_cal_pi_run = 0u;
         }
 #endif
+#if M1_LD_LQ_IDENT_ENABLE
+        if (deadband_id_cal_use_ld_lq_align_ud()) {
+            id_cal_pi_run = 0u;
+        }
+#endif
         if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq &&
-            !deadband_id_cal_bumpless_arm() && id_cal_pi_run) {
+            (!deadband_id_cal_bumpless_arm() ||
+             (deadband_id_cal_in_ld_lq_ident() && ld_lq_ident_pi_active()) ||
+             deadband_id_cal_in_rs_ident() ||
+             deadband_id_cal_in_ld_lq_pre_decay()) &&
+            id_cal_pi_run) {
             if (deadband_id_cal_in_iq_probe()) {
                 iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
 #if M1_ID_CAL_IQ_PROBE_ID_PI_ENABLE
@@ -168,7 +189,7 @@ void motor_foc_loop_tick(motor_context_t *ctx,
                 ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
             } else if (deadband_id_cal_use_cal_pi_limits()) {
                 id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
-                iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
+                iq_ref = deadband_id_cal_clamp_iq_ref(ctx->iq_ref);
                 if (startup->pi_bumpless) {
                     foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
                     foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
@@ -187,6 +208,11 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             }
         } else if (!deadband_flow_id_cal_active()) {
             /* fall through to ident PI below */
+#if M1_LD_LQ_IDENT_ENABLE && M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
+        } else if (deadband_id_cal_in_ld_lq_ident() && ld_lq_ident_inject_active()) {
+            ctx->ud_pi = ld_lq_ident_u_bias_d();
+            ctx->uq_pi = ld_lq_ident_u_bias_q();
+#endif
         } else {
             ctx->ud_pi = 0.0f;
             ctx->uq_pi = 0.0f;
@@ -210,13 +236,46 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             ctx->uq_pi = 0.0f;
         }
 #elif M1_ID_LOCK_CAL_SWEEP
+#if M1_DEADBAND_FLOW_ONE_SHOT && M1_SPEED_LOOP_ENABLE
+        if (deadband_flow_speed_ladder_active() &&
+            ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
+            id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+            iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            if (startup->pi_bumpless) {
+                foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
+                foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
+            }
+            ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
+            ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
+        } else {
+            /* Id 标定段：由 deadband_flow_id_cal_active 分支处理 */
+            ctx->ud_pi = 0.0f;
+            ctx->uq_pi = 0.0f;
+        }
+#else
         /* pure id cal: handled above when deadband_flow_id_cal_active() */
         ctx->ud_pi = 0.0f;
         ctx->uq_pi = 0.0f;
+#endif
 #else
         if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
             id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-            iq_ref = motor_foc_loop_clamp_ref(startup->iq_ref);
+#if M1_SPEED_IDENT_ENABLE
+            if (speed_ident_flow_is_armed() ||
+                ctx->outer_mode == M1_OUTER_SPEED ||
+                ctx->outer_mode == M1_OUTER_POSITION) {
+                iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            } else
+#endif
+#if M1_SPEED_LOOP_ENABLE && !M1_SPEED_IDENT_ENABLE
+            if (ctx->outer_mode == M1_OUTER_SPEED ||
+                ctx->outer_mode == M1_OUTER_POSITION) {
+                iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            } else
+#endif
+            {
+                iq_ref = motor_foc_loop_clamp_ref(startup->iq_ref);
+            }
             if (startup->pi_bumpless) {
                 foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
                 foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
@@ -237,8 +296,37 @@ void motor_foc_loop_tick(motor_context_t *ctx,
         ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
 #endif
         ctx->uq_pi = 0.0f;
+    } else if (deadband_id_cal_use_post_ident_hold_ud()) {
+        ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
+        ctx->uq_pi = 0.0f;
     }
 #endif
+
+#if M1_FOC_ROTATION_FF_ENABLE && M1_SPEED_LOOP_ENABLE
+    if ((ctx->outer_mode == M1_OUTER_SPEED ||
+         ctx->outer_mode == M1_OUTER_POSITION) &&
+        ctx->mode == M1_CTRL_CURRENT_LOOP &&
+        !startup->use_fixed_uq) {
+#if M1_ID_LOCK_CAL_SWEEP
+        if (!deadband_flow_id_cal_active())
+#endif
+        {
+            float omega_mech_rpm;
+            float omega_e;
+
+#if M1_PLL_ENABLE
+            omega_mech_rpm = motor_current_get_pll_omega_mech_rpm();
+#else
+            omega_mech_rpm = 0.0f;
+#endif
+            /* ω_e [rad/s] = ω_mech [rpm] × 2π/60 × pole_pairs */
+            omega_e = omega_mech_rpm * (0.10471975512f * (float)M1_POLE_PAIRS);
+            ctx->ud_pi += M1_RS_OHM * ctx->id_ref - omega_e * M1_LD_H * ctx->iq_ref;
+            ctx->uq_pi += M1_RS_OHM * ctx->iq_ref + omega_e * M1_LQ_H * ctx->id_ref;
+        }
+    }
+#endif
+
     dbg.foc_ud_pi = ctx->ud_pi;
     dbg.foc_uq_pi = startup->use_fixed_uq ? startup->uq_out : ctx->uq_pi;
 

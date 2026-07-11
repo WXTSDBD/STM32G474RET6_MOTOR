@@ -526,9 +526,20 @@ static void deadband_cal_geo_push(float theta_el, float id_amp, float ud_val)
 
     deadband_geo_dlut_point(theta_el, id_amp, ud_val, pts);
     for (p = 0u; p < 3u; p++) {
+        if (M1_ID_CAL_GEO_U_MIN_V > 0.0f &&
+            fabsf(theta_el - M1_ID_CAL_THETA_PASS0_B_RAD) < M1_ID_CAL_THETA_MATCH_RAD &&
+            pts[p].u_abs < M1_ID_CAL_GEO_U_MIN_V) {
+            continue;
+        }
+#if M1_DEADBAND_I_ZERO_DISABLE
+        if (pts[p].i_abs <= 0.0f) {
+            continue;
+        }
+#else
         if (pts[p].i_abs < M1_DEADBAND_I_ZERO_A) {
             continue;
         }
+#endif
         if (s_geo_sample_count >= M1_DEADBAND_GEO_SAMPLE_MAX) {
             return;
         }
@@ -555,7 +566,12 @@ bool deadband_cal_capture_at(float id_a, float ud_pi_v, float id_ref_a,
     }
 
     id_amp = fabsf(id_a);
+#if !M1_DEADBAND_I_ZERO_DISABLE
     if (id_amp < M1_DEADBAND_I_ZERO_A) {
+        return false;
+    }
+#endif
+    if (id_amp < M1_ID_CAL_I_MIN_A) {
         return false;
     }
 

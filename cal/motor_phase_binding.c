@@ -4,6 +4,7 @@
 
 #include "motor_phase_binding.h"
 
+#include "dbg_monitor.h"
 #include "pwm_port.h"
 
 #include <stddef.h>
@@ -155,5 +156,8 @@ void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
     ccr1 = (uint32_t)(duty_phys[0] * (float)pwm_period);
     ccr2 = (uint32_t)(duty_phys[1] * (float)pwm_period);
     ccr3 = (uint32_t)(duty_phys[2] * (float)pwm_period);
+    dbg.foc_pwm_ccr1 = (float)ccr1;
+    dbg.foc_pwm_ccr2 = (float)ccr2;
+    dbg.foc_pwm_ccr3 = (float)ccr3;
     pwm_port_set_duty3(&port, ccr1, ccr2, ccr3);
 }

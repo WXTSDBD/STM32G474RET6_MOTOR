@@ -31,6 +31,15 @@ void foc_pi_bumpless(foc_pi_t *pi, float u_prev, float ref, float fb);
 
 float foc_pi_step(foc_pi_t *pi, float ref, float fb);
 
+/** 2-DOF：积分用 (ref−fb)，比例用 (β·ref−fb)；β=1 等同 foc_pi_step */
+float foc_pi_step_beta(foc_pi_t *pi, float ref, float fb, float beta);
+
+void foc_pi_bumpless_beta(foc_pi_t *pi, float u_prev, float ref, float fb, float beta);
+
+/** hold_i=1：冻结积分（输出仍可非零）；用于 SPEED_IDENT PLL settle */
+float foc_pi_step_beta_hold_i(foc_pi_t *pi, float ref, float fb, float beta,
+                              uint8_t hold_i);
+
 #ifdef __cplusplus
 }
 #endif

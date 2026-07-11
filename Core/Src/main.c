@@ -76,7 +76,7 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/* M1 20kHz 控制节拍�? ADC2 JEOC；TIM8 �? PWM+CH4 触发，无 Update IT */
+/* M1 20kHz 控制节拍�?? ADC2 JEOC；TIM8 �?? PWM+CH4 触发，无 Update IT */
 #define BRINGUP_ADC_TEST 1
 
 uint16_t A,B;
@@ -118,7 +118,7 @@ static void dbg_snapshot_phase_binding(void)
   }
 }
 
-/** 2325 Test3 sign；rank 排列随 M1_ADC_RANK_SWAP_IAIC 与 adc.c 注入顺序一致 */
+/** 2325 Test3 sign；rank 排列�? M1_ADC_RANK_SWAP_IAIC �? adc.c 注入顺序�?�? */
 static void m1_apply_binding_2325(void)
 {
   motor_phase_binding_t b;
@@ -235,7 +235,7 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
 
-  /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+�? PWM 运行后进�? */
+  /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+�?? PWM 运行后进�?? */
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
@@ -477,7 +477,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  /* M1 控制已迁�? ADC2 JEOC；TIM8 �? Update IT */
+  /* M1 控制已迁�?? ADC2 JEOC；TIM8 �?? Update IT */
   /* USER CODE END Callback 1 */
 }
 
