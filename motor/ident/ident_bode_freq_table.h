@@ -2,9 +2,9 @@
 #ifndef IDENT_BODE_FREQ_TABLE_H
 #define IDENT_BODE_FREQ_TABLE_H
 
-/* N=57 f_max=2559.1972 Hz split=500 sweep=17.927s (20 cyc/f lo, T_obs_hi=100ms f>=500) */
-#define IDENT_BODE_FREQ_COUNT  (57u)
-#define IDENT_BODE_SWEEP_S     (17.927069f)
+/* N=69 f_max=5149.6076 Hz split=500 sweep=19.127s (20 cyc/f lo, T_obs_hi=100ms f>=500) */
+#define IDENT_BODE_FREQ_COUNT  (69u)
+#define IDENT_BODE_SWEEP_S     (19.127069f)
 
 static const float s_bode_freq_table[] = {
     10.0000f, 11.5000f, 13.2250f, 15.2087f,
@@ -21,7 +21,10 @@ static const float s_bode_freq_table[] = {
     1271.8426f, 1348.1532f, 1429.0424f, 1514.7849f,
     1605.6720f, 1702.0123f, 1804.1331f, 1912.3810f,
     2027.1239f, 2148.7513f, 2277.6764f, 2414.3370f,
-    2559.1972f
+    2559.1972f, 2712.7491f, 2875.5140f, 3048.0449f,
+    3230.9275f, 3424.7832f, 3630.2702f, 3848.0864f,
+    4078.9716f, 4323.7099f, 4583.1325f, 4858.1204f,
+    5149.6076f
 };
 
 #endif /* IDENT_BODE_FREQ_TABLE_H */

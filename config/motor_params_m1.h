@@ -128,15 +128,19 @@
 #define M1_BRINGUP_MODE_OPEN_UD_LUT_VERIFY    12
 
 /*
- * 速度环收尾轻载试：SPEED_IDENT + ω_ref 斜坡（无 Pass0/VASI/建表）
- * 恢复辨识：改回 M1_BRINGUP_MODE_ID_CAL_PASS0_BUILD + M1_DB_BRINGUP_PASS0
+ * 联调实例选择：只改 config/bringup_active.h
+ * Id Bode 签收配方：config/profiles/m1_bode_id_fc1000.profile.h
  */
-#ifndef M1_BRINGUP_MODE
-#define M1_BRINGUP_MODE  M1_BRINGUP_MODE_SPEED_IDENT
-#endif
-/** 实验1 签收配置：500 rpm/s 双向斜坡，抑减速硬阶跃 */
+#include "bringup_active.h"
+#if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
+/** 实验1 签收：ω ramp 500 rpm/s（仅 SPEED_IDENT） */
+#ifndef M1_SPEED_OMEGA_RAMP_ENABLE
 #define M1_SPEED_OMEGA_RAMP_ENABLE      1
+#endif
+#ifndef M1_SPEED_OMEGA_RAMP_RPM_S
 #define M1_SPEED_OMEGA_RAMP_RPM_S       500.0f
+#endif
+#endif
 
 /* --- E1 速度环 @ 2 kHz（20 kHz 分频；限幅宏见 M1_I_REF_ABS_MAX 之后）--- */
 #ifndef M1_SPEED_LOOP_ENABLE
@@ -1070,80 +1074,8 @@
 #define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
-/** 堵转 Id Bode：Iq=0；HOLD 2s → OFF-lo 0.25A → OFF-hi 1.25A；VOFA×6 ch3=Id ch4=Id_ref ch5=f_hz */
-#define M1_ID_LOCK_CAL_SWEEP            0
-#define M1_IDENT_ID_CAL_BEFORE_STEP     0
-#define M1_IDENT_ENABLE                 1
-#define M1_IDENT_IQ_STEP_ENABLE         0
-#define M1_IDENT_IQ_BODE_ENABLE         1
-#undef M1_IDENT_STEP_ROUNDS
-#define M1_IDENT_STEP_ROUNDS            0u
-#undef M1_IDENT_STEP_OFF_ROUNDS
-#define M1_IDENT_STEP_OFF_ROUNDS        0u
-#undef M1_IDENT_STEP_FIXED_ROUNDS
-#define M1_IDENT_STEP_FIXED_ROUNDS      0u
-#define M1_RS_IDENT_ENABLE              0
-#define M1_LD_LQ_IDENT_ENABLE           0
-#define M1_SPEED_IDENT_ENABLE           0
-#undef M1_IDENT_BODE_LUT_ENABLE
-#define M1_IDENT_BODE_LUT_ENABLE        0
-#undef M1_IDENT_BODE_BANDS
-#define M1_IDENT_BODE_BANDS             2u
-#undef M1_IDENT_BODE_ROUNDS
-#define M1_IDENT_BODE_ROUNDS            2u
-#undef M1_IDENT_BODE_OFF_ROUNDS
-#define M1_IDENT_BODE_OFF_ROUNDS        2u
-#undef M1_IDENT_BODE_FIXED_ROUNDS
-#define M1_IDENT_BODE_FIXED_ROUNDS      0u
-#undef M1_IDENT_BODE_I_BIAS_A
-#define M1_IDENT_BODE_I_BIAS_A          0.25f
-#undef M1_IDENT_BODE_I_AMP_A
-#define M1_IDENT_BODE_I_AMP_A           0.05f
-#undef M1_IDENT_BODE_I_BIAS_HI_A
-#define M1_IDENT_BODE_I_BIAS_HI_A       1.25f
-#undef M1_IDENT_BODE_I_AMP_HI_A
-#define M1_IDENT_BODE_I_AMP_HI_A        0.10f
-#undef M1_IDENT_BODE_CYCLES_PER_FREQ
-#define M1_IDENT_BODE_CYCLES_PER_FREQ   20.0f
-#undef M1_IDENT_BODE_CYCLES_HI
-#define M1_IDENT_BODE_CYCLES_HI         50.0f
-#undef M1_IDENT_BODE_F0_HZ
-#define M1_IDENT_BODE_F0_HZ             10.0f
-#undef M1_IDENT_BODE_F1_HZ
-#define M1_IDENT_BODE_F1_HZ             2500.0f
-#undef M1_IDENT_BODE_F_RATIO
-#define M1_IDENT_BODE_F_RATIO           1.15f
-#undef M1_IDENT_BODE_F_SPLIT_HZ
-#define M1_IDENT_BODE_F_SPLIT_HZ        500.0f
-#undef M1_IDENT_BODE_USE_T_OBS_HI
-#define M1_IDENT_BODE_USE_T_OBS_HI      1
-#undef M1_IDENT_BODE_T_OBS_HI_S
-#define M1_IDENT_BODE_T_OBS_HI_S        0.1f
-#undef M1_IDENT_BODE_F_RATIO_HI
-#define M1_IDENT_BODE_F_RATIO_HI        1.06f
-#undef M1_IDENT_BODE_AXIS_ID
-#define M1_IDENT_BODE_AXIS_ID           1
-#undef M1_IDENT_FIX_THETA_ENABLE
-#define M1_IDENT_FIX_THETA_ENABLE       1
-#undef M1_IDENT_THETA_EL_RAD
-#define M1_IDENT_THETA_EL_RAD           M1_ID_CAL_THETA_EL_RAD
-#undef M1_IDENT_HOLD_S
-#define M1_IDENT_HOLD_S                 2.0f
-#undef M1_IDENT_OVERRIDE_LIMITS
-#define M1_IDENT_OVERRIDE_LIMITS        1
-#define M1_DEADBAND_LUT_BAKED_ENABLE    0
-#define M1_DEADBAND_ENABLE              1
-#undef M1_VOFA_UNIFIED_12CH
-#define M1_VOFA_UNIFIED_12CH            0
-#undef M1_TELEM_BRINGUP_K
-#define M1_TELEM_BRINGUP_K              6u
-#undef M1_TELEM_BRINGUP_DECIMATION
-#define M1_TELEM_BRINGUP_DECIMATION     1u
-#undef M1_VOFA_LUT_DUMP_ENABLE
-#define M1_VOFA_LUT_DUMP_ENABLE         0
-#undef M1_CLOSURE_BRINGUP
-#define M1_CLOSURE_BRINGUP              0
-#define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
+/** Id Bode 签收：参数见 profiles/m1_bode_id_fc1000.profile.h（fc=1000，F1=5kHz） */
+#include "profiles/m1_bode_id_fc1000.profile.h"
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
 /**
