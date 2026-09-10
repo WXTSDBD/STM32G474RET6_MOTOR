@@ -76,18 +76,22 @@
 
 **只改** `config/bringup_active.h`（选 `M1_BRINGUP_MODE`）。
 
-Id Bode 签收配方（fc=1000、69 点→5 kHz）在：
-
-`config/profiles/m1_bode_id_fc1000.profile.h`
+| 实验 | 模式 | 附加 |
+|------|------|------|
+| Id Bode 签收 | `BODE_ID_OFF_ONLY` | `profiles/m1_bode_id_fc1000.profile.h` |
+| 有感 1000 rpm 估 ψf | `SPEED_IDENT` | `M1_USE_FLUX_ID_PROFILE=1` → `m1_flux_id_1000rpm.profile.h` |
+| 有感 1000 rpm + Veq 旁路 | `SPEED_IDENT` | `M1_USE_OBS_VEQ_PROFILE=1` → `m1_obs_veq_1000rpm.profile.h`（FLUX 须 0） |
+| 日常 | `NORMAL` | FLUX/OBS 均 0 |
 
 ```c
-/* bringup_active.h 示例 */
-#define M1_BRINGUP_MODE  M1_BRINGUP_MODE_NORMAL
-#define M1_BRINGUP_MODE  M1_BRINGUP_MODE_BODE_ID_OFF_ONLY  /* Id Bode */
-#define M1_BRINGUP_MODE  M1_BRINGUP_MODE_BODE_OFF_ONLY     /* Iq Bode */
+/* bringup_active.h 示例：Veq 旁路 */
 #define M1_BRINGUP_MODE  M1_BRINGUP_MODE_SPEED_IDENT
+#define M1_USE_FLUX_ID_PROFILE  0
+#define M1_USE_OBS_VEQ_PROFILE  1
 ```
 
+VOFA OBS_VEQ×12（D=2→10 kHz）：iα iβ uα uβ eα eβ θ̂ θenc θerr \|e\| ωe ψinst。  
+0910 报告：[总结_OBS_VEQ旁路观测_2026-09-10](总结_OBS_VEQ旁路观测_2026-09-10.md)（CSV 须配 `分析报告_OBS_VEQ_<csv>_日期.md`）。
 ---
 
 ## Keil Target（规划）

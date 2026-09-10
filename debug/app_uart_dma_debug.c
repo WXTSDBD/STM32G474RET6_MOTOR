@@ -10,7 +10,7 @@
  *   ch0=Ia ch1=Ib ch2=Ic ch3=Id ch4=Iq ch5=θ_el
  *   M1_VOFA_IDENT_DUTY_12CH=1：ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq
  *     VASI seq57：ch8=grid ch9=proc ch10=L_uH（ch6/7 仍为 duty→dq 端电压）
- *   M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out；ch8–11 见 M1_VOFA_PLL/SPEED
+ *   M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out；ch8–11 见 M1_VOFA_MIT/SPEED/PLL
  * 相序/增益诊断（phase_cal）：ch0–2=adc ch3=pwm_idx ch4=Δ档 ch5=cal_st（仅标定态）
  * 正常运行（非 bringup unified）：ch0–2=adc ch3=Iq ch4=Id ch5=θ
  *
@@ -21,7 +21,11 @@
  *   enc_dma_seq_delta     kick→FRAME2 完成（含硬件等待，非纯 CPU）
  *   enc_total_delta       isr_delta + enc_dma_cpu_delta（整拍参考）
  *
- * VOFA+：6000000，JustFloat×12，△t = D/20000 s（D=M1_TELEM_BRINGUP_DECIMATION，默认 2→10kHz）
+ * VOFA+：6000000，JustFloat×K，△t = D/20000 s（D=M1_TELEM_BRINGUP_DECIMATION）
+ * 磁链估（M1_VOFA_FLUX_ID_6CH）：ch0=Id ch1=Iq ch2=Ud ch3=Uq ch4=ω_pll ch5=ω_ref
+ * Veq 旁路（M1_VOFA_OBS_VEQ_12CH）：iα iβ uα uβ eα eβ θ̂ θenc θerr |e| ωe ψinst
+ * SMO 旁路+耗时（M1_VOFA_OBS_SMO_12CH）：
+ *   iα iβ err_veq err_smo θenc ωe |e|_s |e|_v isr_delta foc_delta obs_delta enc_dma_cpu
  */
 
 #include "app_uart_dma_debug.h"
@@ -293,6 +297,24 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
 #else
     vals[10] = dbg.outer_iq_ref;
 #endif
+#if M1_VOFA_CH11_ENC_RAW
+    vals[11] = dbg.enc_raw;   /* AS5047 raw 0..16383；对照 ch5=θ_el */
+#else
+    vals[11] = (float)dbg.open_seq_phase;
+#endif
+#elif M1_POS_MIT_COMBO_ENABLE && M1_VOFA_MIT_CH8_11 && M1_PLL_ENABLE
+    vals[8] = dbg.pll_omega_mech_rpm;
+    vals[9] = dbg.outer_theta_err_rad;
+    vals[10] = dbg.outer_iq_ref;
+    vals[11] = (float)dbg.open_seq_phase;
+#elif M1_POS_MIT_COMBO_ENABLE && M1_PLL_ENABLE
+    vals[8] = dbg.outer_theta_err_rad;
+    vals[9] = dbg.outer_theta_mech_rad;
+    if (dbg.outer_mode == (uint8_t)M1_OUTER_TORQUE) {
+        vals[10] = dbg.outer_iq_ref;
+    } else {
+        vals[10] = dbg.outer_theta_ref_rad;
+    }
     vals[11] = (float)dbg.open_seq_phase;
 #elif M1_SPEED_LOOP_ENABLE && M1_VOFA_SPEED_CH8_11 && M1_PLL_ENABLE
     if (dbg.outer_mode == (uint8_t)M1_OUTER_POSITION) {
@@ -401,6 +423,19 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
         vals[k] = 0.0f;
     }
 
+#ifndef M1_VOFA_FLUX_ID_6CH
+#define M1_VOFA_FLUX_ID_6CH          0
+#endif
+#ifndef M1_VOFA_CH11_ENC_RAW
+#define M1_VOFA_CH11_ENC_RAW         0
+#endif
+#ifndef M1_VOFA_OBS_VEQ_12CH
+#define M1_VOFA_OBS_VEQ_12CH         0
+#endif
+#ifndef M1_VOFA_OBS_SMO_12CH
+#define M1_VOFA_OBS_SMO_12CH         0
+#endif
+
 #if M1_VOFA_IDENT_DUMP_ENABLE
     if (telem_ident_dump_next(vals, TELEM_BRINGUP_K)) {
         telem_write_frame_vals(buf, offset, vals);
@@ -412,6 +447,54 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
         telem_write_frame_vals(buf, offset, vals);
         return;
     }
+#endif
+
+#if M1_VOFA_OBS_SMO_12CH && (TELEM_BRINGUP_K >= 12u)
+    /* 保留验收量 + DWT cycle（float 显示；isr 为上一拍完整 tick） */
+    vals[0] = dbg.obs_i_alpha;
+    vals[1] = dbg.obs_i_beta;
+    vals[2] = dbg.obs_theta_err;       /* Veq err */
+    vals[3] = dbg.obs_smo_theta_err;   /* SMO err — 主验收 */
+    vals[4] = dbg.foc_theta_el;
+    vals[5] = dbg.obs_omega_el;
+    vals[6] = dbg.obs_smo_emag;
+    vals[7] = dbg.obs_emag;           /* Veq |e| */
+    vals[8] = (float)g_telem_dbg.isr_delta;
+    vals[9] = (float)g_telem_dbg.foc_delta;
+    vals[10] = (float)g_telem_dbg.obs_delta;
+    vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
+    telem_write_frame_vals(buf, offset, vals);
+    return;
+#endif
+
+#if M1_VOFA_OBS_VEQ_12CH && (TELEM_BRINGUP_K >= 12u)
+    /* Veq 旁路：iαβ uαβ eαβ θ̂ θenc θerr |e| ωe ψinst */
+    vals[0] = dbg.obs_i_alpha;
+    vals[1] = dbg.obs_i_beta;
+    vals[2] = dbg.obs_u_alpha;
+    vals[3] = dbg.obs_u_beta;
+    vals[4] = dbg.obs_e_alpha;
+    vals[5] = dbg.obs_e_beta;
+    vals[6] = dbg.obs_theta_hat;
+    vals[7] = dbg.foc_theta_el;
+    vals[8] = dbg.obs_theta_err;
+    vals[9] = dbg.obs_emag;
+    vals[10] = dbg.obs_omega_el;
+    vals[11] = dbg.obs_psi_inst;
+    telem_write_frame_vals(buf, offset, vals);
+    return;
+#endif
+
+#if M1_VOFA_FLUX_ID_6CH && (TELEM_BRINGUP_K >= 6u)
+    /* 有感稳速估 ψf：Id Iq Ud Uq ω_pll ω_ref @ D=5 → 4 kHz */
+    vals[0] = dbg.foc_id;
+    vals[1] = dbg.foc_iq;
+    vals[2] = dbg.foc_ud_out;
+    vals[3] = dbg.foc_uq_out;
+    vals[4] = dbg.pll_omega_mech_rpm;
+    vals[5] = dbg.outer_omega_ref;
+    telem_write_frame_vals(buf, offset, vals);
+    return;
 #endif
 
     if (g_phase_cal_active || g_cal_hold) {
@@ -640,6 +723,8 @@ void telem_bringup_init(void)
     g_telem_dbg.isr_t1 = 0u;
     g_telem_dbg.cyccnt_end = 0u;
     g_telem_dbg.isr_delta = 0u;
+    g_telem_dbg.foc_delta = 0u;
+    g_telem_dbg.obs_delta = 0u;
     g_telem_dbg.ch1_wire = 0u;
     g_telem_dbg.ch2_wire = 0u;
     g_telem_dbg.tick_total = 0u;

@@ -22,6 +22,10 @@ typedef struct {
     volatile uint32_t isr_t1;
     volatile uint32_t cyccnt_end;
     volatile uint32_t isr_delta;
+    /** FOC 核心（Clarke→Park→PI→SVPWM，不含观测器） */
+    volatile uint32_t foc_delta;
+    /** Veq/SMO 旁路观测器段 */
+    volatile uint32_t obs_delta;
     volatile uint32_t ch1_wire;
     volatile uint32_t ch2_wire;
 

@@ -1406,6 +1406,16 @@
               <FilePath>..\motor\motor_pll.c</FilePath>
             </File>
             <File>
+              <FileName>emf_veq.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\emf_veq.c</FilePath>
+            </File>
+            <File>
+              <FileName>emf_smo.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\emf_smo.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_outer_loop.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_outer_loop.c</FilePath>

@@ -103,7 +103,7 @@
 /** 上电 deadband OFF → 速度环阶跃（无 Bode，带载测） */
 #define M1_DB_BRINGUP_SPEED_IDENT       4
 #ifndef M1_DEADBAND_BRINGUP_PHASE
-#define M1_DEADBAND_BRINGUP_PHASE       M1_DB_BRINGUP_SPEED_IDENT
+#define M1_DEADBAND_BRINGUP_PHASE       M1_DB_BRINGUP_SPEED_OFF
 #endif
 #if M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_ONE_SHOT
 #define M1_DEADBAND_FLOW_ONE_SHOT         1
@@ -129,9 +129,31 @@
 
 /*
  * 联调实例选择：只改 config/bringup_active.h
- * Id Bode 签收配方：config/profiles/m1_bode_id_fc1000.profile.h
+ * Bode 配方：config/profiles/m1_bode_id_fc1000.profile.h
+ * 磁链稳速：config/profiles/m1_flux_id_1000rpm.profile.h
  */
 #include "bringup_active.h"
+#ifndef M1_USE_FLUX_ID_PROFILE
+#define M1_USE_FLUX_ID_PROFILE          0
+#endif
+#ifndef M1_USE_OBS_VEQ_PROFILE
+#define M1_USE_OBS_VEQ_PROFILE          0
+#endif
+#if (M1_USE_FLUX_ID_PROFILE != 0) && (M1_USE_OBS_VEQ_PROFILE != 0)
+#error "M1_USE_FLUX_ID_PROFILE and M1_USE_OBS_VEQ_PROFILE are mutually exclusive"
+#endif
+#ifndef M1_EMF_VEQ_ENABLE
+#define M1_EMF_VEQ_ENABLE               0
+#endif
+#ifndef M1_EMF_SMO_ENABLE
+#define M1_EMF_SMO_ENABLE               0
+#endif
+#ifndef M1_VOFA_OBS_VEQ_12CH
+#define M1_VOFA_OBS_VEQ_12CH            0
+#endif
+#ifndef M1_VOFA_OBS_SMO_12CH
+#define M1_VOFA_OBS_SMO_12CH            0
+#endif
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
 /** 实验1 签收：ω ramp 500 rpm/s（仅 SPEED_IDENT） */
 #ifndef M1_SPEED_OMEGA_RAMP_ENABLE
@@ -239,16 +261,16 @@
 #endif
 #if M1_POS_ERR_HYST_ENABLE
 #ifndef M1_POS_ERR_HYST_ENTER_RAD
-#define M1_POS_ERR_HYST_ENTER_RAD       0.0052360f  /* 0.3° 进入 */
+#define M1_POS_ERR_HYST_ENTER_RAD       0.0087266f  /* 0.5° 进入停驱区 */
 #endif
 #ifndef M1_POS_ERR_HYST_EXIT_RAD
-#define M1_POS_ERR_HYST_EXIT_RAD        0.0087266f  /* 0.5° 退出（> ENTER） */
+#define M1_POS_ERR_HYST_EXIT_RAD        0.0174533f  /* 1.0° 退出（> ENTER） */
 #endif
 #ifndef M1_POS_ERR_HYST_FREEZE_SPEED_PI
 #define M1_POS_ERR_HYST_FREEZE_SPEED_PI 1
 #endif
 #endif /* M1_POS_ERR_HYST_ENABLE */
-/** 位置 P 相对 2 kHz 外环再分频；1=2 kHz，4=500 Hz；速度 PI 内环仍 2 kHz */
+/** 位置 P 分频：外环 2kHz / DECIM → P 更新率。4=500Hz（相对速度 Fn≈20Hz 足够）；仍抖可试 10=200Hz */
 #ifndef M1_POS_DECIM
 #define M1_POS_DECIM                      4u
 #endif
@@ -260,9 +282,35 @@
 #ifndef M1_POS_LOOP_BOOT
 #define M1_POS_LOOP_BOOT                0
 #endif
+/** 1=位置 26 档 + MIT 同轨迹联测（NORMAL+SPEED_OFF 默认开） */
+#ifndef M1_POS_MIT_COMBO_ENABLE
+#if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && \
+    (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF)
+#define M1_POS_MIT_COMBO_ENABLE         1
+#else
+#define M1_POS_MIT_COMBO_ENABLE         0
+#endif
+#endif
+
+/** 1=combo 含位置 26 档；0=仅 MIT 同轨迹验收（暂停位置环） */
+#ifndef M1_POS_MIT_COMBO_POS_ENABLE
+#define M1_POS_MIT_COMBO_POS_ENABLE         0
+#endif
+
+/** 1=MIT 验收 VOFA ch8=ω_pll ch9=θ_err ch10=Iq_ref ch11=open_seq（随 MIT-only 默认开） */
+#ifndef M1_VOFA_MIT_CH8_11
+#if M1_POS_MIT_COMBO_ENABLE && !M1_POS_MIT_COMBO_POS_ENABLE
+#define M1_VOFA_MIT_CH8_11                  1
+#else
+#define M1_VOFA_MIT_CH8_11                  0
+#endif
+#endif
+
 /** 1=上电 POSITION 阶跃序列（见 M1_POS_STEP_*）；与 M1_SPEED_REVERSAL_TEST 互斥 */
 #ifndef M1_POS_STEP_TEST_ENABLE
-#if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && \
+#if M1_POS_MIT_COMBO_ENABLE
+#define M1_POS_STEP_TEST_ENABLE         1
+#elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && \
     (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF)
 #define M1_POS_STEP_TEST_ENABLE         1
 #else
@@ -288,9 +336,9 @@
 #ifndef M1_POS_STEP_SEQ_BASE
 #define M1_POS_STEP_SEQ_BASE            229u    /* uint8：229..254=各档（26 档），255=done */
 #endif
-/** 首版整定：Kp=60 rpm/rad，ω 限 250 rpm（比默认 80/400 更柔） */
+/** 阶跃联调：Kp 30→15 抑 P+滞环抖；ω_max 暂保持 250 rpm */
 #ifndef M1_POS_STEP_KP_RPM_PER_RAD
-#define M1_POS_STEP_KP_RPM_PER_RAD      30.0f
+#define M1_POS_STEP_KP_RPM_PER_RAD      15.0f
 #endif
 #ifndef M1_POS_STEP_OMEGA_MAX_RPM
 #define M1_POS_STEP_OMEGA_MAX_RPM       250.0f
@@ -299,7 +347,56 @@
 #define M1_POS_KP_RPM_PER_RAD           M1_POS_STEP_KP_RPM_PER_RAD
 #undef M1_POS_OMEGA_MAX_RPM
 #define M1_POS_OMEGA_MAX_RPM            M1_POS_STEP_OMEGA_MAX_RPM
+#ifndef M1_POS_BOOT_SETTLE_S
+#define M1_POS_BOOT_SETTLE_S            0.0f    /* 0=关；settle 曾致 ω_ramp 与 P 脱节 */
+#endif
 #endif /* M1_POS_STEP_TEST_ENABLE */
+
+#if M1_POS_MIT_COMBO_ENABLE
+/** MIT 段 open_seq 130..155=各档，156=done（须 <256：dbg.open_seq 为 uint8） */
+#ifndef M1_MIT_STEP_SEQ_BASE
+#define M1_MIT_STEP_SEQ_BASE            130u
+#endif
+/** τ = Kp·(θ_des−θ) + Kd·(ω_des−ω) + τ_ff；ω_des=τ_ff=0 */
+#ifndef M1_MIT_KP_NM_PER_RAD
+#define M1_MIT_KP_NM_PER_RAD            10.0f
+#endif
+#ifndef M1_MIT_KD_NM_S_PER_RAD
+#define M1_MIT_KD_NM_S_PER_RAD          1.0f
+#endif
+#ifndef M1_MIT_OMEGA_DES_RAD_S
+#define M1_MIT_OMEGA_DES_RAD_S          0.0f
+#endif
+#ifndef M1_MIT_TAU_FF_NM
+#define M1_MIT_TAU_FF_NM                0.0f
+#endif
+/** |τ| 限幅后再 /Kt，避免 Kp 过大时 iq_ref 顶 ±I_max 振荡 */
+#ifndef M1_MIT_TAU_ABS_MAX_NM
+#define M1_MIT_TAU_ABS_MAX_NM           0.12f
+#endif
+/** MIT iq_cmd 斜坡 [A/s]；POS→MIT 切换时抑 ±I_max 硬阶跃 */
+#ifndef M1_MIT_IQ_SLEW_A_PER_S
+#define M1_MIT_IQ_SLEW_A_PER_S          40.0f
+#endif
+/** 力矩→电流：τ [Nm] = Kt·Iq；待 Kt 标定后可改 */
+#ifndef M1_MIT_KT_NM_A
+#define M1_MIT_KT_NM_A                  0.025f
+#endif
+#if (M1_MIT_STEP_SEQ_BASE + 26u) > 255u
+#error "M1_MIT_STEP_SEQ_BASE + 26 steps must fit uint8 open_seq (<256)"
+#endif
+#if M1_POS_MIT_COMBO_ENABLE && M1_SPEED_IDENT_ENABLE
+#error "M1_POS_MIT_COMBO_ENABLE and M1_SPEED_IDENT_ENABLE are mutually exclusive"
+#endif
+#endif /* M1_POS_MIT_COMBO_ENABLE */
+
+#if M1_POS_STEP_TEST_ENABLE && (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL)
+#undef M1_SPEED_OMEGA_RAMP_ENABLE
+#define M1_SPEED_OMEGA_RAMP_ENABLE      1
+#undef M1_SPEED_OMEGA_RAMP_RPM_S
+#define M1_SPEED_OMEGA_RAMP_RPM_S       200.0f
+#endif
+
 #endif /* M1_POS_LOOP_ENABLE */
 
 /**
@@ -379,12 +476,16 @@
 #define M1_FOC_ROTATION_FF_ENABLE       0
 #endif
 
-/** VOFA JustFloat 通道数与分频（TIM1 20kHz 基准，D=2 → 10kHz 帧率） */
+/** VOFA JustFloat 通道数与分频（JEOC 20kHz 基准，D=2→10kHz / D=4→5kHz / D=10→2kHz 帧率） */
 #ifndef M1_TELEM_BRINGUP_K
 #define M1_TELEM_BRINGUP_K              12u
 #endif
 #ifndef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     2u
+#endif
+#if M1_POS_MIT_COMBO_ENABLE
+#undef M1_TELEM_BRINGUP_DECIMATION
+#define M1_TELEM_BRINGUP_DECIMATION     4u    /* MIT：5kHz（20kHz/4） */
 #endif
 
 /**
@@ -393,6 +494,7 @@
  * M1_VOFA_IDENT_DUTY_12CH=1（辨识/标定，默认）：ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq；
  *   VASI(open_seq=57) 时 ch8=grid ch9=proc_code ch10=L_est_uH（ch6/7 仍为端电压估计）。
  * M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out；
+ *   M1_VOFA_MIT_CH8_11=1 → ch8=ω_pll ch9=θ_err ch10=Iq_ref ch11=open_seq（MIT 验收）；
  *   M1_VOFA_PLL_CH8_11=1 → ch8=ω_pll ch9=ω_diff ch10=θ_err ch11=Δω；
  *   M1_VOFA_PLL_CH8_11=0 → ch8=Id_ref ch9=Iq_ref ch10=duty_dev ch11=open_seq。
  */
@@ -1074,10 +1176,17 @@
 #define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
-/** Id Bode 签收：参数见 profiles/m1_bode_id_fc1000.profile.h（fc=1000，F1=5kHz） */
+/** Id Bode 签收：参数见 profiles/m1_bode_id_fc1000.profile.h（fc=1000） */
 #include "profiles/m1_bode_id_fc1000.profile.h"
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
+#if M1_USE_OBS_VEQ_PROFILE
+/** 有感 1000 rpm + Veq 旁路观测：见 profiles/m1_obs_veq_1000rpm.profile.h */
+#include "profiles/m1_obs_veq_1000rpm.profile.h"
+#elif M1_USE_FLUX_ID_PROFILE
+/** 有感 1000 rpm 磁链估：见 profiles/m1_flux_id_1000rpm.profile.h */
+#include "profiles/m1_flux_id_1000rpm.profile.h"
+#else
 /**
  * 7/5 1746 签收序列（联调报告 §4.3）：
  *   HOLD 0.5s settle + 100→300 rpm（5s）→ 500→300→700→300→200→300 → DONE @~29s
@@ -1121,6 +1230,7 @@
 #define M1_VOFA_PLL_CH8_11              0
 #undef M1_VOFA_SPEED_CH8_11
 #define M1_VOFA_SPEED_CH8_11            1
+#endif /* M1_USE_OBS_VEQ_PROFILE / M1_USE_FLUX_ID_PROFILE */
 
 #else
 #error "Unknown M1_BRINGUP_MODE — use M1_BRINGUP_MODE_* in motor_params_m1.h"
@@ -1185,6 +1295,14 @@
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
       M1_SPEED_REVERSAL_TEST_ENABLE
 #define M1_BRINGUP_MODE_NAME  "NORMAL_SPEED_REV_TEST"
+#elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
+      (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
+      M1_POS_MIT_COMBO_ENABLE && !M1_POS_MIT_COMBO_POS_ENABLE
+#define M1_BRINGUP_MODE_NAME  "NORMAL_MIT_ONLY"
+#elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
+      (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
+      M1_POS_MIT_COMBO_ENABLE
+#define M1_BRINGUP_MODE_NAME  "NORMAL_POS_MIT"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF)
 #define M1_BRINGUP_MODE_NAME  "NORMAL_SPEED_DB_OFF"
@@ -2397,6 +2515,9 @@
 #ifndef M1_SPEED_IDENT_STEP_ENABLE
 #define M1_SPEED_IDENT_STEP_ENABLE      1
 #endif
+#ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
+#define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
+#endif
 #ifndef M1_SPEED_IDENT_BODE_ENABLE
 #define M1_SPEED_IDENT_BODE_ENABLE      1
 #endif
@@ -2424,6 +2545,15 @@
 #endif
 #ifndef M1_SPEED_IDENT_STEP_RPM3
 #define M1_SPEED_IDENT_STEP_RPM3        900.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM4
+#define M1_SPEED_IDENT_STEP_RPM4        800.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM5
+#define M1_SPEED_IDENT_STEP_RPM5        900.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM6
+#define M1_SPEED_IDENT_STEP_RPM6        1000.0f
 #endif
 #ifndef M1_SPEED_IDENT_STEP_DWELL_S
 #define M1_SPEED_IDENT_STEP_DWELL_S     8.0f

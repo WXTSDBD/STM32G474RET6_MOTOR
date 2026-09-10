@@ -41,6 +41,22 @@ static uint8_t s_bode_freq_idx;
 #endif
 
 #if M1_SPEED_IDENT_STEP_ENABLE
+#ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
+#define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
+#endif
+#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
+/* 单调阶梯：RPM0→…→RPM6（无回基准）；缺省档位由 motor_params / profile 给出 */
+static const float s_step_seq[] = {
+    M1_SPEED_IDENT_STEP_RPM0,
+    M1_SPEED_IDENT_STEP_RPM1,
+    M1_SPEED_IDENT_STEP_RPM2,
+    M1_SPEED_IDENT_STEP_RPM3,
+    M1_SPEED_IDENT_STEP_RPM4,
+    M1_SPEED_IDENT_STEP_RPM5,
+    M1_SPEED_IDENT_STEP_RPM6,
+};
+#else
+/* 速度环签收：探档 ↔ 回基准 RPM0 */
 static const float s_step_seq[] = {
     M1_SPEED_IDENT_STEP_RPM1,
     M1_SPEED_IDENT_STEP_RPM0,
@@ -49,6 +65,7 @@ static const float s_step_seq[] = {
     M1_SPEED_IDENT_STEP_RPM3,
     M1_SPEED_IDENT_STEP_RPM0,
 };
+#endif
 
 #define SPEED_IDENT_STEP_PHASES  (sizeof(s_step_seq) / sizeof(s_step_seq[0]))
 
@@ -57,8 +74,21 @@ static float speed_ident_step_baseline(void)
     return M1_SPEED_IDENT_STEP_RPM0;
 }
 
+static float speed_ident_step_done_rpm(void)
+{
+#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
+    return s_step_seq[SPEED_IDENT_STEP_PHASES - 1u];
+#else
+    return M1_SPEED_IDENT_STEP_RPM0;
+#endif
+}
+
 static float speed_ident_phase_dwell_s(uint8_t phase)
 {
+#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
+    (void)phase;
+    return M1_SPEED_IDENT_STEP_DWELL_S;
+#else
     const float baseline = speed_ident_step_baseline();
 
     if (phase < SPEED_IDENT_STEP_PHASES &&
@@ -66,6 +96,7 @@ static float speed_ident_phase_dwell_s(uint8_t phase)
         return M1_SPEED_IDENT_STEP_ZERO_DWELL_S;
     }
     return M1_SPEED_IDENT_STEP_DWELL_S;
+#endif
 }
 #endif
 
@@ -224,7 +255,7 @@ void speed_ident_module_tick(motor_context_t *ctx)
                     s_state = SPEED_IDENT_BODE;
 #else
                     s_state = SPEED_IDENT_DONE;
-                    ctx->omega_ref = M1_SPEED_IDENT_STEP_RPM0;
+                    ctx->omega_ref = speed_ident_step_done_rpm();
                     s_omega_cmd = ctx->omega_ref;
 #endif
                 }
@@ -248,7 +279,11 @@ void speed_ident_module_tick(motor_context_t *ctx)
             speed_ident_bode_advance_freq();
         }
         if (s_state == SPEED_IDENT_DONE) {
+#if M1_SPEED_IDENT_STEP_ENABLE
+            ctx->omega_ref = speed_ident_step_done_rpm();
+#else
             ctx->omega_ref = M1_SPEED_IDENT_STEP_RPM0;
+#endif
             s_omega_cmd = ctx->omega_ref;
         }
         break;
@@ -256,7 +291,11 @@ void speed_ident_module_tick(motor_context_t *ctx)
 
     case SPEED_IDENT_DONE:
     default:
+#if M1_SPEED_IDENT_STEP_ENABLE
+        ctx->omega_ref = speed_ident_step_done_rpm();
+#else
         ctx->omega_ref = M1_SPEED_IDENT_STEP_RPM0;
+#endif
         s_omega_cmd = ctx->omega_ref;
         s_round = 0u;
         break;

@@ -39,6 +39,8 @@ typedef struct {
     float foc_theta_el;
     /** 编码器电角（rad），不受 FIX_THETA 覆盖；L 辨识 Δθ 监测用 */
     float enc_theta_el;
+    /** AS5047 raw（0..16383），供 VOFA 对照 θ 是否由 raw 花点引起 */
+    float enc_raw;
     float foc_id;
     float foc_iq;
     float foc_id_ref;
@@ -136,6 +138,24 @@ typedef struct {
     float outer_iq_ref;
     /** 速度阶梯 profile 当前档 0..4（100/300/500/700/900 rpm） */
     uint8_t outer_profile_step;
+    /** Veq 旁路观测（不进 Park）；VOFA OBS_VEQ×12 */
+    float obs_i_alpha;
+    float obs_i_beta;
+    float obs_u_alpha;
+    float obs_u_beta;
+    float obs_e_alpha;
+    float obs_e_beta;
+    float obs_theta_hat;
+    float obs_theta_err;
+    float obs_emag;
+    float obs_omega_el;
+    float obs_psi_inst;
+    /** 经典 SMO 旁路（不进 Park） */
+    float obs_smo_e_alpha;
+    float obs_smo_e_beta;
+    float obs_smo_theta_hat;
+    float obs_smo_theta_err;
+    float obs_smo_emag;
 } DbgMon_t;
 
 extern volatile DbgMon_t dbg;

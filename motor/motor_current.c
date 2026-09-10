@@ -25,11 +25,38 @@
 #endif
 #include "motor_startup.h"
 #include "motor_trig.h"
+#if M1_EMF_VEQ_ENABLE
+#include "observer/emf_veq.h"
+#endif
+#if M1_EMF_SMO_ENABLE
+#include "observer/emf_smo.h"
+#endif
+#if M1_IDENT_ENABLE
+#include "ident_flow.h"
+#endif
 #if M1_SPEED_IDENT_ENABLE
 #include "speed_ident_flow.h"
+#include "speed_ident_module.h"
 #endif
 
 static motor_context_t s_m1_ctx;
+
+#if M1_EMF_VEQ_ENABLE
+static emf_veq_t s_emf_veq;
+#endif
+#if M1_EMF_SMO_ENABLE
+static emf_smo_t s_emf_smo;
+#endif
+
+#if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
+/** 0=尚未 ident_flow_init；第一次 JEOC 再 boot（PWM/PI/ADC 零偏已就绪） */
+static uint8_t s_ident_booted;
+#endif
+
+#if M1_SPEED_IDENT_ENABLE
+/** 0=尚未 speed_ident boot；第一次 JEOC 再 boot（与 Bode 同理，避免 init 时 PLL/编码器未稳） */
+static uint8_t s_speed_ident_booted;
+#endif
 
 #if M1_PLL_ENABLE
 static motor_pll_t s_m1_pll;
@@ -185,7 +212,17 @@ void motor_current_init(bsp_axis_t *axis)
 #if M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
     s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
     s_m1_ctx.id_ref = 0.0f;
-#if !M1_SPEED_IDENT_ENABLE
+    s_m1_ctx.iq_ref = 0.0f;
+#if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
+    /* ident HOLD/Bode：推迟到第一次 JEOC。init 时 TIM8 未开、ADC 零偏未完，
+     * 此时 boot 会导致上电 Id_ref 一直为 0、open_seq 对不上 60–73。 */
+    s_ident_booted = 0u;
+    dbg.open_seq_phase = 60u;
+#elif M1_SPEED_IDENT_ENABLE
+    /* SPEED_IDENT：推迟到第一次 JEOC（见 tick）；此处只占位 */
+    s_speed_ident_booted = 0u;
+    dbg.open_seq_phase = 220u;
+#elif !M1_SPEED_IDENT_ENABLE
     deadband_flow_boot(&s_m1_ctx);
 #endif
 #else
@@ -225,6 +262,12 @@ void motor_current_init(bsp_axis_t *axis)
                    M1_PLL_INTEGRATOR_LIMIT_RAD_S);
     s_pll_theta_mech_prev_valid = 0u;
 #endif
+#if M1_EMF_VEQ_ENABLE
+    emf_veq_init(&s_emf_veq);
+#endif
+#if M1_EMF_SMO_ENABLE
+    emf_smo_init(&s_emf_smo);
+#endif
     if (axis->enc != NULL) {
         const uint16_t enc_raw0 = encoder_get_raw(axis->enc);
 
@@ -234,26 +277,21 @@ void motor_current_init(bsp_axis_t *axis)
 #endif
     }
 
-#if M1_SPEED_IDENT_ENABLE
-    /*
-     * SPEED_IDENT：PLL/编码器/foc PI 就绪后再 boot+arm，避免：
-     * 1) outer_set_mode(ω=0) 与 ramp 不同步 → Iq 尖峰/振荡
-     * 2) 重复 init 时 set_mode 早退跳过 ramp 同步
-     */
-    deadband_flow_boot(&s_m1_ctx);
-    speed_ident_flow_init(&s_m1_ctx);
-#endif
-
 #if M1_SPEED_LOOP_ENABLE
 #if M1_SPEED_PROFILE_ENABLE
 #if !M1_DEADBAND_FLOW_ONE_SHOT && !M1_SPEED_IDENT_ENABLE
     motor_speed_profile_arm(&s_m1_ctx);
     motor_outer_set_mode(&s_m1_ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
 #endif
-#elif M1_POS_STEP_TEST_ENABLE && M1_SPEED_LOOP_BOOT && !M1_SPEED_IDENT_ENABLE && \
-    M1_POS_LOOP_ENABLE
+#elif (M1_POS_STEP_TEST_ENABLE || M1_POS_MIT_COMBO_ENABLE) && M1_SPEED_LOOP_BOOT && \
+    !M1_SPEED_IDENT_ENABLE && M1_POS_LOOP_ENABLE
+#if M1_POS_MIT_COMBO_ENABLE && !M1_POS_MIT_COMBO_POS_ENABLE
+    motor_pos_step_request_deferred_boot();
+    motor_outer_set_mode(&s_m1_ctx, M1_OUTER_TORQUE, 0.0f, 0.0f);
+#else
+    motor_pos_step_request_deferred_boot();
     motor_outer_set_mode(&s_m1_ctx, M1_OUTER_POSITION, 0.0f, 0.0f);
-    motor_pos_step_test_arm(&s_m1_ctx);
+#endif
 #elif M1_SPEED_REVERSAL_TEST_ENABLE && M1_SPEED_LOOP_BOOT && !M1_SPEED_IDENT_ENABLE
     motor_speed_reversal_arm(&s_m1_ctx);
     motor_outer_set_mode(&s_m1_ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
@@ -438,6 +476,10 @@ void motor_current_tick(bsp_axis_t *axis)
     float ud_out;
     float uq_out;
     motor_startup_step_t startup;
+    volatile uint32_t foc_t0;
+    volatile uint32_t t_pre_obs;
+    volatile uint32_t t_post_obs;
+    volatile uint32_t t_post_svpwm;
 
     if (axis == NULL || axis->enc == NULL || axis->pwm == NULL) {
         return;
@@ -453,6 +495,7 @@ void motor_current_tick(bsp_axis_t *axis)
     }
 
     enc_raw = encoder_get_raw(axis->enc);
+    dbg.enc_raw = (float)enc_raw;
     s_theta_mech_rad = encoder_get_angle(axis->enc, enc_raw);
     theta = encoder_get_theta_el(axis->enc, enc_raw, ctx->pole_pairs,
                                  encoder_get_theta_el_offset(axis->enc));
@@ -483,6 +526,13 @@ void motor_current_tick(bsp_axis_t *axis)
                                    encoder_get_theta_el_offset(axis->enc));
 #endif
     }
+#if M1_SPEED_IDENT_ENABLE
+    /* HOLD settle：每拍清 PLL，防止编码器毛刺在开环前把 ω 顶满限幅 */
+    if (speed_ident_flow_is_armed() &&
+        speed_ident_module_hold_iq_inhibit()) {
+        motor_current_pll_reset_now();
+    }
+#endif
 #endif
     motor_current_update_observation_dbg();
 #if M1_THETA_NEGATE
@@ -504,9 +554,31 @@ void motor_current_tick(bsp_axis_t *axis)
     dbg.foc_ia = ia;
     dbg.foc_ib = ib;
     dbg.foc_ic = ic;
+    foc_t0 = *(volatile uint32_t *)&DWT->CYCCNT;
     Clarke_Transform(ia, ib, ic, &i_alpha, &i_beta);
 
-#if M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
+#if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
+    if (s_ident_booted == 0u) {
+        ident_flow_init(ctx);
+        s_ident_booted = 1u;
+    }
+    ident_flow_tick(ctx);
+#elif M1_SPEED_IDENT_ENABLE
+    if (s_speed_ident_booted == 0u) {
+        /* 与 Bode 同：PWM/ADC/编码器 SPI 已跑后再 arm，并清 PLL 积分 */
+        motor_current_pll_reset_now();
+        deadband_flow_boot(ctx);
+        speed_ident_flow_init(ctx);
+#if M1_EMF_VEQ_ENABLE
+        emf_veq_reset(&s_emf_veq);
+#endif
+#if M1_EMF_SMO_ENABLE
+        emf_smo_reset(&s_emf_smo);
+#endif
+        s_speed_ident_booted = 1u;
+    }
+    deadband_flow_tick(ctx);
+#elif M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE
     deadband_flow_tick(ctx);
 #endif
 
@@ -656,8 +728,62 @@ void motor_current_tick(bsp_axis_t *axis)
     dbg.foc_uq_out = uq_out;
     dbg.foc_ud_out = ud_out;
 
+    t_pre_obs = *(volatile uint32_t *)&DWT->CYCCNT;
+#if M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE
+    {
+        float omega_mech_rpm = 0.0f;
+        float u_alpha;
+        float u_beta;
+
+#if M1_PLL_ENABLE
+        omega_mech_rpm = s_pll_omega_mech_rpm;
+#endif
+        /* 与电流环同思路：反 Park 复用本拍 Park 的 sin/cos（θ_park 帧下的 ud/uq） */
+        u_alpha = ud_out * cos_el - uq_out * sin_el;
+        u_beta = ud_out * sin_el + uq_out * cos_el;
+
+#if M1_EMF_VEQ_ENABLE
+        emf_veq_update(&s_emf_veq, i_alpha, i_beta, u_alpha, u_beta,
+                       theta_enc_park, omega_mech_rpm);
+        dbg.obs_i_alpha = s_emf_veq.i_alpha;
+        dbg.obs_i_beta = s_emf_veq.i_beta;
+        dbg.obs_u_alpha = s_emf_veq.u_alpha;
+        dbg.obs_u_beta = s_emf_veq.u_beta;
+        dbg.obs_e_alpha = s_emf_veq.e_alpha;
+        dbg.obs_e_beta = s_emf_veq.e_beta;
+        dbg.obs_theta_hat = s_emf_veq.theta_hat;
+        dbg.obs_theta_err = s_emf_veq.theta_err;
+        dbg.obs_emag = s_emf_veq.emag;
+        dbg.obs_omega_el = s_emf_veq.omega_el;
+        dbg.obs_psi_inst = s_emf_veq.psi_inst;
+#endif
+#if M1_EMF_SMO_ENABLE
+        emf_smo_update(&s_emf_smo, i_alpha, i_beta, u_alpha, u_beta,
+                       theta_enc_park, omega_mech_rpm);
+        dbg.obs_smo_e_alpha = s_emf_smo.e_alpha;
+        dbg.obs_smo_e_beta = s_emf_smo.e_beta;
+        dbg.obs_smo_theta_hat = s_emf_smo.theta_hat;
+        dbg.obs_smo_theta_err = s_emf_smo.theta_err;
+        dbg.obs_smo_emag = s_emf_smo.emag;
+#if !M1_EMF_VEQ_ENABLE
+        dbg.obs_i_alpha = i_alpha;
+        dbg.obs_i_beta = i_beta;
+        dbg.obs_u_alpha = u_alpha;
+        dbg.obs_u_beta = u_beta;
+        dbg.obs_omega_el = s_emf_smo.omega_el;
+#endif
+#endif
+    }
+#endif
+    t_post_obs = *(volatile uint32_t *)&DWT->CYCCNT;
+    g_telem_dbg.obs_delta = t_post_obs - t_pre_obs;
+
     foc_svpwm_apply_abc(axis, uq_out, ud_out, theta_park, ia, ib, ic, id, iq);
     encoder_kick(axis->enc);
+    t_post_svpwm = *(volatile uint32_t *)&DWT->CYCCNT;
+    /* FOC 核心 = Clarke→PI + SVPWM/kick，不含观测器 */
+    g_telem_dbg.foc_delta = (t_pre_obs - foc_t0) + (t_post_svpwm - t_post_obs);
+
     telem_bringup_tick();
 
     {
