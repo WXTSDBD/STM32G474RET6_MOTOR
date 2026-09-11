@@ -50,7 +50,7 @@
 |---------|-----|------|------------------|---------|------|--------|
 | `obs_veq_bypass` | OBS | BOOT_ONCE | `SPEED_IDENT` + `M1_USE_OBS_VEQ_PROFILE` / `m1_obs_veq_1000rpm` | 🔧 | ⚠️ Veq+atan PASS | [总结_OBS_VEQ](总结_OBS_VEQ旁路观测_2026-09-10.md)（1325/1337） |
 | `obs_smo_bypass` | OBS | BOOT_ONCE | `SPEED_IDENT` + `m1_speed_1000rpm`（Veq+SMO） | 🔧 | ❌ SMO+atan FAIL | 三包 [1956/2009/2012](分析报告_OBS_SMO_三包复测_1956_2009_2012_2026-09-10.md)；**改 PLL**：[决策总结](总结_OBS_SMO旁路与换PLL决策_2026-09-10.md) |
-| `obs_emf_pll` | OBS | BOOT_ONCE | `SPEED_IDENT` + `m1_speed_1000rpm`（角+速软切+LPF前馈） | 🔧 | ⚠️ 中高速阶段性 | [分析报告_无感软切与LPF相位前馈_2026-09-11](分析报告_无感软切与LPF相位前馈_2026-09-11.md)（主档 1526/1548） |
+| `obs_emf_pll` | OBS | BOOT_ONCE | `SPEED_IDENT` + `m1_speed_1000rpm`（角+速软切+LPF前馈） | 🔧 | ⚠️ **中高速有条件签收** | **签收总结**：[总结_OBS_SMO中高速软切签收_2026-09-11](总结_OBS_SMO中高速软切签收_2026-09-11.md)；过程：[无感软切与LPF相位前馈](分析报告_无感软切与LPF相位前馈_2026-09-11.md)（1548）；探底 `1654`；旁路对照 `2048` |
 
 ---
 
