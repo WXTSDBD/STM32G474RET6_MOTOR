@@ -1416,6 +1416,21 @@
               <FilePath>..\motor\observer\emf_smo.c</FilePath>
             </File>
             <File>
+              <FileName>emf_pll.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\emf_pll.c</FilePath>
+            </File>
+            <File>
+              <FileName>obs_soft_switch.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\obs_soft_switch.c</FilePath>
+            </File>
+            <File>
+              <FileName>obs_theta_notch.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\obs_theta_notch.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_outer_loop.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_outer_loop.c</FilePath>

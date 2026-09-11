@@ -1,6 +1,6 @@
 /**
  * @file emf_smo.c
- * @brief Classic SMO — ISR: mul/add + atan2; a/b/LPF α at init (no expf in tick).
+ * @brief Classic SMO — ISR: mul/add + atan2; LPF α：固定 / 分档表 / 线性 fc(n)。
  */
 
 #include "emf_smo.h"
@@ -37,16 +37,68 @@
 #ifndef M1_EMF_SMO_THETA_OFF_RAD
 #define M1_EMF_SMO_THETA_OFF_RAD    (-0.4054f)
 #endif
+#ifndef M1_EMF_SMO_LPF_SCHED_ENABLE
+#define M1_EMF_SMO_LPF_SCHED_ENABLE 0
+#endif
+#ifndef M1_EMF_SMO_LPF_LINEAR_ENABLE
+#define M1_EMF_SMO_LPF_LINEAR_ENABLE 0
+#endif
+#if M1_EMF_SMO_LPF_LINEAR_ENABLE
+#ifndef M1_EMF_SMO_LPF_LINEAR_K
+#define M1_EMF_SMO_LPF_LINEAR_K     1.5f
+#endif
+#ifndef M1_EMF_SMO_LPF_LINEAR_FC_MIN
+#define M1_EMF_SMO_LPF_LINEAR_FC_MIN 100.0f
+#endif
+#ifndef M1_EMF_SMO_LPF_LINEAR_FC_MAX
+#define M1_EMF_SMO_LPF_LINEAR_FC_MAX 280.0f
+#endif
+#endif
 
 #define EMF_SMO_PI       3.14159265358979323846f
 #define EMF_SMO_TWO_PI   6.28318530717958647692f
 
+#if M1_EMF_SMO_LPF_SCHED_ENABLE && !M1_EMF_SMO_LPF_LINEAR_ENABLE
+#ifndef M1_EMF_SMO_LPF_SCHED_BANDS
+#define M1_EMF_SMO_LPF_SCHED_BANDS  7u
+#endif
+#if M1_EMF_SMO_LPF_SCHED_BANDS != 7u
+#error "emf_smo LPF sched table sized for 7 bands"
+#endif
+#ifndef M1_EMF_SMO_LPF_UP1
+#define M1_EMF_SMO_LPF_UP1   500.0f
+#define M1_EMF_SMO_LPF_UP2   650.0f
+#define M1_EMF_SMO_LPF_UP3   750.0f
+#define M1_EMF_SMO_LPF_UP4   850.0f
+#define M1_EMF_SMO_LPF_UP5  1050.0f
+#define M1_EMF_SMO_LPF_UP6  1150.0f
+#endif
+#ifndef M1_EMF_SMO_LPF_FC0
+#define M1_EMF_SMO_LPF_FC0   100.0f
+#define M1_EMF_SMO_LPF_FC1   120.0f
+#define M1_EMF_SMO_LPF_FC2   145.0f
+#define M1_EMF_SMO_LPF_FC3   170.0f
+#define M1_EMF_SMO_LPF_FC4   200.0f
+#define M1_EMF_SMO_LPF_FC5   220.0f
+#define M1_EMF_SMO_LPF_FC6   240.0f
+#endif
+#endif /* band sched */
+
 static float s_disc_a;
 static float s_disc_b;
 static float s_lpf_alpha;
+static float s_lpf_hz;
+static float s_lpf_ts;
 static float s_rpm_to_we;
 static float s_inv_sat;
+static float s_rpm_to_fe; /* |rpm| → fe [Hz] = rpm * pp / 60 */
 static uint8_t s_coeff_ready;
+#if M1_EMF_SMO_LPF_SCHED_ENABLE && !M1_EMF_SMO_LPF_LINEAR_ENABLE
+static float s_lpf_alpha_tab[7];
+static float s_lpf_hz_tab[7];
+static uint8_t s_lpf_band;
+static uint8_t s_lpf_tab_ready;
+#endif
 
 static float emf_smo_wrap_pi(float x)
 {
@@ -70,6 +122,39 @@ static float emf_smo_sat_fast(float x)
     return x;
 }
 
+static float emf_smo_alpha_from_hz(float fc_hz, float ts)
+{
+    float a = 1.0f - expf(-EMF_SMO_TWO_PI * fc_hz * ts);
+    if (a > 1.0f) {
+        a = 1.0f;
+    }
+    if (a < 0.0f) {
+        a = 0.0f;
+    }
+    return a;
+}
+
+#if M1_EMF_SMO_LPF_SCHED_ENABLE && !M1_EMF_SMO_LPF_LINEAR_ENABLE
+static void emf_smo_lpf_tab_init(float ts)
+{
+    const float fc[7] = {
+        M1_EMF_SMO_LPF_FC0, M1_EMF_SMO_LPF_FC1, M1_EMF_SMO_LPF_FC2,
+        M1_EMF_SMO_LPF_FC3, M1_EMF_SMO_LPF_FC4, M1_EMF_SMO_LPF_FC5,
+        M1_EMF_SMO_LPF_FC6
+    };
+    uint8_t i;
+
+    for (i = 0u; i < 7u; i++) {
+        s_lpf_hz_tab[i] = fc[i];
+        s_lpf_alpha_tab[i] = emf_smo_alpha_from_hz(fc[i], ts);
+    }
+    s_lpf_band = 0u;
+    s_lpf_alpha = s_lpf_alpha_tab[0];
+    s_lpf_hz = s_lpf_hz_tab[0];
+    s_lpf_tab_ready = 1u;
+}
+#endif
+
 static void emf_smo_coeff_init(void)
 {
     const float ts = M1_CTRL_TS_S;
@@ -78,18 +163,23 @@ static void emf_smo_coeff_init(void)
 
     s_disc_a = expf(-r * ts / l);
     s_disc_b = (1.0f - s_disc_a) / r;
+    s_lpf_ts = ts;
 #if M1_EMF_SMO_LPF_ENABLE
-    s_lpf_alpha = 1.0f - expf(-EMF_SMO_TWO_PI * M1_EMF_SMO_LPF_HZ * ts);
-    if (s_lpf_alpha > 1.0f) {
-        s_lpf_alpha = 1.0f;
-    }
-    if (s_lpf_alpha < 0.0f) {
-        s_lpf_alpha = 0.0f;
-    }
+#if M1_EMF_SMO_LPF_LINEAR_ENABLE
+    s_lpf_hz = M1_EMF_SMO_LPF_LINEAR_FC_MIN;
+    s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, ts);
+#elif M1_EMF_SMO_LPF_SCHED_ENABLE
+    emf_smo_lpf_tab_init(ts);
 #else
+    s_lpf_hz = M1_EMF_SMO_LPF_HZ;
+    s_lpf_alpha = emf_smo_alpha_from_hz(M1_EMF_SMO_LPF_HZ, ts);
+#endif
+#else
+    s_lpf_hz = 0.0f;
     s_lpf_alpha = 1.0f;
 #endif
     s_rpm_to_we = (EMF_SMO_TWO_PI / 60.0f) * (float)M1_POLE_PAIRS;
+    s_rpm_to_fe = ((float)M1_POLE_PAIRS) / 60.0f;
     s_inv_sat = 1.0f / ((M1_EMF_SMO_SAT_A > 1.0e-6f) ? M1_EMF_SMO_SAT_A : 1.0e-6f);
     s_coeff_ready = 1u;
 }
@@ -118,6 +208,103 @@ void emf_smo_reset(emf_smo_t *o)
     o->theta_hat = 0.0f;
     o->theta_err = 0.0f;
     o->omega_el = 0.0f;
+#if M1_EMF_SMO_LPF_LINEAR_ENABLE
+    s_lpf_hz = M1_EMF_SMO_LPF_LINEAR_FC_MIN;
+    s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, s_lpf_ts);
+#elif M1_EMF_SMO_LPF_SCHED_ENABLE
+    if (s_lpf_tab_ready != 0u) {
+        s_lpf_band = 0u;
+        s_lpf_alpha = s_lpf_alpha_tab[0];
+        s_lpf_hz = s_lpf_hz_tab[0];
+    }
+#endif
+}
+
+uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
+{
+#if M1_EMF_SMO_LPF_ENABLE && M1_EMF_SMO_LPF_LINEAR_ENABLE
+    float rpm;
+    float fe;
+    float fc;
+    float fc_q;
+
+    if (s_coeff_ready == 0u) {
+        emf_smo_coeff_init();
+    }
+
+    rpm = omega_mech_rpm;
+    if (rpm < 0.0f) {
+        rpm = -rpm;
+    }
+    /* fc = clip(k * fe, min, max), fe = |n| * p / 60 */
+    fe = rpm * s_rpm_to_fe;
+    fc = M1_EMF_SMO_LPF_LINEAR_K * fe;
+    if (fc < M1_EMF_SMO_LPF_LINEAR_FC_MIN) {
+        fc = M1_EMF_SMO_LPF_LINEAR_FC_MIN;
+    } else if (fc > M1_EMF_SMO_LPF_LINEAR_FC_MAX) {
+        fc = M1_EMF_SMO_LPF_LINEAR_FC_MAX;
+    }
+    /* 量化到 1 Hz，避免每拍 expf */
+    fc_q = (float)((int)(fc + 0.5f));
+    if (fc_q != s_lpf_hz) {
+        s_lpf_hz = fc_q;
+        s_lpf_alpha = emf_smo_alpha_from_hz(fc_q, s_lpf_ts);
+    }
+    return 0u;
+#elif M1_EMF_SMO_LPF_SCHED_ENABLE && M1_EMF_SMO_LPF_ENABLE
+    float rpm;
+    uint8_t band;
+
+    if (s_coeff_ready == 0u) {
+        emf_smo_coeff_init();
+    }
+    if (s_lpf_tab_ready == 0u) {
+        return 0u;
+    }
+
+    rpm = omega_mech_rpm;
+    if (rpm < 0.0f) {
+        rpm = -rpm;
+    }
+
+    if (rpm >= M1_EMF_SMO_LPF_UP6) {
+        band = 6u;
+    } else if (rpm >= M1_EMF_SMO_LPF_UP5) {
+        band = 5u;
+    } else if (rpm >= M1_EMF_SMO_LPF_UP4) {
+        band = 4u;
+    } else if (rpm >= M1_EMF_SMO_LPF_UP3) {
+        band = 3u;
+    } else if (rpm >= M1_EMF_SMO_LPF_UP2) {
+        band = 2u;
+    } else if (rpm >= M1_EMF_SMO_LPF_UP1) {
+        band = 1u;
+    } else {
+        band = 0u;
+    }
+
+    if (band != s_lpf_band) {
+        s_lpf_band = band;
+        s_lpf_alpha = s_lpf_alpha_tab[band];
+        s_lpf_hz = s_lpf_hz_tab[band];
+    }
+    return s_lpf_band;
+#else
+    (void)omega_mech_rpm;
+    return 0u;
+#endif
+}
+
+float emf_smo_get_lpf_hz(void)
+{
+#if M1_EMF_SMO_ENABLE
+    if (s_coeff_ready == 0u) {
+        emf_smo_coeff_init();
+    }
+    return s_lpf_hz;
+#else
+    return 0.0f;
+#endif
 }
 
 void emf_smo_update(emf_smo_t *o,
@@ -185,6 +372,17 @@ void emf_smo_init(emf_smo_t *o)
 void emf_smo_reset(emf_smo_t *o)
 {
     (void)o;
+}
+
+uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
+{
+    (void)omega_mech_rpm;
+    return 0u;
+}
+
+float emf_smo_get_lpf_hz(void)
+{
+    return 0.0f;
 }
 
 void emf_smo_update(emf_smo_t *o,

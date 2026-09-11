@@ -44,8 +44,17 @@ static uint8_t s_bode_freq_idx;
 #ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
 #define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
 #endif
-#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
-/* 单调阶梯：RPM0→…→RPM6（无回基准）；缺省档位由 motor_params / profile 给出 */
+#ifndef M1_SPEED_IDENT_OBS_FLOOR_PROBE
+#define M1_SPEED_IDENT_OBS_FLOOR_PROBE    0
+#endif
+#if M1_SPEED_IDENT_OBS_FLOOR_PROBE
+/* 1000 软切后每档 −50 rpm（dwell 由 M1_SPEED_IDENT_STEP_DWELL_S） */
+static const float s_step_seq[] = {
+    1000.0f, 950.0f, 900.0f, 850.0f, 800.0f, 750.0f, 700.0f,
+    650.0f, 600.0f, 550.0f, 500.0f, 450.0f, 400.0f,
+};
+#elif M1_SPEED_IDENT_STEP_LADDER_ENABLE
+/* 单调阶梯：RPM0→…→RPM6 */
 static const float s_step_seq[] = {
     M1_SPEED_IDENT_STEP_RPM0,
     M1_SPEED_IDENT_STEP_RPM1,
@@ -71,12 +80,16 @@ static const float s_step_seq[] = {
 
 static float speed_ident_step_baseline(void)
 {
+#if M1_SPEED_IDENT_OBS_FLOOR_PROBE
+    return s_step_seq[0];
+#else
     return M1_SPEED_IDENT_STEP_RPM0;
+#endif
 }
 
 static float speed_ident_step_done_rpm(void)
 {
-#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
+#if M1_SPEED_IDENT_STEP_LADDER_ENABLE || M1_SPEED_IDENT_OBS_FLOOR_PROBE
     return s_step_seq[SPEED_IDENT_STEP_PHASES - 1u];
 #else
     return M1_SPEED_IDENT_STEP_RPM0;
@@ -85,7 +98,7 @@ static float speed_ident_step_done_rpm(void)
 
 static float speed_ident_phase_dwell_s(uint8_t phase)
 {
-#if M1_SPEED_IDENT_STEP_LADDER_ENABLE
+#if M1_SPEED_IDENT_STEP_LADDER_ENABLE || M1_SPEED_IDENT_OBS_FLOOR_PROBE
     (void)phase;
     return M1_SPEED_IDENT_STEP_DWELL_S;
 #else

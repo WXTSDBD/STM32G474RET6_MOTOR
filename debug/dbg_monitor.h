@@ -156,6 +156,20 @@ typedef struct {
     float obs_smo_theta_hat;
     float obs_smo_theta_err;
     float obs_smo_emag;
+    float obs_smo_lpf_hz;
+    float obs_smo_lpf_band;
+    /** EMF-PLL 旁路（吃 Veq eαβ；不进 Park） */
+    float obs_pll_theta_hat;
+    float obs_pll_theta_err;
+    float obs_pll_omega_el;
+    float obs_pll_pd;
+    /** 软切：state 0enc/1arm/2blend/3obs/4fallback；alpha∈[0,1] */
+    float obs_ss_state;
+    float obs_ss_alpha;
+    /** 观测角→速度环同款 PLL 旁路（不进速度环） */
+    float obs_spd_pll_rpm;
+    float obs_spd_pll_err_rad;
+    float obs_spd_rpm_err; /* obs_spd_pll_rpm − enc pll rpm */
 } DbgMon_t;
 
 extern volatile DbgMon_t dbg;

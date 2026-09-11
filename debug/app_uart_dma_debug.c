@@ -26,6 +26,13 @@
  * Veq 旁路（M1_VOFA_OBS_VEQ_12CH）：iα iβ uα uβ eα eβ θ̂ θenc θerr |e| ωe ψinst
  * SMO 旁路+耗时（M1_VOFA_OBS_SMO_12CH）：
  *   iα iβ err_veq err_smo θenc ωe |e|_s |e|_v isr_delta foc_delta obs_delta enc_dma_cpu
+ * EMF-PLL 旁路（M1_VOFA_OBS_PLL_12CH）：
+ *   Veq源：iα iβ err_veq err_pll θenc ωe_pll |e|_v θ̂_pll isr foc obs enc_dma
+ *   SMO源：eα eβ err_atan err_pll θenc ωe_pll |e|_s θ̂_pll isr foc obs lpf_hz
+ *     VOFA 建议通道名：e_alpha, e_beta, err_atan, err_pll, theta_enc, we_pll,
+ *                     emag, theta_hat_pll, isr_cyc, foc_cyc, obs_cyc, lpf_hz
+ * SMO 离线原料（M1_VOFA_OBS_SMO_RAW_12CH）：
+ *   iα iβ uα uβ θenc ω_mech_rpm eα eβ err_pll |e| θ̂_pll lpf_hz
  */
 
 #include "app_uart_dma_debug.h"
@@ -435,6 +442,12 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #ifndef M1_VOFA_OBS_SMO_12CH
 #define M1_VOFA_OBS_SMO_12CH         0
 #endif
+#ifndef M1_VOFA_OBS_PLL_12CH
+#define M1_VOFA_OBS_PLL_12CH         0
+#endif
+#ifndef M1_VOFA_OBS_SMO_RAW_12CH
+#define M1_VOFA_OBS_SMO_RAW_12CH     0
+#endif
 
 #if M1_VOFA_IDENT_DUMP_ENABLE
     if (telem_ident_dump_next(vals, TELEM_BRINGUP_K)) {
@@ -447,6 +460,82 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
         telem_write_frame_vals(buf, offset, vals);
         return;
     }
+#endif
+
+#if M1_VOFA_OBS_SMO_RAW_12CH && (TELEM_BRINGUP_K >= 12u)
+    /* 离线重放原料：i/u + θ/ω；附带在线 e/PLL 便于核对 */
+    vals[0] = dbg.obs_i_alpha;
+    vals[1] = dbg.obs_i_beta;
+    vals[2] = dbg.obs_u_alpha;
+    vals[3] = dbg.obs_u_beta;
+    vals[4] = dbg.foc_theta_el;
+    vals[5] = dbg.pll_omega_mech_rpm;
+    vals[6] = dbg.obs_smo_e_alpha;
+    vals[7] = dbg.obs_smo_e_beta;
+    vals[8] = dbg.obs_pll_theta_err;
+    vals[9] = dbg.obs_smo_emag;
+    vals[10] = dbg.obs_pll_theta_hat;
+    vals[11] = dbg.obs_smo_lpf_hz;
+    telem_write_frame_vals(buf, offset, vals);
+    return;
+#endif
+
+#if M1_VOFA_OBS_PLL_12CH && (TELEM_BRINGUP_K >= 12u)
+#if M1_EMF_PLL_USE_SMO
+#if M1_OBS_SPD_PLL_ENABLE
+    /* 高速软切验收：速度反馈 / 指令 / 角误差 / 状态（不再双 PLL 对照） */
+    vals[0] = dbg.outer_omega_mech_rpm; /* 实际进速度环的反馈 */
+    vals[1] = dbg.outer_omega_ref;
+    vals[2] = dbg.foc_iq_ref;
+    vals[3] = dbg.obs_pll_theta_err;
+    vals[4] = dbg.foc_theta_el;
+    vals[5] = dbg.obs_spd_pll_rpm;     /* θ̂→PLL（2 kHz） */
+    vals[6] = dbg.obs_smo_emag;
+    vals[7] = dbg.obs_pll_theta_hat;
+    vals[8] = (float)g_telem_dbg.isr_delta;
+    vals[9] = (float)g_telem_dbg.foc_delta;
+    vals[10] = (float)g_telem_dbg.obs_delta;
+#if M1_OBS_SOFT_SWITCH_ENABLE
+    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
+#else
+    vals[11] = dbg.obs_smo_lpf_hz;
+#endif
+#else
+    /* SMO e → PLL：中间量 eαβ + atan/PLL 对照 + cycle */
+    vals[0] = dbg.obs_smo_e_alpha;
+    vals[1] = dbg.obs_smo_e_beta;
+    vals[2] = dbg.obs_smo_theta_err;
+    vals[3] = dbg.obs_pll_theta_err;
+    vals[4] = dbg.foc_theta_el;
+    vals[5] = dbg.obs_pll_omega_el;
+    vals[6] = dbg.obs_smo_emag;
+    vals[7] = dbg.obs_pll_theta_hat;
+    vals[8] = (float)g_telem_dbg.isr_delta;
+    vals[9] = (float)g_telem_dbg.foc_delta;
+    vals[10] = (float)g_telem_dbg.obs_delta;
+#if M1_OBS_SOFT_SWITCH_ENABLE
+    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
+#else
+    vals[11] = dbg.obs_smo_lpf_hz;
+#endif
+#endif
+#else
+    /* Veq atan vs EMF-PLL + cycle */
+    vals[0] = dbg.obs_i_alpha;
+    vals[1] = dbg.obs_i_beta;
+    vals[2] = dbg.obs_theta_err;
+    vals[3] = dbg.obs_pll_theta_err;
+    vals[4] = dbg.foc_theta_el;
+    vals[5] = dbg.obs_pll_omega_el;
+    vals[6] = dbg.obs_emag;
+    vals[7] = dbg.obs_pll_theta_hat;
+    vals[8] = (float)g_telem_dbg.isr_delta;
+    vals[9] = (float)g_telem_dbg.foc_delta;
+    vals[10] = (float)g_telem_dbg.obs_delta;
+    vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
+#endif
+    telem_write_frame_vals(buf, offset, vals);
+    return;
 #endif
 
 #if M1_VOFA_OBS_SMO_12CH && (TELEM_BRINGUP_K >= 12u)

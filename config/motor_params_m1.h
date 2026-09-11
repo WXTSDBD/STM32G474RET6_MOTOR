@@ -139,8 +139,12 @@
 #ifndef M1_USE_OBS_VEQ_PROFILE
 #define M1_USE_OBS_VEQ_PROFILE          0
 #endif
-#if (M1_USE_FLUX_ID_PROFILE != 0) && (M1_USE_OBS_VEQ_PROFILE != 0)
-#error "M1_USE_FLUX_ID_PROFILE and M1_USE_OBS_VEQ_PROFILE are mutually exclusive"
+#ifndef M1_USE_SPEED_1000_PROFILE
+#define M1_USE_SPEED_1000_PROFILE       0
+#endif
+#if ((M1_USE_FLUX_ID_PROFILE != 0) + (M1_USE_OBS_VEQ_PROFILE != 0) + \
+     (M1_USE_SPEED_1000_PROFILE != 0)) > 1
+#error "M1_USE_SPEED_1000_PROFILE / FLUX_ID / OBS_VEQ are mutually exclusive"
 #endif
 #ifndef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               0
@@ -148,11 +152,88 @@
 #ifndef M1_EMF_SMO_ENABLE
 #define M1_EMF_SMO_ENABLE               0
 #endif
+#ifndef M1_EMF_PLL_ENABLE
+#define M1_EMF_PLL_ENABLE               0
+#endif
+#ifndef M1_EMF_SMO_LPF_SCHED_ENABLE
+#define M1_EMF_SMO_LPF_SCHED_ENABLE     0
+#endif
+#ifndef M1_EMF_SMO_LPF_LINEAR_ENABLE
+#define M1_EMF_SMO_LPF_LINEAR_ENABLE    0
+#endif
+#ifndef M1_EMF_LPF_PHASE_FF_ENABLE
+#define M1_EMF_LPF_PHASE_FF_ENABLE      0 /* 1=θ̂ 扣 −atan(fe/fc) 模型前馈 */
+#endif
+#ifndef M1_OBS_SOFT_SWITCH_ENABLE
+#define M1_OBS_SOFT_SWITCH_ENABLE       0
+#endif
+#ifndef M1_OBS_SS_SPEED_SWITCH_ENABLE
+#define M1_OBS_SS_SPEED_SWITCH_ENABLE   0
+#endif
+#ifndef M1_OBS_SS_FALLBACK_ON_ERR_ENABLE
+#define M1_OBS_SS_FALLBACK_ON_ERR_ENABLE 1 /* 0=角差仅监督，不回切编码器 */
+#endif
+#ifndef M1_OBS_SPD_PLL_ENABLE
+#define M1_OBS_SPD_PLL_ENABLE           0
+#endif
+#ifndef M1_OBS_SPD_PLL_FN_HZ
+#define M1_OBS_SPD_PLL_FN_HZ            12.0f
+#endif
+#ifndef M1_OBS_SPD_PLL_ZETA
+#define M1_OBS_SPD_PLL_ZETA             0.707106781f
+#endif
+#ifndef M1_OBS_SPD_FB_LPF_HZ
+#define M1_OBS_SPD_FB_LPF_HZ            0 /* [Hz] 0=off；观测速进速度环前一阶 LPF */
+#endif
+#ifndef M1_OBS_THETA_NOTCH_ENABLE
+#define M1_OBS_THETA_NOTCH_ENABLE       0 /* 1=Park 前对 θ̂ 机械 1/rev 陷波 */
+#endif
+#ifndef M1_OBS_THETA_NOTCH_Q
+#define M1_OBS_THETA_NOTCH_Q            10.0f
+#endif
+#ifndef M1_OBS_THETA_NOTCH_TRACK_HZ
+#define M1_OBS_THETA_NOTCH_TRACK_HZ     3.0f /* 慢跟踪带宽，须 << 1/rev */
+#endif
+#ifndef M1_OBS_THETA_NOTCH_RPM_MIN
+#define M1_OBS_THETA_NOTCH_RPM_MIN      400.0f
+#endif
+#ifndef M1_OBS_THETA_NOTCH_H2_ENABLE
+#define M1_OBS_THETA_NOTCH_H2_ENABLE    0 /* 1=级联 2/rev */
+#endif
 #ifndef M1_VOFA_OBS_VEQ_12CH
 #define M1_VOFA_OBS_VEQ_12CH            0
 #endif
 #ifndef M1_VOFA_OBS_SMO_12CH
 #define M1_VOFA_OBS_SMO_12CH            0
+#endif
+#ifndef M1_VOFA_OBS_PLL_12CH
+#define M1_VOFA_OBS_PLL_12CH            0
+#endif
+#ifndef M1_VOFA_OBS_SMO_RAW_12CH
+#define M1_VOFA_OBS_SMO_RAW_12CH        0
+#endif
+#if M1_EMF_PLL_ENABLE && !(M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE)
+#error "M1_EMF_PLL_ENABLE requires M1_EMF_VEQ_ENABLE and/or M1_EMF_SMO_ENABLE (PLL feeds on eαβ)"
+#endif
+#if (M1_VOFA_OBS_PLL_12CH + M1_VOFA_OBS_SMO_12CH + M1_VOFA_OBS_VEQ_12CH + M1_VOFA_OBS_SMO_RAW_12CH) > 1
+#error "Only one of M1_VOFA_OBS_PLL/SMO/VEQ/SMO_RAW_12CH may be 1"
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE && !M1_EMF_PLL_ENABLE
+#error "M1_OBS_SOFT_SWITCH_ENABLE requires M1_EMF_PLL_ENABLE"
+#endif
+/** 1=PLL 吃 SMO e（无感 SMO 主路径）；0=吃 Veq e。未定义时：有 SMO 则优先 SMO */
+#ifndef M1_EMF_PLL_USE_SMO
+#if M1_EMF_SMO_ENABLE
+#define M1_EMF_PLL_USE_SMO              1
+#else
+#define M1_EMF_PLL_USE_SMO              0
+#endif
+#endif
+#if M1_EMF_PLL_USE_SMO && !M1_EMF_SMO_ENABLE
+#error "M1_EMF_PLL_USE_SMO=1 requires M1_EMF_SMO_ENABLE"
+#endif
+#if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO && !M1_EMF_VEQ_ENABLE
+#error "PLL without USE_SMO requires M1_EMF_VEQ_ENABLE"
 #endif
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
 /** 实验1 签收：ω ramp 500 rpm/s（仅 SPEED_IDENT） */
@@ -1180,7 +1261,10 @@
 #include "profiles/m1_bode_id_fc1000.profile.h"
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
-#if M1_USE_OBS_VEQ_PROFILE
+#if M1_USE_SPEED_1000_PROFILE
+/** 有感阶梯 + SMO→EMF-PLL 旁路（无感 SMO）：见 profiles/m1_speed_1000rpm.profile.h */
+#include "profiles/m1_speed_1000rpm.profile.h"
+#elif M1_USE_OBS_VEQ_PROFILE
 /** 有感 1000 rpm + Veq 旁路观测：见 profiles/m1_obs_veq_1000rpm.profile.h */
 #include "profiles/m1_obs_veq_1000rpm.profile.h"
 #elif M1_USE_FLUX_ID_PROFILE
@@ -1230,7 +1314,35 @@
 #define M1_VOFA_PLL_CH8_11              0
 #undef M1_VOFA_SPEED_CH8_11
 #define M1_VOFA_SPEED_CH8_11            1
-#endif /* M1_USE_OBS_VEQ_PROFILE / M1_USE_FLUX_ID_PROFILE */
+#endif /* M1_USE_SPEED_1000 / OBS_VEQ / FLUX_ID PROFILE */
+
+#if M1_EMF_PLL_ENABLE && !(M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE)
+#error "M1_EMF_PLL_ENABLE requires Veq and/or SMO after profile include"
+#endif
+#if M1_EMF_PLL_USE_SMO && !M1_EMF_SMO_ENABLE
+#error "M1_EMF_PLL_USE_SMO requires M1_EMF_SMO_ENABLE after profile include"
+#endif
+#if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO && !M1_EMF_VEQ_ENABLE
+#error "PLL on Veq requires M1_EMF_VEQ_ENABLE after profile include"
+#endif
+#if (M1_VOFA_OBS_PLL_12CH + M1_VOFA_OBS_SMO_12CH + M1_VOFA_OBS_VEQ_12CH + M1_VOFA_OBS_SMO_RAW_12CH) > 1
+#error "Only one OBS VOFA 12ch layout after profile include"
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE && !M1_EMF_PLL_ENABLE
+#error "M1_OBS_SOFT_SWITCH_ENABLE requires M1_EMF_PLL_ENABLE after profile include"
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && !M1_EMF_PLL_ENABLE
+#error "M1_OBS_SPD_PLL_ENABLE requires M1_EMF_PLL_ENABLE after profile include"
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && !M1_PLL_ENABLE
+#error "M1_OBS_SPD_PLL_ENABLE requires M1_PLL_ENABLE (reuses motor_pll)"
+#endif
+#if M1_OBS_SS_SPEED_SWITCH_ENABLE && !M1_OBS_SOFT_SWITCH_ENABLE
+#error "M1_OBS_SS_SPEED_SWITCH_ENABLE requires M1_OBS_SOFT_SWITCH_ENABLE"
+#endif
+#if M1_OBS_SS_SPEED_SWITCH_ENABLE && !M1_OBS_SPD_PLL_ENABLE
+#error "M1_OBS_SS_SPEED_SWITCH_ENABLE requires M1_OBS_SPD_PLL_ENABLE"
+#endif
 
 #else
 #error "Unknown M1_BRINGUP_MODE — use M1_BRINGUP_MODE_* in motor_params_m1.h"
@@ -2517,6 +2629,9 @@
 #endif
 #ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
 #define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
+#endif
+#ifndef M1_SPEED_IDENT_OBS_FLOOR_PROBE
+#define M1_SPEED_IDENT_OBS_FLOOR_PROBE    0 /* 1=1000→400 −50rpm 探 OBS 下限 */
 #endif
 #ifndef M1_SPEED_IDENT_BODE_ENABLE
 #define M1_SPEED_IDENT_BODE_ENABLE      1

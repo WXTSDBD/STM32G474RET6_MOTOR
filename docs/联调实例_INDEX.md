@@ -44,6 +44,16 @@
 
 ---
 
+## 观测器旁路（有感对照，不进 Park）
+
+| 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
+|---------|-----|------|------------------|---------|------|--------|
+| `obs_veq_bypass` | OBS | BOOT_ONCE | `SPEED_IDENT` + `M1_USE_OBS_VEQ_PROFILE` / `m1_obs_veq_1000rpm` | 🔧 | ⚠️ Veq+atan PASS | [总结_OBS_VEQ](总结_OBS_VEQ旁路观测_2026-09-10.md)（1325/1337） |
+| `obs_smo_bypass` | OBS | BOOT_ONCE | `SPEED_IDENT` + `m1_speed_1000rpm`（Veq+SMO） | 🔧 | ❌ SMO+atan FAIL | 三包 [1956/2009/2012](分析报告_OBS_SMO_三包复测_1956_2009_2012_2026-09-10.md)；**改 PLL**：[决策总结](总结_OBS_SMO旁路与换PLL决策_2026-09-10.md) |
+| `obs_emf_pll` | OBS | BOOT_ONCE | `SPEED_IDENT` + `m1_speed_1000rpm`（角+速软切+LPF前馈） | 🔧 | ⚠️ 中高速阶段性 | [分析报告_无感软切与LPF相位前馈_2026-09-11](分析报告_无感软切与LPF相位前馈_2026-09-11.md)（主档 1526/1548） |
+
+---
+
 ## 位置环
 
 | 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
@@ -81,7 +91,8 @@
 | Id Bode 签收 | `BODE_ID_OFF_ONLY` | `profiles/m1_bode_id_fc1000.profile.h` |
 | 有感 1000 rpm 估 ψf | `SPEED_IDENT` | `M1_USE_FLUX_ID_PROFILE=1` → `m1_flux_id_1000rpm.profile.h` |
 | 有感 1000 rpm + Veq 旁路 | `SPEED_IDENT` | `M1_USE_OBS_VEQ_PROFILE=1` → `m1_obs_veq_1000rpm.profile.h`（FLUX 须 0） |
-| 日常 | `NORMAL` | FLUX/OBS 均 0 |
+| Veq+SMO 旁路阶梯（cycle） | `SPEED_IDENT` | `M1_USE_SPEED_1000_PROFILE=1` → `m1_speed_1000rpm.profile.h`（与 OBS_VEQ/FLUX 互斥） |
+| 日常 | `NORMAL` | FLUX/OBS/SPEED1000 均 0 |
 
 ```c
 /* bringup_active.h 示例：Veq 旁路 */
@@ -91,7 +102,9 @@
 ```
 
 VOFA OBS_VEQ×12（D=2→10 kHz）：iα iβ uα uβ eα eβ θ̂ θenc θerr \|e\| ωe ψinst。  
-0910 报告：[总结_OBS_VEQ旁路观测_2026-09-10](总结_OBS_VEQ旁路观测_2026-09-10.md)（CSV 须配 `分析报告_OBS_VEQ_<csv>_日期.md`）。
+0910 Veq 总结：[总结_OBS_VEQ旁路观测_2026-09-10](总结_OBS_VEQ旁路观测_2026-09-10.md)。  
+SMO 三包后 **改 EMF-PLL**：[总结_OBS_SMO旁路与换PLL决策_2026-09-10](总结_OBS_SMO旁路与换PLL决策_2026-09-10.md)。
+
 ---
 
 ## Keil Target（规划）
@@ -105,4 +118,4 @@ VOFA OBS_VEQ×12（D=2→10 kHz）：iα iβ uα uβ eα eβ θ̂ θenc θerr \|
 
 ---
 
-**最后更新**：2026-09-09
+**最后更新**：2026-09-10（登记 obs 旁路 + PLL 决策）

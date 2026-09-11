@@ -31,6 +31,13 @@
 #if M1_EMF_SMO_ENABLE
 #include "observer/emf_smo.h"
 #endif
+#if M1_EMF_PLL_ENABLE
+#include "observer/emf_pll.h"
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE
+#include "observer/obs_soft_switch.h"
+#include "observer/obs_theta_notch.h"
+#endif
 #if M1_IDENT_ENABLE
 #include "ident_flow.h"
 #endif
@@ -46,6 +53,22 @@ static emf_veq_t s_emf_veq;
 #endif
 #if M1_EMF_SMO_ENABLE
 static emf_smo_t s_emf_smo;
+#endif
+#if M1_EMF_PLL_ENABLE
+static emf_pll_t s_emf_pll;
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+/** 电角域：吃 EMF-PLL θ̂ → 机械 rpm；2 kHz 更新；OBS 时进速度环 */
+static motor_pll_t s_obs_spd_pll;
+static uint8_t s_obs_spd_pll_primed;
+static uint16_t s_obs_spd_div;
+static float s_obs_spd_pll_rpm;
+static float s_obs_spd_fb_lpf_rpm;
+static uint8_t s_obs_spd_fb_lpf_on;
+#endif
+#if M1_PLL_ENABLE
+/** 外环实际速度反馈（有感=编码器 PLL；OBS+速切=观测 PLL） */
+static float s_speed_fb_rpm;
 #endif
 
 #if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
@@ -73,7 +96,7 @@ static void motor_current_update_observation_dbg(void)
 {
     dbg.outer_theta_mech_rad = s_theta_mech_rad;
 #if M1_PLL_ENABLE
-    dbg.outer_omega_mech_rpm = s_pll_omega_mech_rpm;
+    dbg.outer_omega_mech_rpm = s_speed_fb_rpm;
 #endif
 }
 
@@ -268,6 +291,34 @@ void motor_current_init(bsp_axis_t *axis)
 #if M1_EMF_SMO_ENABLE
     emf_smo_init(&s_emf_smo);
 #endif
+#if M1_EMF_PLL_ENABLE
+    emf_pll_init(&s_emf_pll);
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE
+    obs_soft_switch_init();
+#endif
+#if M1_OBS_THETA_NOTCH_ENABLE
+    obs_theta_notch_init();
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+    {
+        const float wn = 6.28318530718f * M1_OBS_SPD_PLL_FN_HZ;
+        const float kp = 2.0f * M1_OBS_SPD_PLL_ZETA * wn;
+        const float ki = wn * wn;
+        /* 电角速度限幅 ≈ 机械限幅 × 极对数 */
+        const float wlim = M1_PLL_OMEGA_LIMIT_RAD_S * (float)M1_POLE_PAIRS;
+
+        motor_pll_init(&s_obs_spd_pll, kp, ki, wlim, wlim);
+        s_obs_spd_pll_primed = 0u;
+        s_obs_spd_div = 0u;
+        s_obs_spd_pll_rpm = 0.0f;
+        s_obs_spd_fb_lpf_rpm = 0.0f;
+        s_obs_spd_fb_lpf_on = 0u;
+    }
+#endif
+#if M1_PLL_ENABLE
+    s_speed_fb_rpm = 0.0f;
+#endif
     if (axis->enc != NULL) {
         const uint16_t enc_raw0 = encoder_get_raw(axis->enc);
 
@@ -348,7 +399,7 @@ void motor_current_set_idq_ref(bsp_axis_t *axis, float id_ref, float iq_ref)
 float motor_current_get_pll_omega_mech_rpm(void)
 {
 #if M1_PLL_ENABLE
-    return s_pll_omega_mech_rpm;
+    return s_speed_fb_rpm;
 #else
     return 0.0f;
 #endif
@@ -364,6 +415,7 @@ void motor_current_pll_reset_now(void)
 #if M1_PLL_ENABLE
     motor_pll_reset(&s_m1_pll, s_theta_mech_rad);
     s_pll_omega_mech_rpm = 0.0f;
+    s_speed_fb_rpm = 0.0f;
     s_pll_theta_mech_prev = s_theta_mech_rad;
     s_pll_theta_mech_prev_valid = 0u;
     dbg.pll_omega_mech_rpm = 0.0f;
@@ -371,6 +423,15 @@ void motor_current_pll_reset_now(void)
     dbg.pll_omega_err_rpm = 0.0f;
     dbg.pll_theta_err_rad = 0.0f;
     dbg.outer_omega_mech_rpm = 0.0f;
+#if M1_OBS_SPD_PLL_ENABLE
+    motor_pll_reset(&s_obs_spd_pll, 0.0f);
+    s_obs_spd_pll_primed = 0u;
+    s_obs_spd_div = 0u;
+    s_obs_spd_pll_rpm = 0.0f;
+    s_obs_spd_fb_lpf_rpm = 0.0f;
+    s_obs_spd_fb_lpf_on = 0u;
+    dbg.obs_spd_pll_rpm = 0.0f;
+#endif
 #endif
 }
 
@@ -507,6 +568,37 @@ void motor_current_tick(bsp_axis_t *axis)
         motor_pll_update(&s_m1_pll, theta_mech, M1_CTRL_TS_S);
         s_pll_omega_mech_rpm = motor_pll_get_omega_mech_rpm(&s_m1_pll);
         dbg.pll_omega_mech_rpm = s_pll_omega_mech_rpm;
+        /*
+         * 速度反馈：默认编码器。
+         * OBS+速切时必须在 motor_outer_loop_tick 之前换成上一拍观测速，
+         * 否则 PI 永远吃有感，拍末覆盖只影响 VOFA。
+         */
+        s_speed_fb_rpm = s_pll_omega_mech_rpm;
+#if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE && M1_OBS_SPD_PLL_ENABLE
+        if (obs_soft_switch_speed_on_obs() != 0u) {
+#if M1_OBS_SPD_FB_LPF_HZ > 0
+            /* 切断 θ̂ 谐波 → 速度 PI → iq → SMO 的 94 Hz 级联；切入时从编码器 bumpless */
+            if (s_obs_spd_fb_lpf_on == 0u) {
+                s_obs_spd_fb_lpf_rpm = s_pll_omega_mech_rpm;
+                s_obs_spd_fb_lpf_on = 1u;
+            } else {
+                const float a = 6.28318530718f * (float)M1_OBS_SPD_FB_LPF_HZ *
+                                M1_CTRL_TS_S;
+                float alpha = (a > 1.0f) ? 1.0f : a;
+
+                s_obs_spd_fb_lpf_rpm +=
+                    alpha * (s_obs_spd_pll_rpm - s_obs_spd_fb_lpf_rpm);
+            }
+            s_speed_fb_rpm = s_obs_spd_fb_lpf_rpm;
+#else
+            s_speed_fb_rpm = s_obs_spd_pll_rpm;
+#endif
+        } else {
+#if M1_OBS_SPD_FB_LPF_HZ > 0
+            s_obs_spd_fb_lpf_on = 0u;
+#endif
+        }
+#endif
         dbg.pll_theta_err_rad = motor_pll_get_last_err(&s_m1_pll);
 
         if (s_pll_theta_mech_prev_valid) {
@@ -575,6 +667,20 @@ void motor_current_tick(bsp_axis_t *axis)
 #if M1_EMF_SMO_ENABLE
         emf_smo_reset(&s_emf_smo);
 #endif
+#if M1_EMF_PLL_ENABLE
+        emf_pll_reset(&s_emf_pll);
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE
+        obs_soft_switch_reset();
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+        motor_pll_reset(&s_obs_spd_pll, 0.0f);
+        s_obs_spd_pll_primed = 0u;
+        s_obs_spd_div = 0u;
+        s_obs_spd_pll_rpm = 0.0f;
+        s_obs_spd_fb_lpf_rpm = 0.0f;
+        s_obs_spd_fb_lpf_on = 0u;
+#endif
         s_speed_ident_booted = 1u;
     }
     deadband_flow_tick(ctx);
@@ -630,6 +736,40 @@ void motor_current_tick(bsp_axis_t *axis)
         }
 #endif
     }
+#if M1_OBS_SOFT_SWITCH_ENABLE && M1_EMF_PLL_ENABLE
+    /* 用上一拍 PLL θ̂；本拍观测器在 Park/SVPWM 之后更新 */
+    if (s_emf_pll.primed != 0u) {
+        float omega_enc_ss = 0.0f;
+        float omega_obs_ss = s_obs_spd_pll_rpm; /* 上一拍观测速，供 OBS 掉速门限 */
+
+#if M1_PLL_ENABLE
+        omega_enc_ss = s_pll_omega_mech_rpm;
+#endif
+        {
+            float theta_hat_park = s_emf_pll.theta_hat;
+#if M1_OBS_THETA_NOTCH_ENABLE
+            /* 仅 OBS 时陷波；err/监督仍看原始 PLL θ̂ */
+            theta_hat_park = obs_theta_notch_apply(s_emf_pll.theta_hat,
+                                                   omega_obs_ss,
+                                                   obs_soft_switch_speed_on_obs(),
+                                                   M1_CTRL_TS_S);
+#endif
+            theta_park = obs_soft_switch_apply(theta_enc_park,
+                                               theta_hat_park,
+                                               s_emf_pll.theta_err,
+                                               s_emf_pll.emag,
+                                               omega_enc_ss,
+                                               omega_obs_ss,
+                                               ctx->omega_ref,
+                                               dbg.foc_iq,
+                                               M1_CTRL_TS_S);
+        }
+    } else {
+        theta_park = theta_enc_park;
+    }
+    dbg.obs_ss_state = (float)obs_soft_switch_get_state();
+    dbg.obs_ss_alpha = obs_soft_switch_get_alpha();
+#endif
     dbg.foc_theta_el = theta_park;
 
     motor_trig_sincos(theta_park, &cos_el, &sin_el);
@@ -729,14 +869,14 @@ void motor_current_tick(bsp_axis_t *axis)
     dbg.foc_ud_out = ud_out;
 
     t_pre_obs = *(volatile uint32_t *)&DWT->CYCCNT;
-#if M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE
+#if M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE || M1_EMF_PLL_ENABLE
     {
         float omega_mech_rpm = 0.0f;
         float u_alpha;
         float u_beta;
 
 #if M1_PLL_ENABLE
-        omega_mech_rpm = s_pll_omega_mech_rpm;
+        omega_mech_rpm = s_speed_fb_rpm;
 #endif
         /* 与电流环同思路：反 Park 复用本拍 Park 的 sin/cos（θ_park 帧下的 ud/uq） */
         u_alpha = ud_out * cos_el - uq_out * sin_el;
@@ -758,19 +898,72 @@ void motor_current_tick(bsp_axis_t *axis)
         dbg.obs_psi_inst = s_emf_veq.psi_inst;
 #endif
 #if M1_EMF_SMO_ENABLE
-        emf_smo_update(&s_emf_smo, i_alpha, i_beta, u_alpha, u_beta,
-                       theta_enc_park, omega_mech_rpm);
-        dbg.obs_smo_e_alpha = s_emf_smo.e_alpha;
-        dbg.obs_smo_e_beta = s_emf_smo.e_beta;
-        dbg.obs_smo_theta_hat = s_emf_smo.theta_hat;
-        dbg.obs_smo_theta_err = s_emf_smo.theta_err;
-        dbg.obs_smo_emag = s_emf_smo.emag;
+        {
+            const uint8_t lpf_band = emf_smo_lpf_sched_update(omega_mech_rpm);
+
+            emf_smo_update(&s_emf_smo, i_alpha, i_beta, u_alpha, u_beta,
+                           theta_enc_park, omega_mech_rpm);
+            dbg.obs_smo_e_alpha = s_emf_smo.e_alpha;
+            dbg.obs_smo_e_beta = s_emf_smo.e_beta;
+            dbg.obs_smo_theta_hat = s_emf_smo.theta_hat;
+            dbg.obs_smo_theta_err = s_emf_smo.theta_err;
+            dbg.obs_smo_emag = s_emf_smo.emag;
+            dbg.obs_smo_lpf_hz = emf_smo_get_lpf_hz();
+            dbg.obs_smo_lpf_band = (float)lpf_band;
+        }
 #if !M1_EMF_VEQ_ENABLE
         dbg.obs_i_alpha = i_alpha;
         dbg.obs_i_beta = i_beta;
         dbg.obs_u_alpha = u_alpha;
         dbg.obs_u_beta = u_beta;
         dbg.obs_omega_el = s_emf_smo.omega_el;
+#endif
+#endif
+#if M1_EMF_PLL_ENABLE
+#if M1_EMF_PLL_USE_SMO
+        emf_pll_update(&s_emf_pll,
+                       s_emf_smo.e_alpha, s_emf_smo.e_beta,
+                       theta_enc_park, M1_CTRL_TS_S);
+#else
+        emf_pll_update(&s_emf_pll,
+                       s_emf_veq.e_alpha, s_emf_veq.e_beta,
+                       theta_enc_park, M1_CTRL_TS_S);
+#endif
+        dbg.obs_pll_theta_hat = s_emf_pll.theta_hat;
+        dbg.obs_pll_theta_err = s_emf_pll.theta_err;
+        dbg.obs_pll_omega_el = s_emf_pll.omega_el;
+        dbg.obs_pll_pd = s_emf_pll.last_pd;
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+        /* θ̂ → 速度环同款 PLL @ 2 kHz（省 ISR）；有感段只预热，OBS 时进速度环 */
+        if (s_emf_pll.primed != 0u) {
+            const float pp = (float)M1_POLE_PAIRS;
+
+            if (s_obs_spd_pll_primed == 0u) {
+                motor_pll_reset(&s_obs_spd_pll, s_emf_pll.theta_hat);
+                s_obs_spd_pll_primed = 1u;
+                s_obs_spd_div = 0u;
+            }
+            if (++s_obs_spd_div >= M1_SPEED_DECIM) {
+                float rpm_obs;
+
+                s_obs_spd_div = 0u;
+                motor_pll_update(&s_obs_spd_pll, s_emf_pll.theta_hat,
+                                 M1_SPEED_TS_S);
+                rpm_obs = motor_pll_get_omega_mech(&s_obs_spd_pll) * 60.0f /
+                          (6.28318530718f * pp);
+                s_obs_spd_pll_rpm = rpm_obs;
+                dbg.obs_spd_pll_rpm = rpm_obs;
+                dbg.obs_spd_pll_err_rad =
+                    motor_pll_get_last_err(&s_obs_spd_pll);
+            }
+        }
+#if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE
+        if (obs_soft_switch_speed_on_obs() != 0u) {
+            /* ch0 与 PI 一致（可含 LPF）；ch5 仍为原始 obs_spd */
+            dbg.outer_omega_mech_rpm = s_speed_fb_rpm;
+        }
+#endif
+        dbg.obs_spd_rpm_err = s_obs_spd_pll_rpm - s_pll_omega_mech_rpm;
 #endif
 #endif
     }
