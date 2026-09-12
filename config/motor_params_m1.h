@@ -142,9 +142,12 @@
 #ifndef M1_USE_SPEED_1000_PROFILE
 #define M1_USE_SPEED_1000_PROFILE       0
 #endif
+#ifndef M1_USE_IF_100_PROFILE
+#define M1_USE_IF_100_PROFILE           0
+#endif
 #if ((M1_USE_FLUX_ID_PROFILE != 0) + (M1_USE_OBS_VEQ_PROFILE != 0) + \
-     (M1_USE_SPEED_1000_PROFILE != 0)) > 1
-#error "M1_USE_SPEED_1000_PROFILE / FLUX_ID / OBS_VEQ are mutually exclusive"
+     (M1_USE_SPEED_1000_PROFILE != 0) + (M1_USE_IF_100_PROFILE != 0)) > 1
+#error "M1_USE_SPEED_1000 / FLUX / OBS_VEQ / IF_100 profiles are mutually exclusive"
 #endif
 #ifndef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               0
@@ -170,8 +173,45 @@
 #ifndef M1_OBS_SS_SPEED_SWITCH_ENABLE
 #define M1_OBS_SS_SPEED_SWITCH_ENABLE   0
 #endif
+/** 1=先角后速：进 OBS 后速度仍吃编码器，门限满足再切观测速 */
+#ifndef M1_OBS_SS_SPD_DEFER_ENABLE
+#define M1_OBS_SS_SPD_DEFER_ENABLE      0
+#endif
+#ifndef M1_OBS_SS_SPD_DWELL_S
+#define M1_OBS_SS_SPD_DWELL_S           1.5f /* 进 OBS 后最短等待再武装切速 */
+#endif
+#ifndef M1_OBS_SS_SPD_HOLD_S
+#define M1_OBS_SS_SPD_HOLD_S            0.4f /* 切速门限连续保持 */
+#endif
+#ifndef M1_OBS_SS_SPD_RPM_ERR_FRAC
+#define M1_OBS_SS_SPD_RPM_ERR_FRAC      0.08f /* |ω̂−ω_ref|/ω_ref */
+#endif
+#ifndef M1_OBS_SS_SPD_ERR_RAD
+#define M1_OBS_SS_SPD_ERR_RAD           0.2617994f /* 15°，切速时角仍须好 */
+#endif
+#ifndef M1_OBS_SS_SPD_DOMEGA_MAX
+#define M1_OBS_SS_SPD_DOMEGA_MAX        2500.0f /* 长窗 |Δω̂|/Δt [rpm/s]，抑真猎振 */
+#endif
+#ifndef M1_OBS_SS_SPD_DOMEGA_WIN_S
+#define M1_OBS_SS_SPD_DOMEGA_WIN_S      0.10f /* 加速度估计窗；勿用单拍 SPEED_TS */
+#endif
+#ifndef M1_OBS_SS_SPD_ENC_MATCH_ENABLE
+#define M1_OBS_SS_SPD_ENC_MATCH_ENABLE  0 /* 1=另要求 |ω̂−ω_enc|≤MATCH（联调） */
+#endif
+#ifndef M1_OBS_SS_SPD_ENC_MATCH_RPM
+#define M1_OBS_SS_SPD_ENC_MATCH_RPM     50.0f
+#endif
+#ifndef M1_OBS_SS_SPD_REQUIRE_EMAG
+#define M1_OBS_SS_SPD_REQUIRE_EMAG      0
+#endif
+#ifndef M1_OBS_SS_SPD_REQUIRE_ERR
+#define M1_OBS_SS_SPD_REQUIRE_ERR       0
+#endif
 #ifndef M1_OBS_SS_FALLBACK_ON_ERR_ENABLE
 #define M1_OBS_SS_FALLBACK_ON_ERR_ENABLE 1 /* 0=角差仅监督，不回切编码器 */
+#endif
+#ifndef M1_OBS_SS_FALLBACK_ENABLE
+#define M1_OBS_SS_FALLBACK_ENABLE       1 /* 0=禁用全部回退（掉速/过流亦不踢） */
 #endif
 #ifndef M1_OBS_SPD_PLL_ENABLE
 #define M1_OBS_SPD_PLL_ENABLE           0
@@ -669,6 +709,336 @@
 /** 0=无 ALIGN/DRAG，编码器 θ 直接闭环；1=启动状态机 */
 #ifndef M1_STARTUP_ENABLE
 #define M1_STARTUP_ENABLE   0
+#endif
+#ifndef M1_IF_ENABLE
+#define M1_IF_ENABLE                    0
+#endif
+#ifndef M1_IF_ALIGN_S
+#define M1_IF_ALIGN_S                   0.2f
+#endif
+#ifndef M1_IF_IQ_A
+#define M1_IF_IQ_A                      0.5f
+#endif
+#ifndef M1_IF_ID_A
+#define M1_IF_ID_A                      0.0f
+#endif
+#ifndef M1_IF_TARGET_RPM
+#define M1_IF_TARGET_RPM                100.0f
+#endif
+#ifndef M1_IF_RAMP_S
+#define M1_IF_RAMP_S                    3.0f
+#endif
+#ifndef M1_IF_HOLD_S
+#define M1_IF_HOLD_S                    0.0f
+#endif
+/** 1=RAMP 中速带抬 Iq，压 200–500 rpm 丢步 */
+#ifndef M1_IF_IQ_MID_BOOST_ENABLE
+#define M1_IF_IQ_MID_BOOST_ENABLE       0
+#endif
+#ifndef M1_IF_IQ_MID_A
+#define M1_IF_IQ_MID_A                  5.5f
+#endif
+#ifndef M1_IF_IQ_MID_RPM_LO
+#define M1_IF_IQ_MID_RPM_LO             180.0f
+#endif
+#ifndef M1_IF_IQ_MID_RPM_HI
+#define M1_IF_IQ_MID_RPM_HI             520.0f
+#endif
+#ifndef M1_IF_TO_OBS_ENABLE
+#define M1_IF_TO_OBS_ENABLE             0
+#endif
+/**
+ * 1=编码器可选：控制走 I/F→SMO，编码器只供 VOFA 监督。
+ * 插着可看 ch0/θ_err；拔掉不挡启动与巡航（须 IF_TO_OBS）。
+ */
+#ifndef M1_ENC_OPTIONAL_ENABLE
+#define M1_ENC_OPTIONAL_ENABLE          0
+#endif
+#ifndef M1_IF_OBS_SPEED_REF_RPM
+#define M1_IF_OBS_SPEED_REF_RPM         1000.0f
+#endif
+/** 1=交接后 ω_ref 钉当前测速；0=再抬到 M1_IF_OBS_SPEED_REF_RPM */
+#ifndef M1_IF_OBS_HOLD_SPEED_ENABLE
+#define M1_IF_OBS_HOLD_SPEED_ENABLE     0
+#endif
+/** 1=HOLD 时钉 I/F 指令速（防认飞车）；须同时 HOLD_SPEED=1 */
+#ifndef M1_IF_OBS_HOLD_IF_CMD_ENABLE
+#define M1_IF_OBS_HOLD_IF_CMD_ENABLE    0
+#endif
+/** 1=只切角：进 OBS 后固定 Iq、不跑速度环（角切泡开验收） */
+#ifndef M1_IF_OBS_ANGLE_ONLY_ENABLE
+#define M1_IF_OBS_ANGLE_ONLY_ENABLE     0
+#endif
+/** 1=BLEND 期间保持 M1_IF_IQ_A（不收到 HANDOFF） */
+#ifndef M1_IF_OBS_BLEND_KEEP_IF_IQ
+#define M1_IF_OBS_BLEND_KEEP_IF_IQ      0
+#endif
+/** 1=进入 BLEND 即弱速度环（ω_ref=ω_IF），抑角融阶段飞车 */
+#ifndef M1_IF_OBS_BLEND_SPEED_ENABLE
+#define M1_IF_OBS_BLEND_SPEED_ENABLE    0
+#endif
+/** 1=进 OBS 后短时限幅速度 PI 的 |e_ω|（抑 enc 测速尖峰） */
+#ifndef M1_IF_OBS_EW_CLAMP_ENABLE
+#define M1_IF_OBS_EW_CLAMP_ENABLE       0
+#endif
+#ifndef M1_IF_OBS_EW_CLAMP_RPM
+#define M1_IF_OBS_EW_CLAMP_RPM          40.0f
+#endif
+#ifndef M1_IF_OBS_EW_CLAMP_S
+#define M1_IF_OBS_EW_CLAMP_S            0.20f
+#endif
+/**
+ * 交接短时「浅刹车」：限 iq_ref 下限，防 1240 式大负电流砸停失锁。
+ * 窗口结束后恢复 M1_SPEED_PI_OUT_MIN（允许正常制动）。
+ */
+#ifndef M1_IF_OBS_SOFT_BRAKE_ENABLE
+#define M1_IF_OBS_SOFT_BRAKE_ENABLE     0
+#endif
+#ifndef M1_IF_OBS_IQ_MIN_A
+#define M1_IF_OBS_IQ_MIN_A              (-0.4f)
+#endif
+#ifndef M1_IF_OBS_SOFT_REGEN_IQ_A
+#define M1_IF_OBS_SOFT_REGEN_IQ_A       (-M1_IF_OBS_IQ_MIN_A) /* |regen| 浅刹 */
+#endif
+#ifndef M1_IF_OBS_SOFT_BRAKE_S
+#define M1_IF_OBS_SOFT_BRAKE_S          2.0f
+#endif
+/**
+ * 机械转向：+1 正转 / -1 反转。profile 只改此符号与 |转速| 目标。
+ * 勿再使用 M1_IF_OBS_REVERSE_ENABLE 分叉逻辑。
+ */
+#ifndef M1_IF_DIR_SIGN
+#define M1_IF_DIR_SIGN                  (1.0f)
+#endif
+/* 兼容旧宏：仅文档/检索；代码路径应走 DIR_SIGN */
+#ifndef M1_IF_OBS_REVERSE_ENABLE
+#define M1_IF_OBS_REVERSE_ENABLE        0
+#endif
+/**
+ * 速切站稳后分三步进入巡航（1347：一步放开会砸停）：
+ *   ① ω_ref→CRUISE_RPM，仍浅刹车+弱 PI
+ *   ② 撤浅刹车，对称 ±Iq
+ *   ③ 正常 Kp/Ki
+ */
+#ifndef M1_IF_OBS_CRUISE_ENABLE
+#define M1_IF_OBS_CRUISE_ENABLE         0
+#endif
+#ifndef M1_IF_OBS_CRUISE_SETTLE_S
+#define M1_IF_OBS_CRUISE_SETTLE_S       1.5f /* spd_on → ① */
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE1_S
+#define M1_IF_OBS_CRUISE_STAGE1_S       2.5f /* ① 持续时间 */
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE2_S
+#define M1_IF_OBS_CRUISE_STAGE2_S       1.5f /* ② 持续时间 */
+#endif
+#ifndef M1_IF_OBS_CRUISE_RPM
+#define M1_IF_OBS_CRUISE_RPM            M1_IF_OBS_SPEED_REF_RPM
+#endif
+/**
+ * 正→滑行停→反：① 正转巡航 soak → Iq=0 不管停 → |ω|≈0 → 再 I/F 反转到 −|ω|。
+ * @note 开后应关 STEP/S3；LOCK_STAGE1=1 避免正转段进②。
+ */
+#ifndef M1_IF_OBS_DIR_SEQ_ENABLE
+#define M1_IF_OBS_DIR_SEQ_ENABLE        0
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_FWD_HOLD_S
+#define M1_IF_OBS_DIR_SEQ_FWD_HOLD_S    3.0f /* 正转巡航站稳后再松手 */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_ZERO_RPM
+#define M1_IF_OBS_DIR_SEQ_ZERO_RPM      80.0f /* |ω_fb| 低于此算近零 */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S
+#define M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S   0.5f /* 近零再保持片刻再反起 */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_COAST_MIN_S
+#define M1_IF_OBS_DIR_SEQ_COAST_MIN_S   2.0f /* 松手后再开近零判定，防 enc 假零 */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_COAST_MAX_S
+#define M1_IF_OBS_DIR_SEQ_COAST_MAX_S   8.0f /* ω̂ 假挂时超时强制反起（2144） */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_EMAG_STOP
+#define M1_IF_OBS_DIR_SEQ_EMAG_STOP     0.55f /* Iq=0 后 emag 掉到噪声≈已停；勿信假 ω̂ */
+#endif
+#ifndef M1_IF_OBS_DIR_SEQ_REV_HOLD_S
+#define M1_IF_OBS_DIR_SEQ_REV_HOLD_S    3.0f /* 反转巡航后结束（不再二次反） */
+#endif
+/**
+ * ①/② 站稳后自动 ω_ref 阶跃（验 SMO 可变速）。权威仍由 LOCK_STAGE* 管。
+ * 无弱磁：目标夹在 LO..HI（默认 900..1300）。
+ * 序列：soak@CRUISE → HI → CRUISE → LO → HI → LO → CRUISE。
+ */
+#ifndef M1_IF_OBS_CRUISE_STEP_ENABLE
+#define M1_IF_OBS_CRUISE_STEP_ENABLE    0
+#endif
+#ifndef M1_IF_OBS_CRUISE_STEP_SOAK_S
+#define M1_IF_OBS_CRUISE_STEP_SOAK_S    2.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_STEP_HOLD_S
+#define M1_IF_OBS_CRUISE_STEP_HOLD_S    4.0f /* 大阶跃/减速靠 regen 需更长 */
+#endif
+#ifndef M1_IF_OBS_CRUISE_STEP_LO_RPM
+#define M1_IF_OBS_CRUISE_STEP_LO_RPM    900.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_STEP_HI_RPM
+#define M1_IF_OBS_CRUISE_STEP_HI_RPM    1300.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_STEP_RPM
+#define M1_IF_OBS_CRUISE_STEP_RPM       100.0f /* 旧Δ；表驱后仅兼容保留 */
+#endif
+/**
+ * ③ iq_min 到位后同向硬减速探针：基→HI→LO→基，逼 Iq 贴 STAGE3 地板。
+ * 须在阶跃表完成且已进③之后跑（与 STEP 表错开）。
+ */
+#ifndef M1_IF_OBS_CRUISE_S3_PROBE_ENABLE
+#define M1_IF_OBS_CRUISE_S3_PROBE_ENABLE 0
+#endif
+#ifndef M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S
+#define M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S 1.5f
+#endif
+#ifndef M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S
+#define M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S 4.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_PI_KP
+#define M1_IF_OBS_CRUISE_PI_KP          M1_SPEED_PI_KP
+#endif
+#ifndef M1_IF_OBS_CRUISE_PI_KI
+#define M1_IF_OBS_CRUISE_PI_KI          M1_SPEED_PI_KI
+#endif
+#ifndef M1_IF_OBS_CRUISE_IQ_ABS_MAX
+#define M1_IF_OBS_CRUISE_IQ_ABS_MAX     8.0f
+#endif
+/**
+ * 1=巡航锁在①（open_seq=246）：不进②/③，并持续续期浅刹车。
+ * B0/B1 验收用；放开权威前必须为 0。
+ */
+#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE
+#define M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE 0
+#endif
+/**
+ * 1=进②后不再升档（停在 iq_min=STAGE2）。
+ */
+#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE
+#define M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE 0
+#endif
+/**
+ * 1=进③（第二档 iq_min）后不再进正常 PI。
+ */
+#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE
+#define M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE 0
+#endif
+/**
+ * ①→② / ②→③ 门控（时间只作 T_min；不满足则永不硬升）。
+ */
+#ifndef M1_IF_OBS_CRUISE_GATE_ENABLE
+#define M1_IF_OBS_CRUISE_GATE_ENABLE    0
+#endif
+#ifndef M1_IF_OBS_CRUISE_GATE_T_MIN_S
+#define M1_IF_OBS_CRUISE_GATE_T_MIN_S   2.0f
+#endif
+/** ② 内最短停留再门控升③ */
+#ifndef M1_IF_OBS_CRUISE_GATE_T_MIN2_S
+#define M1_IF_OBS_CRUISE_GATE_T_MIN2_S  1.5f
+#endif
+#ifndef M1_IF_OBS_CRUISE_GATE_HOLD_S
+#define M1_IF_OBS_CRUISE_GATE_HOLD_S    0.5f
+#endif
+#ifndef M1_IF_OBS_CRUISE_GATE_ERR_RPM
+#define M1_IF_OBS_CRUISE_GATE_ERR_RPM   60.0f /* 1442：40 在 20kHz 单拍易抖死 */
+#endif
+#ifndef M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX
+#define M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX 1200.0f /* rpm/s，长窗 */
+#endif
+#ifndef M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S
+#define M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S 0.10f
+#endif
+/** 门控用 |eω| 一阶滤波截止；抑 20 kHz 单拍尖峰 */
+#ifndef M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ
+#define M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ  20.0f
+#endif
+/**
+ * 不合格时 hold 泄漏倍率（相对 dt）：hold -= LEAK*dt，而非清零。
+ * 1=对称减；3=掉得比涨快，仍抗单拍毛刺。
+ */
+#ifndef M1_IF_OBS_CRUISE_GATE_FAIL_LEAK
+#define M1_IF_OBS_CRUISE_GATE_FAIL_LEAK  2.0f
+#endif
+/**
+ * 晃幅门控（离线 1453/1503）：升权威前要求 std / 近似峰峰 / |eω| 达标。
+ * 1503 证明仅 |eω| 均值不够。
+ */
+#ifndef M1_IF_OBS_CRUISE_AMP_GATE_ENABLE
+#define M1_IF_OBS_CRUISE_AMP_GATE_ENABLE 0
+#endif
+#ifndef M1_IF_OBS_CRUISE_AMP_STD_MAX
+#define M1_IF_OBS_CRUISE_AMP_STD_MAX     38.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_AMP_PTP_MAX
+#define M1_IF_OBS_CRUISE_AMP_PTP_MAX     98.0f /* ≈p5–p95 代理：2.5·std */
+#endif
+#ifndef M1_IF_OBS_CRUISE_AMP_EW_MAX
+#define M1_IF_OBS_CRUISE_AMP_EW_MAX      58.0f
+#endif
+#ifndef M1_IF_OBS_CRUISE_AMP_EMA_HZ
+#define M1_IF_OBS_CRUISE_AMP_EMA_HZ      2.0f
+#endif
+/** iq_min 斜坡 [A/s]：权威禁止阶跃 */
+#ifndef M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S
+#define M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S 0.2f /* −0.25→−0.6 约 1.75s */
+#endif
+/** 驱动 |Iq| 与分级 |regen|（符号由 M1_IF_DIR_SIGN 映射） */
+#ifndef M1_IF_OBS_CRUISE_DRIVE_IQ_A
+#define M1_IF_OBS_CRUISE_DRIVE_IQ_A     3.5f
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A
+#define M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A 0.6f
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A
+#define M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A 0.9f
+#endif
+/** 兼容旧名（按正向语义）；运行时请用 DRIVE/REGEN + DIR */
+#ifndef M1_IF_OBS_CRUISE_STAGE2_IQ_MIN_A
+#define M1_IF_OBS_CRUISE_STAGE2_IQ_MIN_A (-M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A)
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE2_IQ_MAX_A
+#define M1_IF_OBS_CRUISE_STAGE2_IQ_MAX_A M1_IF_OBS_CRUISE_DRIVE_IQ_A
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE3_IQ_MIN_A
+#define M1_IF_OBS_CRUISE_STAGE3_IQ_MIN_A (-M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A)
+#endif
+#ifndef M1_IF_OBS_CRUISE_STAGE3_IQ_MAX_A
+#define M1_IF_OBS_CRUISE_STAGE3_IQ_MAX_A M1_IF_OBS_CRUISE_DRIVE_IQ_A
+#endif
+/**
+ * 速度环主动阻尼（空载收晃）。
+ * HP=1：iq -= Bd·(ω−ω_lpf)——只阻尼交流，不与浅刹车抢欠速半周（1422 绝对粘滞已 Fail）。
+ * HP=0：iq -= Bd·ω_lpf——绝对粘滞；非对称 iq_min 下勿用。
+ * LPF 截止须明显低于猎振频率（~1 Hz → 建议 0.3 Hz）。
+ */
+#ifndef M1_IF_OBS_DAMP_ENABLE
+#define M1_IF_OBS_DAMP_ENABLE           0
+#endif
+#ifndef M1_IF_OBS_DAMP_HP_ENABLE
+#define M1_IF_OBS_DAMP_HP_ENABLE        1
+#endif
+#ifndef M1_IF_OBS_DAMP_BD
+#define M1_IF_OBS_DAMP_BD               0.002f /* A/rpm；HP 时乘在 (ω−ω_lpf) 上 */
+#endif
+#ifndef M1_IF_OBS_DAMP_LPF_HZ
+#define M1_IF_OBS_DAMP_LPF_HZ           0.35f /* 提均值；须 << 猎振频 */
+#endif
+/** BLEND 末 / 交接 bumpless 目标 Iq（从 M1_IF_IQ_A 线性收到此值） */
+#ifndef M1_IF_HANDOFF_IQ_A
+#define M1_IF_HANDOFF_IQ_A              0.8f
+#endif
+#ifndef M1_VOFA_IF_12CH
+#define M1_VOFA_IF_12CH                 0
+#endif
+#if M1_IF_TO_OBS_ENABLE && !M1_IF_ENABLE
+#error "M1_IF_TO_OBS_ENABLE requires M1_IF_ENABLE=1"
+#endif
+#if M1_IF_TO_OBS_ENABLE && !M1_OBS_SOFT_SWITCH_ENABLE
+/* soft switch may be enabled later by profile; checked after profile include */
 #endif
 
 /* ==========================================================================
@@ -1261,7 +1631,10 @@
 #include "profiles/m1_bode_id_fc1000.profile.h"
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
-#if M1_USE_SPEED_1000_PROFILE
+#if M1_USE_IF_100_PROFILE
+/** 真 I/F 拖到 100 rpm：见 profiles/m1_if_100rpm.profile.h */
+#include "profiles/m1_if_100rpm.profile.h"
+#elif M1_USE_SPEED_1000_PROFILE
 /** 有感阶梯 + SMO→EMF-PLL 旁路（无感 SMO）：见 profiles/m1_speed_1000rpm.profile.h */
 #include "profiles/m1_speed_1000rpm.profile.h"
 #elif M1_USE_OBS_VEQ_PROFILE
@@ -1342,6 +1715,9 @@
 #endif
 #if M1_OBS_SS_SPEED_SWITCH_ENABLE && !M1_OBS_SPD_PLL_ENABLE
 #error "M1_OBS_SS_SPEED_SWITCH_ENABLE requires M1_OBS_SPD_PLL_ENABLE"
+#endif
+#if M1_OBS_SS_SPD_DEFER_ENABLE && !M1_OBS_SS_SPEED_SWITCH_ENABLE
+#error "M1_OBS_SS_SPD_DEFER_ENABLE requires M1_OBS_SS_SPEED_SWITCH_ENABLE"
 #endif
 
 #else
@@ -2283,6 +2659,31 @@
 #if M1_OPEN_UQ_PRE_ID_CAL_ENABLE && M1_OPEN_UD_PRE_ID_CAL_ENABLE
 #error "M1_OPEN_UQ_PRE_ID_CAL_ENABLE and M1_OPEN_UD_PRE_ID_CAL_ENABLE are mutually exclusive"
 #endif
+#if M1_IF_ENABLE && (M1_STARTUP_ENABLE || M1_OPEN_UD_PRE_ID_CAL_ENABLE || \
+                     M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
+#error "M1_IF_ENABLE mutually exclusive with Uq/Ud open-loop drag (STARTUP / OPEN_UD / OPEN_UQ)"
+#endif
+#if M1_IF_ENABLE && M1_OBS_SOFT_SWITCH_ENABLE && !M1_IF_TO_OBS_ENABLE
+#error "M1_IF_ENABLE + OBS_SS requires M1_IF_TO_OBS_ENABLE=1"
+#endif
+#if M1_IF_TO_OBS_ENABLE && !M1_OBS_SOFT_SWITCH_ENABLE
+#error "M1_IF_TO_OBS_ENABLE requires M1_OBS_SOFT_SWITCH_ENABLE=1"
+#endif
+#if M1_IF_TO_OBS_ENABLE && !M1_EMF_PLL_ENABLE
+#error "M1_IF_TO_OBS_ENABLE requires M1_EMF_PLL_ENABLE=1"
+#endif
+#if M1_USE_IF_100_PROFILE && !M1_IF_ENABLE
+#error "M1_USE_IF_100_PROFILE requires M1_IF_ENABLE=1"
+#endif
+#if M1_IF_OBS_DIR_SEQ_ENABLE && !M1_IF_OBS_CRUISE_ENABLE
+#error "M1_IF_OBS_DIR_SEQ_ENABLE requires M1_IF_OBS_CRUISE_ENABLE=1"
+#endif
+#if M1_IF_OBS_DIR_SEQ_ENABLE && !M1_IF_TO_OBS_ENABLE
+#error "M1_IF_OBS_DIR_SEQ_ENABLE requires M1_IF_TO_OBS_ENABLE=1"
+#endif
+#if M1_IF_OBS_DIR_SEQ_ENABLE && (M1_IF_OBS_CRUISE_STEP_ENABLE || M1_IF_OBS_CRUISE_S3_PROBE_ENABLE)
+#error "M1_IF_OBS_DIR_SEQ_ENABLE: disable CRUISE_STEP and S3_PROBE"
+#endif
 /** 1=Ud/Uq 开环 ladder 用 LUT runtime abc（Pass0 后验表）；0=deadband OFF */
 #ifndef M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME
 #define M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME  0
@@ -2686,5 +3087,18 @@
 #define M1_SPEED_IDENT_BODE_CYCLES_PER_FREQ  10.0f
 #endif
 #endif /* M1_SPEED_IDENT_ENABLE */
+
+/**
+ * 全部 profile 之后：
+ * I/F 帧恒用 +|Iq| 拖动（正/反 ω 皆然，2121：反转 I/F 为 +4）。
+ * 速度环交接 bumpless 须 Continuity 同号，勿乘 DIR（乘 DIR 会在 BLEND 把 +4→−3.5 反扭矩砸速）。
+ * DIR 只作用在 ω 目标；转子系若需 −Iq 保负速，由 PI 在限权内自行斜过去。
+ */
+#undef M1_IF_OBS_SPEED_IQ_SIGN
+#define M1_IF_OBS_SPEED_IQ_SIGN         (1.0f)
+#undef M1_IF_OBS_SPEED_IQ_BOOT_A
+#define M1_IF_OBS_SPEED_IQ_BOOT_A       (M1_IF_IQ_A)
+#undef M1_IF_OBS_HANDOFF_IQ_BOOT_A
+#define M1_IF_OBS_HANDOFF_IQ_BOOT_A     (M1_IF_HANDOFF_IQ_A)
 
 #endif

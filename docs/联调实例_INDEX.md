@@ -54,6 +54,14 @@
 
 ---
 
+## I/F → SMO 无感（中高速）
+
+| 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
+|---------|-----|------|------------------|---------|------|--------|
+| `if_smo_mid_v1` | OBS/SPEED | BOOT_ONCE | `M1_USE_IF_100_PROFILE` → `m1_if_100rpm` | 🔧 | ⚠️ **中高速 V1 结档** | **结档**：[SMO V1 与 HFI 开干](结档_SMO中高速无感V1与HFI开干_2026-09-12.md)；半成功：[限权变速](分析报告_SMO无感限权变速半成功_2026-09-12.md)；DIR_SEQ 主档 **`2154`**；同向阶跃 `1640/1702/1714` |
+
+---
+
 ## 位置环
 
 | 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
@@ -77,6 +85,8 @@
 
 | 实例 ID | 域 | 依赖基线 | 说明 |
 |---------|-----|----------|------|
+| `hfi_low_speed` | OBS/STARTUP | `if_smo_mid_v1` | 低速/零速 HFI → 再与 SMO 软切。入口：[V1 结档 §4](结档_SMO中高速无感V1与HFI开干_2026-09-12.md) |
+| `if_smo_full_pi` | SPEED | `if_smo_mid_v1` | SMO 回填：`open_seq=248` 满权威+正常 PI（不挡 HFI） |
 | `eso_disturb_reject` | SPEED | `normal_product` | ESO 阶跃 / 0.6 N·m 对比 |
 | `impedance_joint_z` | POSITION | `normal_product` | 关节阻抗 Z 扫频/阶跃 |
 
@@ -88,11 +98,12 @@
 
 | 实验 | 模式 | 附加 |
 |------|------|------|
+| **I/F→SMO 中高速 V1** | `NORMAL`/`SPEED_IDENT` 以 bringup 为准 | `M1_USE_IF_100_PROFILE=1` → `m1_if_100rpm`（DIR_SEQ±1000；结档见上） |
 | Id Bode 签收 | `BODE_ID_OFF_ONLY` | `profiles/m1_bode_id_fc1000.profile.h` |
 | 有感 1000 rpm 估 ψf | `SPEED_IDENT` | `M1_USE_FLUX_ID_PROFILE=1` → `m1_flux_id_1000rpm.profile.h` |
 | 有感 1000 rpm + Veq 旁路 | `SPEED_IDENT` | `M1_USE_OBS_VEQ_PROFILE=1` → `m1_obs_veq_1000rpm.profile.h`（FLUX 须 0） |
-| Veq+SMO 旁路阶梯（cycle） | `SPEED_IDENT` | `M1_USE_SPEED_1000_PROFILE=1` → `m1_speed_1000rpm.profile.h`（与 OBS_VEQ/FLUX 互斥） |
-| 日常 | `NORMAL` | FLUX/OBS/SPEED1000 均 0 |
+| Veq+SMO 旁路阶梯（cycle） | `SPEED_IDENT` | `M1_USE_SPEED_1000_PROFILE=1` → `m1_speed_1000rpm.profile.h`（与 OBS_VEQ/FLUX/IF 互斥） |
+| 日常 | `NORMAL` | FLUX/OBS/SPEED1000/IF 均 0 |
 
 ```c
 /* bringup_active.h 示例：Veq 旁路 */
@@ -118,4 +129,4 @@ SMO 三包后 **改 EMF-PLL**：[总结_OBS_SMO旁路与换PLL决策_2026-09-10]
 
 ---
 
-**最后更新**：2026-09-10（登记 obs 旁路 + PLL 决策）
+**最后更新**：2026-09-12（SMO 中高速 V1 结档 + HFI 开干入口）

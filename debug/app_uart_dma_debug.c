@@ -448,6 +448,9 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #ifndef M1_VOFA_OBS_SMO_RAW_12CH
 #define M1_VOFA_OBS_SMO_RAW_12CH     0
 #endif
+#ifndef M1_VOFA_IF_12CH
+#define M1_VOFA_IF_12CH              0
+#endif
 
 #if M1_VOFA_IDENT_DUMP_ENABLE
     if (telem_ident_dump_next(vals, TELEM_BRINGUP_K)) {
@@ -460,6 +463,47 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
         telem_write_frame_vals(buf, offset, vals);
         return;
     }
+#endif
+
+#if M1_VOFA_IF_12CH && (TELEM_BRINGUP_K >= 12u)
+    /*
+     * I/F→OBS 先角后速联调：
+     * ch0 ω_enc  ch1 ω_ref  ch2 Iq_ref  ch3 θ_err(pll−enc监督)
+     * ch4 ω_obs  ch5 speed_fb(进PI)  ch6 Iq  ch7 emag
+     * ch8 Uq     ch9 θ_park  ch10 spd_on(0/1)  ch11 ss_state+0.1α
+     * 判读：进 OBS 后 ch11≈3.x 且 ch10=0 → 角切速未切；ch10→1 且 ch5贴ch4 → 速已切。
+     */
+    vals[0] = dbg.pll_omega_mech_rpm;
+    vals[1] = dbg.if_omega_cmd_rpm;
+    /* I/F 释放后 ch1 跟外环；|ω| 判，兼容反向（旧：outer>1 会把 −1000 漏成 0） */
+    if ((dbg.if_omega_cmd_rpm > -1.0f) && (dbg.if_omega_cmd_rpm < 1.0f) &&
+        ((dbg.outer_omega_ref > 1.0f) || (dbg.outer_omega_ref < -1.0f))) {
+        vals[1] = dbg.outer_omega_ref;
+    }
+    vals[2] = dbg.foc_iq_ref;
+#if M1_EMF_PLL_ENABLE
+    vals[3] = dbg.obs_pll_theta_err;
+#else
+    vals[3] = dbg.if_theta_err_rad;
+#endif
+    vals[4] = dbg.obs_spd_pll_rpm;
+    vals[5] = dbg.outer_omega_mech_rpm;
+    vals[6] = dbg.foc_iq;
+#if M1_EMF_PLL_ENABLE
+    vals[7] = dbg.obs_smo_emag;
+#else
+    vals[7] = dbg.obs_pll_pd;
+#endif
+    vals[8] = dbg.foc_uq_out;
+    vals[9] = dbg.foc_theta_el;
+    vals[10] = dbg.obs_ss_spd_on;
+#if M1_OBS_SOFT_SWITCH_ENABLE
+    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
+#else
+    vals[11] = (float)dbg.open_seq_phase;
+#endif
+    telem_write_frame_vals(buf, offset, vals);
+    return;
 #endif
 
 #if M1_VOFA_OBS_SMO_RAW_12CH && (TELEM_BRINGUP_K >= 12u)

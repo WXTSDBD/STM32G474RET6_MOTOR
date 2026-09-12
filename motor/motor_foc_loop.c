@@ -260,22 +260,26 @@ void motor_foc_loop_tick(motor_context_t *ctx,
 #else
         if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
             id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-#if M1_SPEED_IDENT_ENABLE
+#if M1_IF_ENABLE
+            iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+#elif M1_SPEED_IDENT_ENABLE
             if (speed_ident_flow_is_armed() ||
                 ctx->outer_mode == M1_OUTER_SPEED ||
                 ctx->outer_mode == M1_OUTER_POSITION) {
                 iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
             } else
 #endif
-#if M1_SPEED_LOOP_ENABLE && !M1_SPEED_IDENT_ENABLE
+#if !M1_IF_ENABLE && M1_SPEED_LOOP_ENABLE && !M1_SPEED_IDENT_ENABLE
             if (ctx->outer_mode == M1_OUTER_SPEED ||
                 ctx->outer_mode == M1_OUTER_POSITION) {
                 iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
             } else
 #endif
+#if !M1_IF_ENABLE
             {
                 iq_ref = motor_foc_loop_clamp_ref(startup->iq_ref);
             }
+#endif
             if (startup->pi_bumpless) {
                 foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
                 foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);

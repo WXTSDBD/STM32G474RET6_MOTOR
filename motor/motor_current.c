@@ -24,6 +24,7 @@
 #include "motor_pll.h"
 #endif
 #include "motor_startup.h"
+#include "motor_if.h"
 #include "motor_trig.h"
 #if M1_EMF_VEQ_ENABLE
 #include "observer/emf_veq.h"
@@ -102,6 +103,108 @@ static void motor_current_update_observation_dbg(void)
 
 #if M1_SPEED_LOOP_ENABLE
 static uint8_t s_speed_slow_div;
+#endif
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
+static uint8_t s_if_to_obs_handed; /* 1=已进 OBS（I/F 已释放） */
+static float s_if_omega_cmd_latched; /* 释放前最后一拍 I/F 指令速 */
+#if M1_IF_OBS_BLEND_SPEED_ENABLE
+static uint8_t s_if_blend_speed_on; /* 1=BLEND 起已开弱速度环 */
+static uint8_t s_if_blend_speed_div;
+#if M1_IF_OBS_CRUISE_ENABLE
+static uint8_t s_if_cruise_armed;
+static float s_if_cruise_settle_s;
+#endif
+#endif
+#if M1_IF_OBS_ANGLE_ONLY_ENABLE
+static float s_if_obs_iq_freeze; /* 只切角：OBS 后钉死的 Iq */
+#endif
+#endif
+#if M1_ENC_OPTIONAL_ENABLE || (M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE)
+/* 上一拍 Park 角：电流重构/无感兜底，避免拔编码器后吃垃圾 θ_enc */
+static float s_theta_park_last;
+#endif
+
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE && M1_IF_OBS_DIR_SEQ_ENABLE
+/**
+ * @brief 进滑行时清 SMO/PLL，避免 Iq=0 后 ω̂ 假挂（2144 ~400rpm）
+ */
+static void motor_current_dir_seq_try_obs_reset(void)
+{
+    if (motor_outer_if_obs_dir_seq_consume_obs_reset() == 0u) {
+        return;
+    }
+#if M1_EMF_SMO_ENABLE
+    emf_smo_reset(&s_emf_smo);
+#endif
+#if M1_EMF_PLL_ENABLE
+    emf_pll_reset(&s_emf_pll);
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+    motor_pll_reset(&s_obs_spd_pll, 0.0f);
+    s_obs_spd_pll_primed = 0u;
+    s_obs_spd_div = 0u;
+    s_obs_spd_pll_rpm = 0.0f;
+    s_obs_spd_fb_lpf_rpm = 0.0f;
+    s_obs_spd_fb_lpf_on = 0u;
+#endif
+#if M1_PLL_ENABLE
+    s_speed_fb_rpm = 0.0f;
+#endif
+}
+
+/**
+ * @brief 近零后反转再起：清观测/软切，I/F 目标改 −|ω| 后 arm
+ * @note 须在 cruise_tick 置位 rearm 之后调用；本拍 I/F 已 tick，下拍起爬坡。
+ */
+static void motor_current_dir_seq_try_rearm(motor_context_t *ctx)
+{
+    float abs_tgt;
+
+    if ((ctx == NULL) || (motor_outer_if_obs_dir_seq_consume_rearm() == 0u)) {
+        return;
+    }
+
+    abs_tgt = M1_IF_TARGET_RPM;
+    if (abs_tgt < 0.0f) {
+        abs_tgt = -abs_tgt;
+    }
+
+#if M1_EMF_SMO_ENABLE
+    emf_smo_reset(&s_emf_smo);
+#endif
+#if M1_EMF_PLL_ENABLE
+    emf_pll_reset(&s_emf_pll);
+#endif
+#if M1_OBS_SOFT_SWITCH_ENABLE
+    obs_soft_switch_reset();
+#endif
+#if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
+    motor_pll_reset(&s_obs_spd_pll, 0.0f);
+    s_obs_spd_pll_primed = 0u;
+    s_obs_spd_div = 0u;
+    s_obs_spd_pll_rpm = 0.0f;
+    s_obs_spd_fb_lpf_rpm = 0.0f;
+    s_obs_spd_fb_lpf_on = 0u;
+#endif
+
+    s_if_to_obs_handed = 0u;
+#if M1_IF_OBS_BLEND_SPEED_ENABLE
+    s_if_blend_speed_on = 0u;
+    s_if_blend_speed_div = 0u;
+#if M1_IF_OBS_CRUISE_ENABLE
+    s_if_cruise_armed = 0u;
+    s_if_cruise_settle_s = 0.0f;
+#endif
+#endif
+
+    motor_if_set_target_rpm(-abs_tgt);
+    motor_if_arm(ctx);
+    ctx->iq_ref = 0.0f;
+    ctx->id_ref = 0.0f;
+    ctx->omega_ref = 0.0f;
+    dbg.outer_omega_ref = 0.0f;
+    dbg.open_seq_phase = 240u;
+}
 #endif
 
 #define M1_ACDC_WINDOW_TICKS  10000u
@@ -229,10 +332,31 @@ void motor_current_init(bsp_axis_t *axis)
 
     s_m1_ctx.pole_pairs = (uint8_t)M1_POLE_PAIRS;
     motor_open_sweep_init(&s_m1_ctx);
-#if M1_SPEED_LOOP_ENABLE
+#if M1_SPEED_LOOP_ENABLE && (!M1_IF_ENABLE || M1_IF_TO_OBS_ENABLE)
     motor_outer_loop_init(&s_m1_ctx);
 #endif
-#if M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
+    s_if_to_obs_handed = 0u;
+    s_if_omega_cmd_latched = 0.0f;
+#if M1_IF_OBS_BLEND_SPEED_ENABLE
+    s_if_blend_speed_on = 0u;
+    s_if_blend_speed_div = 0u;
+#if M1_IF_OBS_CRUISE_ENABLE
+    s_if_cruise_armed = 0u;
+    s_if_cruise_settle_s = 0.0f;
+#endif
+#endif
+#if M1_IF_OBS_ANGLE_ONLY_ENABLE
+    s_if_obs_iq_freeze = M1_IF_HANDOFF_IQ_A;
+#endif
+#endif
+#if M1_IF_ENABLE
+    s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
+    s_m1_ctx.id_ref = M1_IF_ID_A;
+    s_m1_ctx.iq_ref = M1_IF_IQ_A;
+    dbg.open_seq_phase = 240u; /* IF bringup marker */
+    motor_if_init(&s_m1_ctx);
+#elif M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
     s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
     s_m1_ctx.id_ref = 0.0f;
     s_m1_ctx.iq_ref = 0.0f;
@@ -328,7 +452,7 @@ void motor_current_init(bsp_axis_t *axis)
 #endif
     }
 
-#if M1_SPEED_LOOP_ENABLE
+#if M1_SPEED_LOOP_ENABLE && (!M1_IF_ENABLE || M1_IF_TO_OBS_ENABLE)
 #if M1_SPEED_PROFILE_ENABLE
 #if !M1_DEADBAND_FLOW_ONE_SHOT && !M1_SPEED_IDENT_ENABLE
     motor_speed_profile_arm(&s_m1_ctx);
@@ -349,13 +473,13 @@ void motor_current_init(bsp_axis_t *axis)
 #elif M1_SPEED_LOOP_BOOT && !M1_SPEED_IDENT_ENABLE && \
     M1_POS_LOOP_ENABLE && M1_POS_LOOP_BOOT
     motor_outer_set_mode(&s_m1_ctx, M1_OUTER_POSITION, 0.0f, 0.0f);
-#elif M1_SPEED_LOOP_BOOT && !M1_SPEED_IDENT_ENABLE
+#elif M1_SPEED_LOOP_BOOT && !M1_SPEED_IDENT_ENABLE && !M1_IF_TO_OBS_ENABLE
     s_m1_ctx.omega_ref = M1_SPEED_REF_RPM_DEFAULT;
     dbg.outer_omega_ref = M1_SPEED_REF_RPM_DEFAULT;
     motor_outer_set_mode(&s_m1_ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
 #endif
     s_speed_slow_div = 0u;
-#endif
+#endif /* M1_SPEED_LOOP_ENABLE && (!IF || IF_TO_OBS) */
 }
 
 motor_context_t *motor_current_ctx(const bsp_axis_t *axis)
@@ -376,7 +500,9 @@ void motor_current_set_mode(bsp_axis_t *axis, m1_ctrl_mode_t mode)
 
     if (mode == M1_CTRL_CURRENT_LOOP && ctx->mode != M1_CTRL_CURRENT_LOOP) {
         motor_foc_loop_pi_reset(ctx);
-#if M1_STARTUP_ENABLE
+#if M1_IF_ENABLE
+        motor_if_arm(ctx);
+#elif M1_STARTUP_ENABLE
         motor_startup_arm(ctx);
 #endif
     }
@@ -575,11 +701,18 @@ void motor_current_tick(bsp_axis_t *axis)
          */
         s_speed_fb_rpm = s_pll_omega_mech_rpm;
 #if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE && M1_OBS_SPD_PLL_ENABLE
-        if (obs_soft_switch_speed_on_obs() != 0u) {
+        /* BLEND 起与角同步往观测速靠，避免 OBS 瞬间 enc→obs 硬切（2049 晃速） */
+        if (obs_soft_switch_speed_use_obs() != 0u) {
+            float omega_obs = s_obs_spd_pll_rpm;
+
 #if M1_OBS_SPD_FB_LPF_HZ > 0
-            /* 切断 θ̂ 谐波 → 速度 PI → iq → SMO 的 94 Hz 级联；切入时从编码器 bumpless */
             if (s_obs_spd_fb_lpf_on == 0u) {
+#if M1_ENC_OPTIONAL_ENABLE
+                /* 无感可选：LPF 初值用 ω̂，勿用死编码器 PLL */
+                s_obs_spd_fb_lpf_rpm = s_obs_spd_pll_rpm;
+#else
                 s_obs_spd_fb_lpf_rpm = s_pll_omega_mech_rpm;
+#endif
                 s_obs_spd_fb_lpf_on = 1u;
             } else {
                 const float a = 6.28318530718f * (float)M1_OBS_SPD_FB_LPF_HZ *
@@ -589,10 +722,27 @@ void motor_current_tick(bsp_axis_t *axis)
                 s_obs_spd_fb_lpf_rpm +=
                     alpha * (s_obs_spd_pll_rpm - s_obs_spd_fb_lpf_rpm);
             }
-            s_speed_fb_rpm = s_obs_spd_fb_lpf_rpm;
-#else
-            s_speed_fb_rpm = s_obs_spd_pll_rpm;
+            omega_obs = s_obs_spd_fb_lpf_rpm;
 #endif
+            if (obs_soft_switch_get_state() == OBS_SS_BLEND) {
+#if M1_ENC_OPTIONAL_ENABLE
+                /* 可选编码器：融合段也不掺 enc PLL */
+                s_speed_fb_rpm = omega_obs;
+#else
+                const float blend = obs_soft_switch_get_alpha();
+                float b = blend;
+
+                if (b < 0.0f) {
+                    b = 0.0f;
+                } else if (b > 1.0f) {
+                    b = 1.0f;
+                }
+                s_speed_fb_rpm = s_pll_omega_mech_rpm * (1.0f - b) +
+                                 omega_obs * b;
+#endif
+            } else {
+                s_speed_fb_rpm = omega_obs;
+            }
         } else {
 #if M1_OBS_SPD_FB_LPF_HZ > 0
             s_obs_spd_fb_lpf_on = 0u;
@@ -640,7 +790,12 @@ void motor_current_tick(bsp_axis_t *axis)
         adc_sample_get_abc(&axis->adc, &i_phys[0], &i_phys[1], &i_phys[2]);
         motor_phase_binding_map_abc(i_phys, &ia, &ib, &ic);
 #if M1_CURRENT_RECON_ENABLE
+#if M1_ENC_OPTIONAL_ENABLE || (M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE)
+        /* 无感/可选编码器：重构用上一拍控制角，勿绑死 θ_enc */
+        motor_current_reconstruct_abc(ctx, s_theta_park_last, &ia, &ib, &ic);
+#else
         motor_current_reconstruct_abc(ctx, theta_enc_park, &ia, &ib, &ic);
+#endif
 #endif
     }
     dbg.foc_ia = ia;
@@ -689,9 +844,38 @@ void motor_current_tick(bsp_axis_t *axis)
 #endif
 
 #if M1_SPEED_LOOP_ENABLE
-    if (++s_speed_slow_div >= M1_SPEED_DECIM) {
-        s_speed_slow_div = 0u;
-        motor_outer_loop_tick(ctx);
+    /* 注意：s_if_to_obs_handed 是运行时变量，不能写进 #if（预处理当成 0，
+     * 会把 I/F→OBS 的速度环整段编译掉 → iq_ref 钉死在交接值，Uq 顶满）。 */
+    {
+        uint8_t run_speed_loop = 1u;
+
+#if M1_IF_ENABLE
+#if M1_IF_TO_OBS_ENABLE
+        run_speed_loop = s_if_to_obs_handed;
+#if M1_IF_OBS_ANGLE_ONLY_ENABLE
+        /* 只切角验收：绝不跑速度环，Iq 由冻结值驱动 */
+        run_speed_loop = 0u;
+#endif
+#if M1_IF_OBS_DIR_SEQ_ENABLE
+        /* 滑行段：松手，勿让 PI 用 −Iq 当刹车 */
+        if (motor_outer_if_obs_dir_seq_is_coast() != 0u) {
+            run_speed_loop = 0u;
+            ctx->iq_ref = 0.0f;
+            ctx->id_ref = 0.0f;
+            ctx->omega_ref = 0.0f;
+            dbg.outer_omega_ref = 0.0f;
+        }
+#endif
+#else
+        run_speed_loop = 0u;
+#endif
+#endif
+        if (run_speed_loop != 0u) {
+            if (++s_speed_slow_div >= M1_SPEED_DECIM) {
+                s_speed_slow_div = 0u;
+                motor_outer_loop_tick(ctx);
+            }
+        }
     }
 #endif
 
@@ -699,6 +883,63 @@ void motor_current_tick(bsp_axis_t *axis)
 #if M1_IDENT_ENABLE || M1_ID_LOCK_CAL_SWEEP
         motor_foc_loop_on_flow_tick(ctx);
 #endif
+#if M1_IF_ENABLE
+        {
+            motor_if_step_t if_step = motor_if_tick(ctx, theta_enc_park);
+
+            if (motor_if_is_driving() != 0u) {
+                theta_park = if_step.theta_park;
+                ctx->id_ref = if_step.id_ref;
+#if M1_IF_TO_OBS_ENABLE && M1_IF_OBS_BLEND_SPEED_ENABLE
+                /* BLEND 弱速度环已接管 Iq：I/F 只供 θ，勿每拍盖回 4A（1233） */
+                if (s_if_blend_speed_on == 0u) {
+                    ctx->iq_ref = if_step.iq_ref;
+                }
+#else
+                ctx->iq_ref = if_step.iq_ref;
+#endif
+#if M1_IF_TO_OBS_ENABLE
+                /* 软切 gates 看 omega_ref；I/F 段用指令转速 */
+                ctx->omega_ref = if_step.omega_cmd_rpm;
+                dbg.outer_omega_ref = if_step.omega_cmd_rpm;
+                s_if_omega_cmd_latched = if_step.omega_cmd_rpm;
+#endif
+                startup.theta_park = if_step.theta_park;
+                startup.iq_ref = ctx->iq_ref;
+                startup.omega_mech_rpm = if_step.omega_meas_rpm;
+                startup.use_fixed_uq = 0u;
+                startup.uq_out = 0.0f;
+                startup.pi_reset = 0u;
+                startup.pi_bumpless = 0u;
+                startup.uq_prev = 0.0f;
+                startup.ud_prev = 0.0f;
+                startup.state = M1_STARTUP_CLOSED;
+            } else {
+#if M1_IF_TO_OBS_ENABLE
+                /* 已交给无感：θ 由软切给出，Iq 由速度环 */
+#if M1_ENC_OPTIONAL_ENABLE
+                theta_park = s_theta_park_last;
+#else
+                theta_park = theta_enc_park;
+#endif
+                startup.use_fixed_uq = 0u;
+                startup.iq_ref = ctx->iq_ref;
+                startup.pi_bumpless = 0u;
+                startup.state = M1_STARTUP_CLOSED;
+#else
+                theta_park = theta_enc_park;
+                ctx->iq_ref = 0.0f;
+                startup.iq_ref = 0.0f;
+                startup.use_fixed_uq = 0u;
+                startup.state = M1_STARTUP_CLOSED;
+#endif
+            }
+            dbg.startup_state = (uint8_t)if_step.state;
+            dbg.startup_omega_mech_rpm = if_step.omega_meas_rpm;
+            dbg.if_omega_cmd_rpm = if_step.omega_cmd_rpm;
+            dbg.if_theta_err_rad = if_step.theta_err_rad;
+        }
+#else
         startup = motor_startup_tick(ctx, theta_enc_park);
 #if M1_IDENT_ENABLE
 #if M1_IDENT_FIX_THETA_ENABLE
@@ -718,10 +959,15 @@ void motor_current_tick(bsp_axis_t *axis)
 #endif
         dbg.startup_state = (uint8_t)startup.state;
         dbg.startup_omega_mech_rpm = startup.omega_mech_rpm;
+        dbg.if_omega_cmd_rpm = 0.0f;
+        dbg.if_theta_err_rad = 0.0f;
+#endif /* M1_IF_ENABLE */
     } else {
         theta_park = theta_enc_park;
         dbg.startup_state = (uint8_t)M1_STARTUP_CLOSED;
         dbg.startup_omega_mech_rpm = 0.0f;
+        dbg.if_omega_cmd_rpm = 0.0f;
+        dbg.if_theta_err_rad = 0.0f;
         startup.iq_ref = 0.0f;
         startup.state = M1_STARTUP_CLOSED;
         startup.use_fixed_uq = 0u;
@@ -741,22 +987,55 @@ void motor_current_tick(bsp_axis_t *axis)
     if (s_emf_pll.primed != 0u) {
         float omega_enc_ss = 0.0f;
         float omega_obs_ss = s_obs_spd_pll_rpm; /* 上一拍观测速，供 OBS 掉速门限 */
+        float theta_ss_base = theta_enc_park;
 
 #if M1_PLL_ENABLE
+#if M1_ENC_OPTIONAL_ENABLE
+        /* 可选编码器：软切不吃 ω_enc；有感监督只留 VOFA */
+        omega_enc_ss = 0.0f;
+#else
         omega_enc_ss = s_pll_omega_mech_rpm;
+#endif
+#endif
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
+        /* I/F→OBS：融合底角用 θ_if，避免切入跳到编码器角 */
+        if (motor_if_is_driving() != 0u) {
+            theta_ss_base = theta_park;
+        }
+#if M1_ENC_OPTIONAL_ENABLE
+        else {
+            /* I/F 已释放：底角用上一拍控制角，勿回落垃圾 θ_enc */
+            theta_ss_base = s_theta_park_last;
+        }
+#endif
 #endif
         {
             float theta_hat_park = s_emf_pll.theta_hat;
+            float ss_theta_err = s_emf_pll.theta_err;
+
 #if M1_OBS_THETA_NOTCH_ENABLE
-            /* 仅 OBS 时陷波；err/监督仍看原始 PLL θ̂ */
             theta_hat_park = obs_theta_notch_apply(s_emf_pll.theta_hat,
                                                    omega_obs_ss,
                                                    obs_soft_switch_speed_on_obs(),
                                                    M1_CTRL_TS_S);
 #endif
-            theta_park = obs_soft_switch_apply(theta_enc_park,
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
+            /* 门限角差用 θ̂−θ_if，不依赖编码器（拔掉编码器仍可判） */
+            if (motor_if_is_driving() != 0u) {
+                float e = theta_hat_park - theta_ss_base;
+
+                while (e > 3.14159265359f) {
+                    e -= 6.28318530718f;
+                }
+                while (e < -3.14159265359f) {
+                    e += 6.28318530718f;
+                }
+                ss_theta_err = e;
+            }
+#endif
+            theta_park = obs_soft_switch_apply(theta_ss_base,
                                                theta_hat_park,
-                                               s_emf_pll.theta_err,
+                                               ss_theta_err,
                                                s_emf_pll.emag,
                                                omega_enc_ss,
                                                omega_obs_ss,
@@ -764,13 +1043,179 @@ void motor_current_tick(bsp_axis_t *axis)
                                                dbg.foc_iq,
                                                M1_CTRL_TS_S);
         }
+#if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
+        /* 进入 OBS：释放 I/F。ANGLE_ONLY=固定 Iq；否则速度环 bumpless 接管 */
+        if ((s_if_to_obs_handed == 0u) &&
+            (obs_soft_switch_speed_on_obs() != 0u)) {
+            const float omega_meas = s_speed_fb_rpm;
+            float omega_hold;
+
+            s_if_to_obs_handed = 1u;
+            motor_if_release();
+
+            /* HOLD：优先钉 I/F 指令速，避免把 BLEND 飞车速当成目标（2249） */
+#if M1_IF_OBS_HOLD_SPEED_ENABLE && M1_IF_OBS_HOLD_IF_CMD_ENABLE
+            omega_hold = s_if_omega_cmd_latched;
+            /* 按 |ω| 判有效：负速时 latched<1 不能当“未就绪” */
+            if ((omega_hold > -1.0f) && (omega_hold < 1.0f)) {
+                omega_hold = omega_meas;
+            }
+#elif M1_IF_OBS_HOLD_SPEED_ENABLE
+            omega_hold = omega_meas;
+#else
+            omega_hold = M1_IF_OBS_SPEED_REF_RPM;
+#endif
+            ctx->omega_ref = omega_hold;
+            dbg.outer_omega_ref = omega_hold;
+#if M1_IF_OBS_ANGLE_ONLY_ENABLE
+            /* 只切角：钉 Iq，不启动速度外环 */
+            s_if_obs_iq_freeze = M1_IF_HANDOFF_IQ_A;
+            ctx->iq_ref = s_if_obs_iq_freeze;
+            ctx->id_ref = M1_IF_ID_A;
+            dbg.open_seq_phase = 242u; /* IF→OBS angle-only */
+#else
+#if M1_IF_OBS_BLEND_SPEED_ENABLE
+            if (s_if_blend_speed_on != 0u) {
+                /* BLEND 已开外环：延续当前 iq_ref，只钉 ω_IF */
+                motor_outer_sync_speed_boot(ctx, ctx->iq_ref, omega_meas);
+                motor_outer_set_omega_ramp_rpm(omega_hold);
+                ctx->omega_ref = omega_hold;
+                dbg.outer_omega_ref = omega_hold;
+                dbg.open_seq_phase = 245u; /* IF→OBS, speed from BLEND */
+            } else
+#endif
+            {
+                const float iq_boot = M1_IF_OBS_HANDOFF_IQ_BOOT_A;
+
+                ctx->iq_ref = iq_boot;
+                /* bumpless：ref=ω_hold，fb=实测；斜坡起点钉回 hold */
+                motor_outer_set_mode(ctx, M1_OUTER_SPEED, iq_boot, omega_meas);
+                motor_outer_sync_speed_boot(ctx, iq_boot, omega_meas);
+                motor_outer_set_omega_ramp_rpm(omega_hold);
+                ctx->omega_ref = omega_hold;
+                dbg.outer_omega_ref = omega_hold;
+#if M1_IF_OBS_EW_CLAMP_ENABLE
+                motor_outer_if_obs_ew_guard_arm();
+#endif
+#if M1_IF_OBS_SOFT_BRAKE_ENABLE
+                motor_outer_if_obs_soft_brake_arm(ctx);
+                /* 浅刹后再次 bumpless：防 slew 仍停在 I/F 的 +Iq */
+                motor_outer_sync_speed_boot(ctx, ctx->iq_ref, omega_meas);
+#endif
+                dbg.open_seq_phase = 243u; /* IF→OBS handed, ω_ref=ω_IF */
+            }
+#endif
+        }
+#if M1_IF_OBS_CRUISE_ENABLE && M1_IF_TO_OBS_ENABLE
+        /* 速切站稳 → 三步巡航（①ref ②Iq ③PI） */
+        if (obs_soft_switch_speed_use_obs() != 0u) {
+            if (s_if_cruise_armed == 0u) {
+                s_if_cruise_settle_s += M1_CTRL_TS_S;
+                if (s_if_cruise_settle_s >= M1_IF_OBS_CRUISE_SETTLE_S) {
+                    motor_outer_if_obs_cruise_arm(ctx, s_speed_fb_rpm);
+                    s_if_cruise_armed = 1u;
+                }
+            } else {
+                motor_current_dir_seq_try_obs_reset();
+                motor_outer_if_obs_cruise_tick(ctx, s_speed_fb_rpm, M1_CTRL_TS_S);
+            }
+#if M1_IF_OBS_DIR_SEQ_ENABLE
+            motor_current_dir_seq_try_rearm(ctx);
+#endif
+        } else {
+            s_if_cruise_settle_s = 0.0f;
+        }
+#endif
+#if M1_IF_OBS_ANGLE_ONLY_ENABLE
+        /* 已切角：每拍钉死 Iq，防止其它路径改写 */
+        if (s_if_to_obs_handed != 0u) {
+            ctx->iq_ref = s_if_obs_iq_freeze;
+            ctx->id_ref = M1_IF_ID_A;
+        }
+#endif
+        /* BLEND：KEEP_IF_IQ 强制拖动电流；BLEND_SPEED 则本段外环写 Iq */
+        if ((motor_if_is_driving() != 0u) &&
+            (obs_soft_switch_get_state() == OBS_SS_BLEND)) {
+#if M1_IF_OBS_BLEND_SPEED_ENABLE && !M1_IF_OBS_ANGLE_ONLY_ENABLE
+            {
+                const float omega_meas_b = s_speed_fb_rpm;
+                float omega_hold_b = s_if_omega_cmd_latched;
+
+                /* 同 OBS 交接：|ω|<1 才回退实测（兼容反向） */
+                if ((omega_hold_b > -1.0f) && (omega_hold_b < 1.0f)) {
+                    omega_hold_b = omega_meas_b;
+                }
+                if (s_if_blend_speed_on == 0u) {
+                    /* 转子系：反向驱动 −Iq；勿用 I/F 的 +Iq 否则浅刹夹 max→失矩 */
+                    const float iq_boot = M1_IF_OBS_SPEED_IQ_BOOT_A;
+
+                    s_if_blend_speed_on = 1u;
+                    s_if_blend_speed_div = 0u;
+                    ctx->omega_ref = omega_hold_b;
+                    dbg.outer_omega_ref = omega_hold_b;
+                    ctx->iq_ref = iq_boot;
+                    ctx->id_ref = M1_IF_ID_A;
+                    motor_outer_set_mode(ctx, M1_OUTER_SPEED, iq_boot, omega_meas_b);
+                    motor_outer_sync_speed_boot(ctx, iq_boot, omega_meas_b);
+                    motor_outer_set_omega_ramp_rpm(omega_hold_b);
+#if M1_IF_OBS_EW_CLAMP_ENABLE
+                    motor_outer_if_obs_ew_guard_arm();
+#endif
+#if M1_IF_OBS_SOFT_BRAKE_ENABLE
+                    motor_outer_if_obs_soft_brake_arm(ctx);
+                    motor_outer_sync_speed_boot(ctx, ctx->iq_ref, omega_meas_b);
+#endif
+                    dbg.open_seq_phase = 244u; /* BLEND + weak speed */
+                }
+                ctx->omega_ref = omega_hold_b;
+                dbg.outer_omega_ref = omega_hold_b;
+                motor_outer_set_omega_ramp_rpm(omega_hold_b);
+                ctx->id_ref = M1_IF_ID_A;
+                if (++s_if_blend_speed_div >= M1_SPEED_DECIM) {
+                    s_if_blend_speed_div = 0u;
+                    motor_outer_loop_tick(ctx);
+                }
+            }
+#elif M1_IF_OBS_ANGLE_ONLY_ENABLE || M1_IF_OBS_BLEND_KEEP_IF_IQ
+            ctx->iq_ref = M1_IF_IQ_A;
+            ctx->id_ref = M1_IF_ID_A;
+#else
+            const float a = obs_soft_switch_get_alpha();
+            float a_clamped = a;
+
+            if (a_clamped < 0.0f) {
+                a_clamped = 0.0f;
+            } else if (a_clamped > 1.0f) {
+                a_clamped = 1.0f;
+            }
+            ctx->iq_ref = M1_IF_IQ_A +
+                (M1_IF_HANDOFF_IQ_A - M1_IF_IQ_A) * a_clamped;
+            ctx->id_ref = M1_IF_ID_A;
+#endif
+        }
+#endif
     } else {
+#if !(M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE)
         theta_park = theta_enc_park;
+#else
+        if (motor_if_is_driving() == 0u) {
+#if M1_ENC_OPTIONAL_ENABLE
+            theta_park = s_theta_park_last;
+#else
+            theta_park = theta_enc_park;
+#endif
+        }
+        /* else：保持 I/F θ，等 PLL primed */
+#endif
     }
     dbg.obs_ss_state = (float)obs_soft_switch_get_state();
     dbg.obs_ss_alpha = obs_soft_switch_get_alpha();
+    dbg.obs_ss_spd_on = (float)obs_soft_switch_speed_use_obs();
 #endif
     dbg.foc_theta_el = theta_park;
+#if M1_ENC_OPTIONAL_ENABLE || (M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE)
+    s_theta_park_last = theta_park;
+#endif
 
     motor_trig_sincos(theta_park, &cos_el, &sin_el);
     Park_Transform_sc(i_alpha, i_beta, sin_el, cos_el, &id, &iq);
@@ -781,7 +1226,9 @@ void motor_current_tick(bsp_axis_t *axis)
     motor_current_update_acdc(id, iq);
 
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
+#if !M1_IF_ENABLE
         motor_startup_finish_tick(ctx, iq, &startup);
+#endif
         motor_foc_loop_tick(ctx, id, iq, &startup, theta_enc_park);
     }
 
@@ -958,10 +1405,8 @@ void motor_current_tick(bsp_axis_t *axis)
             }
         }
 #if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE
-        if (obs_soft_switch_speed_on_obs() != 0u) {
-            /* ch0 与 PI 一致（可含 LPF）；ch5 仍为原始 obs_spd */
-            dbg.outer_omega_mech_rpm = s_speed_fb_rpm;
-        }
+        /* 与速度环反馈一致（先角后速时 OBS 初期仍为编码器） */
+        dbg.outer_omega_mech_rpm = s_speed_fb_rpm;
 #endif
         dbg.obs_spd_rpm_err = s_obs_spd_pll_rpm - s_pll_omega_mech_rpm;
 #endif

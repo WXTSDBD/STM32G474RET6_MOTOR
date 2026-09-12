@@ -1486,6 +1486,11 @@
               <FilePath>..\motor\motor_startup.c</FilePath>
             </File>
             <File>
+              <FileName>motor_if.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_if.c</FilePath>
+            </File>
+            <File>
               <FileName>foc_pi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\drivers\foc\foc_pi.c</FilePath>

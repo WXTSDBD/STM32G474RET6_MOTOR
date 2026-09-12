@@ -73,6 +73,9 @@ typedef struct {
     float pll_omega_err_rpm;
     float enc_cal_add;
     float enc_cal_add_raw;
+    /** I/F：指令机械转速 [rpm]、θ_if−θ_enc [rad] */
+    float if_omega_cmd_rpm;
+    float if_theta_err_rad;
     uint8_t phase_cal_ok;
     uint8_t binding_loaded;
     uint8_t phase_cal_fail;
@@ -166,6 +169,8 @@ typedef struct {
     /** 软切：state 0enc/1arm/2blend/3obs/4fallback；alpha∈[0,1] */
     float obs_ss_state;
     float obs_ss_alpha;
+    /** 1=速度反馈已切观测速（先角后速时可能晚于 state=OBS） */
+    float obs_ss_spd_on;
     /** 观测角→速度环同款 PLL 旁路（不进速度环） */
     float obs_spd_pll_rpm;
     float obs_spd_pll_err_rad;
