@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stddef.h>
 
-#include "motor_params_m1.h"
+#include "observer/obs_cfg.h"
 
 #ifndef M1_EMF_SMO_ENABLE
 #define M1_EMF_SMO_ENABLE 0
@@ -17,10 +17,10 @@
 #if M1_EMF_SMO_ENABLE
 
 #ifndef M1_EMF_SMO_R_OHM
-#define M1_EMF_SMO_R_OHM            M1_RS_OHM
+#define M1_EMF_SMO_R_OHM            OBS_RS_OHM
 #endif
 #ifndef M1_EMF_SMO_L_H
-#define M1_EMF_SMO_L_H              M1_LD_H
+#define M1_EMF_SMO_L_H              OBS_LD_H
 #endif
 #ifndef M1_EMF_SMO_K
 #define M1_EMF_SMO_K                20.0f
@@ -157,7 +157,7 @@ static void emf_smo_lpf_tab_init(float ts)
 
 static void emf_smo_coeff_init(void)
 {
-    const float ts = M1_CTRL_TS_S;
+    const float ts = OBS_CTRL_TS_S;
     const float r = M1_EMF_SMO_R_OHM;
     const float l = M1_EMF_SMO_L_H;
 
@@ -178,8 +178,8 @@ static void emf_smo_coeff_init(void)
     s_lpf_hz = 0.0f;
     s_lpf_alpha = 1.0f;
 #endif
-    s_rpm_to_we = (EMF_SMO_TWO_PI / 60.0f) * (float)M1_POLE_PAIRS;
-    s_rpm_to_fe = ((float)M1_POLE_PAIRS) / 60.0f;
+    s_rpm_to_we = (EMF_SMO_TWO_PI / 60.0f) * (float)OBS_POLE_PAIRS;
+    s_rpm_to_fe = ((float)OBS_POLE_PAIRS) / 60.0f;
     s_inv_sat = 1.0f / ((M1_EMF_SMO_SAT_A > 1.0e-6f) ? M1_EMF_SMO_SAT_A : 1.0e-6f);
     s_coeff_ready = 1u;
 }

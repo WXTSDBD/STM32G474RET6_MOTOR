@@ -5,7 +5,7 @@
 
 #include "obs_soft_switch.h"
 
-#include "motor_params_m1.h"
+#include "observer/obs_cfg.h"
 
 #ifndef M1_OBS_SOFT_SWITCH_ENABLE
 #define M1_OBS_SOFT_SWITCH_ENABLE 0
@@ -297,7 +297,7 @@ float obs_soft_switch_apply(float theta_enc,
     uint8_t rpm_low;
 
     if (dt <= 0.0f) {
-        dt = M1_CTRL_TS_S;
+        dt = OBS_CTRL_TS_S;
     }
 
     s_hat_valid = 1u;

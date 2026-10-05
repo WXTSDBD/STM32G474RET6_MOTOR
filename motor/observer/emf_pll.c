@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stddef.h>
 
-#include "motor_params_m1.h"
+#include "observer/obs_cfg.h"
 #include "motor_trig.h"
 #include "hfi_sqwave.h"
 #if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE

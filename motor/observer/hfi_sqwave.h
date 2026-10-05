@@ -174,6 +174,41 @@ uint8_t hfi_sqwave_consume_pi_reset(void);
 /** 有感标定圈号（0-based）；非标定模式恒 0 */
 uint8_t hfi_sqwave_get_sensed_cal_loop(void);
 
+/**
+ * ISR 末尾发布的 HFI 遥测快照。任务/VOFA 只读这份，不直抠 getter。
+ * 电流环仍用原来的 getter。
+ */
+typedef struct {
+    float eps;
+    float pll_vesc_err;
+    float x_lp;
+    float y_lp;
+    float x_raw;
+    float y_raw;
+    float di_d;
+    float di_q;
+    float pll_int_el;
+    float qkick_dth;
+    float qkick_verdict;
+    float qk_pre_flip_n;
+    float lq_well_flip_n;
+    float vh_sign;
+    float id_pi_soft;
+    float ud_inj;
+    float uq_inj;
+    uint8_t sensed_cal_loop;
+    uint8_t iq_auth_ok;
+    uint8_t qk_pre_ok;
+    uint8_t demod_probe_freeze;
+    uint8_t feed_coast_active;
+} hfi_telem_snap_t;
+
+void hfi_sqwave_telem_publish(void);
+/** ISR 拍内先收获一次；随后 publish 只提交 seqlock，不再二次 getter。 */
+void hfi_sqwave_telem_harvest(hfi_telem_snap_t *out);
+/** 任务侧读。seqlock：拷到一半被 ISR 改写则重试，避免双缓冲撕裂。 */
+void hfi_sqwave_telem_read(hfi_telem_snap_t *out);
+
 #ifdef __cplusplus
 }
 #endif

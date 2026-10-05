@@ -1436,6 +1436,41 @@
               <FilePath>..\motor\observer\hfi_sqwave.c</FilePath>
             </File>
             <File>
+              <FileName>hfi_speed_filt.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\hfi_speed_filt.c</FilePath>
+            </File>
+            <File>
+              <FileName>hfi_spd_obs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\hfi_spd_obs.c</FilePath>
+            </File>
+            <File>
+              <FileName>hfi_hand.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\hfi_hand.c</FilePath>
+            </File>
+            <File>
+              <FileName>hfi_pub.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\hfi_pub.c</FilePath>
+            </File>
+            <File>
+              <FileName>obs_angle.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\obs_angle.c</FilePath>
+            </File>
+            <File>
+              <FileName>obs_inj.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\obs_inj.c</FilePath>
+            </File>
+            <File>
+              <FileName>observer_composite.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\observer_composite.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_outer_loop.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_outer_loop.c</FilePath>

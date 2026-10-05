@@ -1,21 +1,23 @@
 ---
-description: 改固件后必须用 Keil 编译验证，交付代码须 0 Error
+description: 交给人类的固件代码必须由 Agent 亲自 Keil 编译且 0 Error
 alwaysApply: true
 ---
 
-# Keil 编译验证（STM32G474RET6_MOTOR）
+# 交付前编译（硬约束）
 
-修改会参与 MDK 编译的 C/H/汇编或 `motor_params_m1.h` 等配置后，**必须先本地 Keil 编译**，确认 **0 Error(s)** 再结束任务；有 Error 须修到通过为止。
+**凡改了会进 MDK 的代码/配置，交给人类（说「做完了」「可烧录」「下一步」）之前，Agent 必须自己跑一遍 Keil 编译，且结果为 `0 Error(s)`。**
 
-## 命令（PowerShell / cmd）
+- **禁止**：只改代码不编译就交付；假设「应该能过」；让用户去编译找错。
+- **必须**：本机执行下方命令（或等价 `-b`），读 `rebuild_log.txt` **末尾**汇总；有 Error 则自己修到通过再回复。
+- **Warning**：本回合新引入的 Warning 应修掉（尤其 `-Wcomment` / `#error`）；历史 Warning 可保留，但交付时仍须写明 Error/Warning 计数。
 
-工程路径固定：
+仅改 `tools/*.py`、`docs/`、`.cursor/` 且未动固件时，可跳过 Keil。
+
+## 命令（PowerShell）
 
 ```text
 D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx
 ```
-
-PowerShell（**须 `-Wait` 等编译结束**，全量 Rebuild 约 60–90 s；勿用 `-j0` 并行，易触发 via 文件冲突）：
 
 ```powershell
 Set-Location "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM"
@@ -25,15 +27,13 @@ Start-Process -FilePath "D:\keil5\UV4\UV4.exe" `
 Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 ```
 
-小改动可用 `-b`（Build）代替 `-r`（Rebuild）以节省时间。
+小改动可用 `-b`（Build）代替 `-r`（Rebuild）。勿用 `-j0` 并行。
 
-## 判定
+## 判定与固件范围
 
-- 读 `MDK-ARM/rebuild_log.txt` 末尾：须含 `0 Error(s)`（日志中间偶见 ArmClang 级联 stderr，以末尾汇总为准）。
-- Warning 可保留，但 `#error` 触发的配置冲突必须修。
-- 仅改 `tools/*.py`、docs 且未动固件时，可跳过 Keil；**凡动 `Core/`、`motor/`、`config/`、`Drivers/`（非 ST 库）、`debug/`、`MDK-ARM/` 即视为固件变更**。
+- 末尾须含 `0 Error(s)`（以末尾汇总为准，勿被中间 ArmClang stderr 误导）。
+- 固件变更：`Core/`、`motor/`、`config/`、`debug/`、`Drivers/`（业务侧）、`MDK-ARM/`，以及会触发 `#error` 的宏。
 
-## 常见失败
+## 回复格式
 
-- `motor_params_m1.h` 宏互斥 `#error`：对照当前 `M1_BRINGUP_MODE` 分支修宏。
-- 新增宏在 `#if M1_IDENT_ENABLE` 外使用：在模式块与 `#ifndef` 兜底两处补齐。
+交付时写明例如：`Keil Rebuild: 0 Error(s), N Warning(s)`。未通过不得声称任务完成。

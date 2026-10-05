@@ -7,7 +7,7 @@
 
 #include <math.h>
 
-#include "motor_params_m1.h"
+#include "observer/obs_cfg.h"
 
 #ifndef M1_OBS_THETA_NOTCH_ENABLE
 #define M1_OBS_THETA_NOTCH_ENABLE       0
@@ -148,7 +148,7 @@ static void obs_th_update_f0(float f0_tgt, float dt)
 
 void obs_theta_notch_init(void)
 {
-    s_track_k = 1.0f - expf(-OBS_TH_TWO_PI * M1_OBS_THETA_NOTCH_TRACK_HZ * M1_CTRL_TS_S);
+    s_track_k = 1.0f - expf(-OBS_TH_TWO_PI * M1_OBS_THETA_NOTCH_TRACK_HZ * OBS_CTRL_TS_S);
     if (s_track_k < 0.0f) {
         s_track_k = 0.0f;
     }
@@ -163,10 +163,10 @@ void obs_theta_notch_reset(void)
     s_theta_lp = 0.0f;
     s_lp_valid = 0u;
     s_f0_cmd_hz = 16.6667f; /* ~1000 rpm 初值，随后自适应 */
-    obs_th_biquad_set_notch(&s_n1, s_f0_cmd_hz, M1_CTRL_TS_S);
+    obs_th_biquad_set_notch(&s_n1, s_f0_cmd_hz, OBS_CTRL_TS_S);
     obs_th_biquad_clear(&s_n1, 0.0f);
 #if M1_OBS_THETA_NOTCH_H2_ENABLE
-    obs_th_biquad_set_notch(&s_n2, 2.0f * s_f0_cmd_hz, M1_CTRL_TS_S);
+    obs_th_biquad_set_notch(&s_n2, 2.0f * s_f0_cmd_hz, OBS_CTRL_TS_S);
     obs_th_biquad_clear(&s_n2, 0.0f);
 #endif
 }

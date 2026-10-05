@@ -1,39 +1,39 @@
 /**
- * @brief VOFA JustFloat åç¼ï¿½?+ LPUART DMAï¼ä½ï¿½?debug/ï¼R5 ï¿½?bringup è¿å¥ï¼ï¿½?
+ * @brief VOFA JustFloat 双缓。+ LPUART DMA（位。debug/，R5 。bringup 迁入）。
  *
- * æ°æ®è·¯å¾ï¿½?
- *   TIM1 ISRï¼telem_bringup_tick() ï¿½?ä»ååç¼ï¿½?
- *   RTOS ä»»å¡ï¼telem_bringup_try_send() ï¿½?READY ï¿½?DMA åï¿½?
- *   TxCpltï¼SENDING ï¿½?UNLOCKED
+ * 数据路径。
+ *   TIM1 ISR：telem_bringup_tick() 。仅写双缓。
+ *   RTOS 任务：telem_bringup_try_send() 。READY 。DMA 发。
+ *   TxCplt：SENDING 。UNLOCKED
  *
- * ç»ä¸ VOFAÃ12ï¼M1_VOFA_UNIFIED_12CH=1ï¼bringup å¨é¶æ®µä¸åï¼ï¿½?
- *   ch0=Ia ch1=Ib ch2=Ic ch3=Id ch4=Iq ch5=Î¸_el
- *   M1_VOFA_IDENT_DUTY_12CH=1ï¼ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq
- *     VASI seq57ï¼ch8=grid ch9=proc ch10=L_uHï¼ch6/7 ä»ä¸º dutyâdq ç«¯çµåï¼
- *   M1_VOFA_IDENT_DUTY_12CH=0ï¼ch6=Ud_out ch7=Uq_outï¼ch8ï¿½?1 ï¿½?M1_VOFA_MIT/SPEED/PLL
- * ç¸åº/å¢çè¯æ­ï¼phase_calï¼ï¼ch0ï¿½?=adc ch3=pwm_idx ch4=Îï¿½?ch5=cal_stï¼ä»æ å®æï¼
- * æ­£å¸¸è¿è¡ï¼é bringup unifiedï¼ï¼ch0ï¿½?=adc ch3=Iq ch4=Id ch5=Î¸
+ * 统一 VOFA×12（M1_VOFA_UNIFIED_12CH=1，bringup 全阶段不变）。
+ *   ch0=Ia ch1=Ib ch2=Ic ch3=Id ch4=Iq ch5=θ_el
+ *   M1_VOFA_IDENT_DUTY_12CH=1：ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq
+ *     VASI seq57：ch8=grid ch9=proc ch10=L_uH（ch6/7 仍为 duty→dq 端电压）
+ *   M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out；ch8。1 。M1_VOFA_MIT/SPEED/PLL
+ * 相序/增益诊断（phase_cal）：ch0。=adc ch3=pwm_idx ch4=Δ。ch5=cal_st（仅标定态）
+ * 正常运行（非 bringup unified）：ch0。=adc ch3=Iq ch4=Id ch5=θ
  *
- * AS5047 DMA èæ¶ï¼g_telem_dbgï¼ä¸ isr_delta äºè¡¥ï¼ï¼
+ * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
  *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
- *   enc_dma_f1_cb_delta / enc_dma_f2_cb_delta  ä¸¤æ¬¡ SPI DMA åè° CPU
+ *   enc_dma_f1_cb_delta / enc_dma_f2_cb_delta  两次 SPI DMA 回调 CPU
  *   enc_dma_cpu_delta     f1_cb + f2_cb
- *   enc_dma_seq_delta     kickâFRAME2 å®æï¼å«ç¡¬ä»¶ç­å¾ï¼éï¿½?CPUï¿½?
- *   enc_total_delta       isr_delta + enc_dma_cpu_deltaï¼æ´æåèï¼
+ *   enc_dma_seq_delta     kick→FRAME2 完成（含硬件等待，非。CPU。
+ *   enc_total_delta       isr_delta + enc_dma_cpu_delta（整拍参考）
  *
- * VOFA+ï¿½?000000ï¼JustFloatÃKï¼â³t = D/20000 sï¼D=M1_TELEM_BRINGUP_DECIMATIONï¿½?
- * ç£é¾ä¼°ï¼M1_VOFA_FLUX_ID_6CHï¼ï¼ch0=Id ch1=Iq ch2=Ud ch3=Uq ch4=Ï_pll ch5=Ï_ref
- * Veq æè·¯ï¼M1_VOFA_OBS_VEQ_12CHï¼ï¼iÎ± iÎ² uÎ± uÎ² eÎ± eÎ² Î¸Ì Î¸enc Î¸err |e| Ïe Ïinst
- * SMO æè·¯+èæ¶ï¼M1_VOFA_OBS_SMO_12CHï¼ï¼
- *   iÎ± iÎ² err_veq err_smo Î¸enc Ïe |e|_s |e|_v isr_delta foc_delta obs_delta enc_dma_cpu
- * EMF-PLL æè·¯ï¼M1_VOFA_OBS_PLL_12CHï¼ï¼
- *   Veqæºï¼iÎ± iÎ² err_veq err_pll Î¸enc Ïe_pll |e|_v Î¸Ì_pll isr foc obs enc_dma
- *   SMOæºï¼eÎ± eÎ² err_atan err_pll Î¸enc Ïe_pll |e|_s Î¸Ì_pll isr foc obs lpf_hz
- *     VOFA å»ºè®®ééåï¼e_alpha, e_beta, err_atan, err_pll, theta_enc, we_pll,
+ * VOFA+。000000，JustFloat×K，△t = D/20000 s（D=M1_TELEM_BRINGUP_DECIMATION。
+ * 磁链估（M1_VOFA_FLUX_ID_6CH）：ch0=Id ch1=Iq ch2=Ud ch3=Uq ch4=ω_pll ch5=ω_ref
+ * Veq 旁路（M1_VOFA_OBS_VEQ_12CH）：iα iβ uα uβ eα eβ θ̂ θenc θerr |e| ωe ψinst
+ * SMO 旁路+耗时（M1_VOFA_OBS_SMO_12CH）：
+ *   iα iβ err_veq err_smo θenc ωe |e|_s |e|_v isr_delta foc_delta obs_delta enc_dma_cpu
+ * EMF-PLL 旁路（M1_VOFA_OBS_PLL_12CH）：
+ *   Veq源：iα iβ err_veq err_pll θenc ωe_pll |e|_v θ̂_pll isr foc obs enc_dma
+ *   SMO源：eα eβ err_atan err_pll θenc ωe_pll |e|_s θ̂_pll isr foc obs lpf_hz
+ *     VOFA 建议通道名：e_alpha, e_beta, err_atan, err_pll, theta_enc, we_pll,
  *                     emag, theta_hat_pll, isr_cyc, foc_cyc, obs_cyc, lpf_hz
- * SMO ç¦»çº¿åæï¼M1_VOFA_OBS_SMO_RAW_12CHï¼ï¼
- *   iÎ± iÎ² uÎ± uÎ² Î¸enc Ï_mech_rpm eÎ± eÎ² err_pll |e| Î¸Ì_pll lpf_hz
- * HFI æè·¯ï¼M1_VOFA_HFI_12CHï¼ï¼æ¥å¸¸ Î¸/Ïï¼IPD_SWEEP æ¹ä¸º Ia Ib Ic Ud Uq åæ
+ * SMO 离线原料（M1_VOFA_OBS_SMO_RAW_12CH）：
+ *   iα iβ uα uβ θenc ω_mech_rpm eα eβ err_pll |e| θ̂_pll lpf_hz
+ * HFI 旁路（M1_VOFA_HFI_12CH）：日常 θ/ω；IPD_SWEEP 改为 Ia Ib Ic Ud Uq 原料
  */
 
 #include "app_uart_dma_debug.h"
@@ -58,7 +58,12 @@
 #endif
 #include "telem_ident_dump.h"
 #include "telem_lut_dump.h"
+#ifndef M1_HFI_ENABLE
+#define M1_HFI_ENABLE                   0
+#endif
+#if M1_HFI_ENABLE
 #include "observer/hfi_sqwave.h"
+#endif
 #include <string.h>
 
 #ifndef M1_TELEM_BRINGUP_K
@@ -68,13 +73,13 @@
 #define TELEM_BRINGUP_INCLUDE_SEQ    0u
 #define TELEM_CPU_MHZ                160u
 
-/** åç¼ï¿½?4KBï¼åç¼å²ï¿½?8KB SRAM */
+/** 单缓。4KB，双缓冲。8KB SRAM */
 #define TELEM_BUF_BYTES              4096u
 
 /**
- * JEOC 20kHz ä¸æ¯ D ï¿½?tick ï¿½?1 ä¸ªå°å¸§ï¼ï¿½?motor_current_tick åæï¼ï¿½?
- * D=2  ï¿½?10kHzï¿½?2chÃ52B ï¿½?520KB/s @ 6Mbpsï¿½?
- * D=1  ï¿½?20kHzï¼D=100 ï¿½?200Hzï¼bringup ä½åèè°ç¨ï¼
+ * JEOC 20kHz 下每 D 。tick 。1 个小帧（。motor_current_tick 同拍）。
+ * D=2  。10kHz。2ch×52B 。520KB/s @ 6Mbps。
+ * D=1  。20kHz；D=100 。200Hz（bringup 低压联调用）
  */
 #ifndef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION  2u
@@ -124,7 +129,7 @@ static uint32_t s_decim_cnt;
 
 telem_dbg_t g_telem_dbg;
 
-/** è°è¯ï¼æè¿ä¸ï¿½?ch2_wireï¼isr_deltaï¿½?*/
+/** 调试：最近一。ch2_wire（isr_delta。*/
 volatile uint32_t time_cnt;
 
 static uint32_t s_prof_kick_cyccnt;
@@ -266,7 +271,7 @@ static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset, const floa
 #if (M1_VOFA_UNIFIED_12CH != 0) && (M1_TELEM_BRINGUP_K >= 12u) && \
     (M1_ID_LOCK_CAL_SWEEP || M1_IDENT_ENABLE || M1_SPEED_LOOP_ENABLE || \
      M1_OPEN_UD_PRE_ID_CAL_ENABLE || M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
-/** bringup ç»ä¸ 12 ééï¼Id cal / ident / å¼ç¯é¶æ¢¯å±ç¨ï¼ */
+/** bringup 统一 12 通道（Id cal / ident / 开环阶梯共用） */
 static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
 {
     vals[0] = dbg.foc_ia;
@@ -307,7 +312,7 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
     vals[10] = dbg.outer_iq_ref;
 #endif
 #if M1_VOFA_CH11_ENC_RAW
-    vals[11] = dbg.enc_raw;   /* AS5047 raw 0..16383ï¼å¯¹ï¿½?ch5=Î¸_el */
+    vals[11] = dbg.enc_raw;   /* AS5047 raw 0..16383；对。ch5=θ_el */
 #else
     vals[11] = (float)dbg.open_seq_phase;
 #endif
@@ -347,7 +352,7 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
     vals[9] = dbg.foc_iq_ref;
 #if M1_LD_LQ_IDENT_ENABLE
     if (deadband_id_cal_in_ld_lq_ident()) {
-        /* VASI è¿ç¨ telemï¼ch8=grid ch9=proc_code ch10=è¿è¡ L_uH ch11=open_seq */
+        /* VASI 过程 telem：ch8=grid ch9=proc_code ch10=运行 L_uH ch11=open_seq */
         vals[8] = dbg.ld_lq_proc_grid;
         vals[9] = dbg.ld_lq_proc_code;
         vals[10] = dbg.ld_lq_L_est_uH;
@@ -485,46 +490,50 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     }
 #endif
 
-#if M1_VOFA_HFI_12CH && (TELEM_BRINGUP_K >= 12u)
+#if M1_HFI_ENABLE && M1_VOFA_HFI_12CH && (TELEM_BRINGUP_K >= 12u)
+{
+    hfi_telem_snap_t hfi_tm;
+
+    hfi_sqwave_telem_read(&hfi_tm);
     /*
-     * HFI æè·¯ï¿½?
-     * ch0 Î¸_enc  ch1 Ï_ref  ch2 Î¸_hfi  ch3 Î¸_err  ch4 eps
-     * ch5 Ï_enc  ch6 Id  ch7 Iq  ch8 Ï_hfi  ch9 ÎÏ  ch10 Ud  ch11 stage+0.1Â·lock
-     * IPD_SWEEPï¼Ia Ib Ic Ud Uq Î¸_enc Î¸_cmd Î¸_hat phase pulseUd stage sum
-     * QKICK æ«ä½ï¿½?
-     * ch0 Î¸_enc  ch1 Î¸_cmd  ch2 Î¸_hat  ch3 Î¸_err  ch4 Iq
-     * ch5 Ï_enc  ch6 seed  ch7 Iq_ref  ch8 dth_deg_mcu  ch9 verdict_mcu
-     * ch10 stage  ch11 phase+0.1Â·lock
-     * QKICK æææ å®ï¼SENSED_CALï¼ï¼
-     * ch0 Î¸_enc  ch1 Ï_ref  ch2 Î¸_hat  ch3 Î¸_err  ch4 eps
-     * ch5 Ï_enc  ch6 Iq  ch7 Iq_ref  ch8 Ï_hfi  ch9 dw_trim[rpm]
-     * ch10 stage  ch11 lock+0.01Â·loop
-     * QKICK éåï¿½?/ START / éåº¦ç¯ï¼Park=Î¸Ìï¼ï¼
-     * ch0 Î¸_enc  ch1 Ï_ref  ch2 Î¸_hat  ch3 Î¸_err  ch4 eps(di_q)
-     * ch5 Ï_enc  ch6 Iq  ch7 Iq_ref  ch8 Ï_hfi  ch9 eps_d+0.1Â·flip+0.01Â·ok
+     * HFI 旁路。
+     * ch0 θ_enc  ch1 ω_ref  ch2 θ_hfi  ch3 θ_err  ch4 eps
+     * ch5 ω_enc  ch6 Id  ch7 Iq  ch8 ω_hfi  ch9 Δω  ch10 Ud  ch11 stage+0.1·lock
+     * IPD_SWEEP：Ia Ib Ic Ud Uq θ_enc θ_cmd θ_hat phase pulseUd stage sum
+     * QKICK 扫位。
+     * ch0 θ_enc  ch1 θ_cmd  ch2 θ_hat  ch3 θ_err  ch4 Iq
+     * ch5 ω_enc  ch6 seed  ch7 Iq_ref  ch8 dth_deg_mcu  ch9 verdict_mcu
+     * ch10 stage  ch11 phase+0.1·lock
+     * QKICK 有感标定（SENSED_CAL）：
+     * ch0 θ_enc  ch1 ω_ref  ch2 θ_hat  ch3 θ_err  ch4 eps
+     * ch5 ω_enc  ch6 Iq  ch7 Iq_ref  ch8 ω_hfi  ch9 dw_trim[rpm]
+     * ch10 stage  ch11 lock+0.01·loop
+     * QKICK 锁后。/ START / 速度环（Park=θ̂）：
+     * ch0 θ_enc  ch1 ω_ref  ch2 θ_hat  ch3 θ_err  ch4 eps(di_q)
+     * ch5 ω_enc  ch6 Iq  ch7 Iq_ref  ch8 ω_hfi  ch9 eps_d+0.1·flip+0.01·ok
      * ch10 stage  ch11 Id
-     * S1 / DELTA_SWEEPï¼DQ=0, QKICK=0ï¼å»ç»è¡¨ï¿½?
-     * ch0 Î¸_enc  ch1 Î´[rad]  ch2 Î¸_hat  ch3 vh_sign  ch4 eps=Â½atan2
-     * ch5 Ï_enc  ch6 x_raw  ch7 y_raw  ch8 di_d  ch9 di_q
+     * S1 / DELTA_SWEEP（DQ=0, QKICK=0）冻结表。
+     * ch0 θ_enc  ch1 δ[rad]  ch2 θ_hat  ch3 vh_sign  ch4 eps=½atan2
+     * ch5 ω_enc  ch6 x_raw  ch7 y_raw  ch8 di_d  ch9 di_q
      * ch10 stage  ch11 lock
-     * S2 / S3a MOTION_BYPASSï¼DELTA=0, DQ=0, QKICK=0ï¼ï¼
-     * ch0 Î¸_enc   ch1 Ï_ref    ch2 Î¸_hat   ch3 Î¸_err   ch4 eps
-     * ch5 Ï_enc   ch6 x_lp     ch7 y_lp    ch8 Ï_hfi   ch9 Iq
+     * S2 / S3a MOTION_BYPASS（DELTA=0, DQ=0, QKICK=0）：
+     * ch0 θ_enc   ch1 ω_ref    ch2 θ_hat   ch3 θ_err   ch4 eps
+     * ch5 ω_enc   ch6 x_lp     ch7 y_lp    ch8 ω_hfi   ch9 Iq
      * ch10 stage  ch11 Id
-     * GATE=46/47ï¼åä¸ï¼ï¿½?ch8 = PLL ç§¯åè½¬éï¼ä¸å« KpÂ·epsï¿½?
-     * C4e GATE=19ï¼æ§å¶â¡C4aï¼ä»é¥æµï¼ï¼
-     * ch0 Î¸_enc   ch1 qual     ch2 Î¸_hat   ch3 Î¸_err   ch4 eps
+     * GATE=46/47：同上，。ch8 = PLL 积分转速（不含 Kp·eps。
+     * C4e GATE=19（控制≡C4a；仅遥测）：
+     * ch0 θ_enc   ch1 qual     ch2 θ_hat   ch3 θ_err   ch4 eps
      * ch5 di_d    ch6 x_lp     ch7 x_raw   ch8 Ud_inj  ch9 Iq
      * ch10 stage  ch11 Id
-     * S3b GATE=4ï¼ch1=ipd_phaseï¿½? ALIGN ï¿½?4 P1ï¼ï¼å¶ä½ï¿½?S3aï¿½?
-     * stageï¿½? IDLE  1 MOVE  7 RUN  5 DONE
-     * ï¿½?3 éç½®é­ç¯ï¼sweep å³ï¼èµ°ä¸ï¿½?elseï¼ï¼
-     * ch0 Î¸_enc  ch1 Ï_ref  ch2 Î¸_hat  ch3 Î¸_err=Î´  ch4 eps
-     * ch5 Ï_enc  ch6 Id  ch7 Iq  ch8 Ï_hfi  ch9 ÎÏ
-     * ch10 Ud  ch11 stage+0.1Â·lock
-     * AXIS_SEL éç½®å®è½´ï¼æ  QKICKï¼ï¼
-     * ch0 Î¸_enc  ch1 Ï_ref  ch2 Î¸_hat  ch3 Î¸_err  ch4 eps
-     * ch5 Ï_enc  ch6 Id  ch7 Iq  ch8 Ï_hfi  ch9 eps_d+0.1Â·flip+0.01Â·ok
+     * S3b GATE=4：ch1=ipd_phase。 ALIGN 。4 P1），其余。S3a。
+     * stage。 IDLE  1 MOVE  7 RUN  5 DONE
+     * 。3 静置闭环（sweep 关，走下。else）：
+     * ch0 θ_enc  ch1 ω_ref  ch2 θ_hat  ch3 θ_err=δ  ch4 eps
+     * ch5 ω_enc  ch6 Id  ch7 Iq  ch8 ω_hfi  ch9 Δω
+     * ch10 Ud  ch11 stage+0.1·lock
+     * AXIS_SEL 静置定轴（无 QKICK）：
+     * ch0 θ_enc  ch1 ω_ref  ch2 θ_hat  ch3 θ_err  ch4 eps
+     * ch5 ω_enc  ch6 Id  ch7 Iq  ch8 ω_hfi  ch9 eps_d+0.1·flip+0.01·ok
      * ch10 stage  ch11 lock
      */
 #ifndef M1_HFI_AXIS_SEL_ENABLE
@@ -553,8 +562,8 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
     vals[5] = dbg.pll_omega_mech_rpm;
-    vals[6] = hfi_sqwave_get_x_lp();
-    vals[7] = hfi_sqwave_get_y_lp();
+    vals[6] = hfi_tm.x_lp;
+    vals[7] = hfi_tm.y_lp;
     vals[8] = dbg.hfi_x_raw;
     vals[9] = dbg.hfi_y_raw;
     vals[10] = dbg.hfi_stage;
@@ -569,7 +578,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[3] = dbg.hfi_vh_sign;
 #if (M1_HFI_GATE == 99)
     /* ch4=VESC V4 残差[rad]；atan2 仍在固件里，对照 1800 用 y_raw */
-    vals[4] = hfi_sqwave_get_pll_vesc_err();
+    vals[4] = hfi_tm.pll_vesc_err;
 #else
     vals[4] = dbg.hfi_eps;
 #endif
@@ -605,7 +614,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[8] = dbg.hfi_omega_rpm;
     vals[9] = dbg.hfi_omega_trim_rpm;
     vals[10] = dbg.hfi_stage;
-    vals[11] = dbg.hfi_lock + 0.01f * (float)hfi_sqwave_get_sensed_cal_loop();
+    vals[11] = dbg.hfi_lock + 0.01f * (float)hfi_tm.sensed_cal_loop;
 #elif M1_HFI_QKICK_AFTER_LOCK_ENABLE
 #ifndef M1_HFI_GATE
 #define M1_HFI_GATE 0
@@ -657,27 +666,27 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
         const float rpm_scale = 60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
 
         vals[0] = dbg.hfi_theta_err;
-        vals[1] = hfi_sqwave_get_pll_vesc_err();
-        vals[2] = hfi_sqwave_get_eps();
-        vals[3] = hfi_sqwave_get_x_lp();
-        vals[4] = hfi_sqwave_get_y_lp();
+        vals[1] = hfi_tm.pll_vesc_err;
+        vals[2] = hfi_tm.eps;
+        vals[3] = hfi_tm.x_lp;
+        vals[4] = hfi_tm.y_lp;
         vals[5] = dbg.pll_omega_mech_rpm;
-        vals[6] = hfi_sqwave_get_pll_int_el() * rpm_scale;
+        vals[6] = hfi_tm.pll_int_el * rpm_scale;
         vals[7] = dbg.foc_iq_ref;
 #if (M1_HFI_GATE == 127) || (M1_HFI_GATE == 128) || (M1_HFI_GATE == 129) || (M1_HFI_GATE == 130) || (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 132) || (M1_HFI_GATE == 133) || (M1_HFI_GATE == 134) || (M1_HFI_GATE == 135) || (M1_HFI_GATE == 136) || (M1_HFI_GATE == 137) || (M1_HFI_GATE == 141)
         vals[8] = dbg.obs_pll_theta_err * (180.0f / 3.14159265f);
         vals[9] = dbg.obs_spd_rpm_err - vals[6];
 #else
         vals[8] = dbg.hfi_omega_rpm;
-        vals[9] = hfi_sqwave_get_di_q();
+        vals[9] = hfi_tm.di_q;
 #endif
         vals[10] = dbg.hfi_stage;
 #if (M1_HFI_GATE == 128) || (M1_HFI_GATE == 129) || (M1_HFI_GATE == 130) || (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 132) || (M1_HFI_GATE == 133) || (M1_HFI_GATE == 134) || (M1_HFI_GATE == 135) || (M1_HFI_GATE == 136) || (M1_HFI_GATE == 137) || (M1_HFI_GATE == 139) || (M1_HFI_GATE == 140) || (M1_HFI_GATE == 141)
         vals[11] = dbg.obs_ss_spd_on;
 #elif (M1_HFI_GATE == 110) || (M1_HFI_GATE == 111) || (M1_HFI_GATE == 112)
-        vals[11] = hfi_sqwave_get_lq_well_flip_n();
+        vals[11] = hfi_tm.lq_well_flip_n;
 #else
-        vals[11] = (hfi_sqwave_iq_auth_ok() != 0u) ? 1.0f : 0.0f;
+        vals[11] = (hfi_tm.iq_auth_ok != 0u) ? 1.0f : 0.0f;
 #endif
     }
 #elif (M1_HFI_GATE == 102) || (M1_HFI_GATE == 103) || (M1_HFI_GATE == 104) || \
@@ -693,20 +702,20 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[1] = dbg.outer_omega_ref;
 #elif (M1_HFI_GATE == 103) || (M1_HFI_GATE == 104) || (M1_HFI_GATE == 106) || \
       (M1_HFI_GATE == 107) || (M1_HFI_GATE == 108)
-    vals[1] = (hfi_sqwave_iq_auth_ok() != 0u) ? 1.0f : 0.0f;
+    vals[1] = (hfi_tm.iq_auth_ok != 0u) ? 1.0f : 0.0f;
 #else
-    vals[1] = hfi_sqwave_get_qkick_verdict();
+    vals[1] = hfi_tm.qkick_verdict;
 #endif
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
-    vals[4] = hfi_sqwave_get_pll_vesc_err();
+    vals[4] = hfi_tm.pll_vesc_err;
     vals[5] = dbg.pll_omega_mech_rpm;
-    vals[6] = hfi_sqwave_get_x_lp();
+    vals[6] = hfi_tm.x_lp;
 #if (M1_HFI_GATE == 103) || (M1_HFI_GATE == 104) || (M1_HFI_GATE == 105) || \
     (M1_HFI_GATE == 106) || (M1_HFI_GATE == 107) || (M1_HFI_GATE == 108)
     vals[7] = dbg.foc_iq_ref;
 #else
-    vals[7] = hfi_sqwave_get_qkick_dth();
+    vals[7] = hfi_tm.qkick_dth;
 #endif
     vals[8] = dbg.hfi_omega_rpm;
     vals[9] = dbg.foc_iq;
@@ -719,33 +728,33 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     (M1_HFI_GATE == 33) || (M1_HFI_GATE == 34) || (M1_HFI_GATE == 35) || \
     (M1_HFI_GATE == 36) || (M1_HFI_GATE == 98)
     /*
-     * C4fâ¦C4vï¼è¸¢ + è¯æ­é¥æµï¼æ§ç¼æï¼C4w=37 è§ä¸ï¿½?
-     * ch0 Î¸_enc  ch1 pre_ok  ch2 Î¸_hat  ch3 Î¸_err  ch4 eps
+     * C4f…C4v：踢 + 诊断遥测（旧编排；C4w=37 见下。
+     * ch0 θ_enc  ch1 pre_ok  ch2 θ_hat  ch3 θ_err  ch4 eps
      * ch5 di_d   ch6 x_lp  ch7 x_raw
-     * C4râ¦C4vï¼ch8=Ï*  ch9=Iqï¼å¶ï¿½?ch8=Ud_inj
+     * C4r…C4v：ch8=ω*  ch9=Iq；其。ch8=Ud_inj
      * ch10 stage ch11 Ud_pi
      */
     {
         float ud_inj = 0.0f;
         float uq_inj = 0.0f;
 
-        hfi_sqwave_get_inj(&ud_inj, &uq_inj);
+        ud_inj = hfi_tm.ud_inj; uq_inj = hfi_tm.uq_inj;
         (void)uq_inj;
         vals[0] = dbg.enc_theta_el;
 #if (M1_HFI_GATE == 28) || (M1_HFI_GATE == 29) || (M1_HFI_GATE == 30) || \
     (M1_HFI_GATE == 31) || (M1_HFI_GATE == 32) || (M1_HFI_GATE == 33) || \
     (M1_HFI_GATE == 34) || (M1_HFI_GATE == 35) || (M1_HFI_GATE == 36)
-        vals[1] = (float)hfi_sqwave_qk_pre_ok() +
-                  0.1f * hfi_sqwave_get_qk_pre_flip_n();
+        vals[1] = (float)hfi_tm.qk_pre_ok +
+                  0.1f * hfi_tm.qk_pre_flip_n;
 #else
-        vals[1] = (hfi_sqwave_iq_auth_ok() != 0u) ? 1.0f : 0.0f;
+        vals[1] = (hfi_tm.iq_auth_ok != 0u) ? 1.0f : 0.0f;
 #endif
         vals[2] = dbg.hfi_theta_hat;
         vals[3] = dbg.hfi_theta_err;
         vals[4] = dbg.hfi_eps;
-        vals[5] = hfi_sqwave_get_di_d();
-        vals[6] = hfi_sqwave_get_x_lp();
-        vals[7] = hfi_sqwave_get_x_raw();
+        vals[5] = hfi_tm.di_d;
+        vals[6] = hfi_tm.x_lp;
+        vals[7] = hfi_tm.x_raw;
 #if (M1_HFI_GATE == 32) || (M1_HFI_GATE == 33) || (M1_HFI_GATE == 34) || \
     (M1_HFI_GATE == 35) || (M1_HFI_GATE == 36)
         vals[8] = dbg.outer_omega_ref;
@@ -765,44 +774,44 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     }
 #elif (M1_HFI_GATE == 40) || (M1_HFI_GATE == 41)
     /*
-     * C4z/C4aaï¼å»è§è§£è°è§ï¿½?
-     * ch0 Î¸_enc  ch1 enc rpm  ch2 Î¸_hat  ch3 Î¸_err
+     * C4z/C4aa：冻角解调观。
+     * ch0 θ_enc  ch1 enc rpm  ch2 θ_hat  ch3 θ_err
      * ch4 eps    ch5 x_lp     ch6 y_lp   ch7 di_d
-     * ch8 di_q   ch9 Iq       ch10 stage+0.5å»è§  ch11 HFI Ï
+     * ch8 di_q   ch9 Iq       ch10 stage+0.5冻角  ch11 HFI ω
      */
     vals[0] = dbg.enc_theta_el;
     vals[1] = dbg.pll_omega_mech_rpm;
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
-    vals[5] = hfi_sqwave_get_x_lp();
-    vals[6] = hfi_sqwave_get_y_lp();
-    vals[7] = hfi_sqwave_get_di_d();
-    vals[8] = hfi_sqwave_get_di_q();
+    vals[5] = hfi_tm.x_lp;
+    vals[6] = hfi_tm.y_lp;
+    vals[7] = hfi_tm.di_d;
+    vals[8] = hfi_tm.di_q;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.hfi_stage +
-               ((hfi_sqwave_demod_probe_freeze() != 0u) ? 0.5f : 0.0f);
+               ((hfi_tm.demod_probe_freeze != 0u) ? 0.5f : 0.0f);
     vals[11] = dbg.hfi_omega_rpm;
 #elif (M1_HFI_GATE == 42) || (M1_HFI_GATE == 43)
     /*
-     * C4ab/C4acï¼è¸¢âLOGâFEED åæ®µè¯æ­ï¼æ§å¶â¡C4xï¿½?
-     * ch0 Î¸_enc     ch1 HFI Ï_rpm   ch2 Î¸_hat    ch3 Î¸_err
+     * C4ab/C4ac：踢→LOG→FEED 分段诊断（控制≡C4x。
+     * ch0 θ_enc     ch1 HFI ω_rpm   ch2 θ_hat    ch3 θ_err
      * ch4 eps       ch5 x_lp        ch6 enc rpm  ch7 Iq_ref
-     * ch8 y_lp      ch9 Iq          ch10 stage[+0.5æ»è¡]  ch11 Ï_hfiâÏ_enc
-     * C4acï¼RUN stage_t 6ï¿½? s Iq*=0ï¼ch10=7.5 æ æ»è¡çª
+     * ch8 y_lp      ch9 Iq          ch10 stage[+0.5滑行]  ch11 ω_hfi−ω_enc
+     * C4ac：RUN stage_t 6。 s Iq*=0；ch10=7.5 标滑行窗
      */
     vals[0] = dbg.enc_theta_el;
     vals[1] = dbg.hfi_omega_rpm;
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
-    vals[5] = hfi_sqwave_get_x_lp();
+    vals[5] = hfi_tm.x_lp;
     vals[6] = dbg.pll_omega_mech_rpm;
     vals[7] = dbg.foc_iq_ref;
-    vals[8] = hfi_sqwave_get_y_lp();
+    vals[8] = hfi_tm.y_lp;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.hfi_stage +
-               ((hfi_sqwave_feed_coast_active() != 0u) ? 0.5f : 0.0f);
+               ((hfi_tm.feed_coast_active != 0u) ? 0.5f : 0.0f);
     vals[11] = dbg.hfi_omega_rpm - dbg.pll_omega_mech_rpm;
 #elif (M1_HFI_GATE == 81) || (M1_HFI_GATE == 82) || (M1_HFI_GATE == 83)
     /*
@@ -816,13 +825,13 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
-    vals[5] = hfi_sqwave_get_x_lp();
+    vals[5] = hfi_tm.x_lp;
     vals[6] = dbg.foc_id;
     vals[7] = dbg.foc_iq_ref;
-    vals[8] = hfi_sqwave_get_id_pi_soft();
+    vals[8] = hfi_tm.id_pi_soft;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.hfi_stage +
-               ((hfi_sqwave_iq_auth_ok() != 0u) ? 0.1f : 0.0f);
+               ((hfi_tm.iq_auth_ok != 0u) ? 0.1f : 0.0f);
     vals[11] = dbg.foc_ud_pi;
 #elif (M1_HFI_GATE == 84) || (M1_HFI_GATE == 85) || (M1_HFI_GATE == 86) || (M1_HFI_GATE == 87) || (M1_HFI_GATE == 88) || (M1_HFI_GATE == 89) || (M1_HFI_GATE == 90)
     /*
@@ -836,19 +845,19 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #if (M1_HFI_GATE == 85)
     vals[1] = dbg.foc_id_lpf;
 #else
-    vals[1] = hfi_sqwave_get_vh_sign();
+    vals[1] = hfi_tm.vh_sign;
 #endif
-    vals[2] = hfi_sqwave_get_di_d();
-    vals[3] = hfi_sqwave_get_di_q();
-    vals[4] = hfi_sqwave_get_x_raw();
-    vals[5] = hfi_sqwave_get_y_raw();
-    vals[6] = hfi_sqwave_get_x_lp();
+    vals[2] = hfi_tm.di_d;
+    vals[3] = hfi_tm.di_q;
+    vals[4] = hfi_tm.x_raw;
+    vals[5] = hfi_tm.y_raw;
+    vals[6] = hfi_tm.x_lp;
     vals[7] = dbg.hfi_eps;
     vals[8] = dbg.foc_id;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.foc_iq_ref;
     vals[11] = dbg.hfi_stage +
-               ((hfi_sqwave_iq_auth_ok() != 0u) ? 0.1f : 0.0f);
+               ((hfi_tm.iq_auth_ok != 0u) ? 0.1f : 0.0f);
 #elif (M1_HFI_GATE == 37) || (M1_HFI_GATE == 38) || (M1_HFI_GATE == 39) || \
       (M1_HFI_GATE == 53) || (M1_HFI_GATE == 54) || (M1_HFI_GATE == 55) || \
       (M1_HFI_GATE == 56) || (M1_HFI_GATE == 57) || (M1_HFI_GATE == 58) || (M1_HFI_GATE == 59) || (M1_HFI_GATE == 60) || (M1_HFI_GATE == 61) || (M1_HFI_GATE == 62) || (M1_HFI_GATE == 63) || (M1_HFI_GATE == 64) || (M1_HFI_GATE == 65) || (M1_HFI_GATE == 66) || (M1_HFI_GATE == 67) || (M1_HFI_GATE == 68) || (M1_HFI_GATE == 69) || (M1_HFI_GATE == 70) || (M1_HFI_GATE == 71) || (M1_HFI_GATE == 72) || (M1_HFI_GATE == 73) || (M1_HFI_GATE == 74) || (M1_HFI_GATE == 75) || (M1_HFI_GATE == 76) || (M1_HFI_GATE == 77) || (M1_HFI_GATE == 78) || (M1_HFI_GATE == 79) || (M1_HFI_GATE == 80) || (M1_HFI_GATE == 91) || (M1_HFI_GATE == 92) || (M1_HFI_GATE == 93)
@@ -864,7 +873,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
-    vals[5] = hfi_sqwave_get_x_lp();
+    vals[5] = hfi_tm.x_lp;
     vals[6] = dbg.pll_omega_mech_rpm;
     vals[7] = dbg.foc_iq_ref;
 #if (M1_HFI_GATE == 38) || (M1_HFI_GATE == 53) || (M1_HFI_GATE == 54) || \
@@ -923,20 +932,20 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
      * RUN：ch3=θ_err ch4=V4 e ch5=ω_enc ch8=ω_hfi
      */
     vals[0] = dbg.enc_theta_el;
-    vals[1] = hfi_sqwave_get_qkick_verdict();
+    vals[1] = hfi_tm.qkick_verdict;
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
-    vals[4] = hfi_sqwave_get_pll_vesc_err();
+    vals[4] = hfi_tm.pll_vesc_err;
     vals[5] = dbg.pll_omega_mech_rpm;
-    vals[6] = hfi_sqwave_get_x_lp();
-    vals[7] = hfi_sqwave_get_qkick_dth();
+    vals[6] = hfi_tm.x_lp;
+    vals[7] = hfi_tm.qkick_dth;
     vals[8] = dbg.hfi_omega_rpm;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.hfi_stage;
     vals[11] = dbg.foc_id;
 #else
     vals[0] = dbg.enc_theta_el;
-    vals[1] = hfi_sqwave_get_x_lp();
+    vals[1] = hfi_tm.x_lp;
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
     vals[4] = dbg.hfi_eps;
@@ -944,12 +953,12 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[6] = dbg.foc_iq;
     vals[7] = dbg.foc_iq_ref;
     vals[8] = dbg.hfi_omega_rpm;
-    vals[9] = hfi_sqwave_get_y_lp();
+    vals[9] = hfi_tm.y_lp;
     vals[10] = dbg.hfi_stage;
     vals[11] = dbg.foc_id;
 #endif
 #elif M1_HFI_AXIS_SEL_ENABLE
-    /* éç½®å®è½´ï¼ch9=eps_d+0.1Â·flip+0.01Â·ok */
+    /* 静置定轴：ch9=eps_d+0.1·flip+0.01·ok */
     vals[0] = dbg.enc_theta_el;
     vals[1] = dbg.hfi_theta_cmd;
     vals[2] = dbg.hfi_theta_hat;
@@ -974,34 +983,34 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
       (M1_HFI_GATE == 17) || (M1_HFI_GATE == 18) || (M1_HFI_GATE == 19) || \
       (M1_HFI_GATE == 98)
     /* C3…C4e / V5：ch1 = 无感品质放行 0/1 */
-    vals[1] = (hfi_sqwave_iq_auth_ok() != 0u) ? 1.0f : 0.0f;
+    vals[1] = (hfi_tm.iq_auth_ok != 0u) ? 1.0f : 0.0f;
 #else
     vals[1] = dbg.outer_omega_ref;
 #endif
     vals[2] = dbg.hfi_theta_hat;
     vals[3] = dbg.hfi_theta_err;
 #if (M1_HFI_GATE == 100)
-    vals[4] = hfi_sqwave_get_pll_vesc_err();
+    vals[4] = hfi_tm.pll_vesc_err;
 #else
     vals[4] = dbg.hfi_eps;
 #endif
     vals[5] = dbg.pll_omega_mech_rpm;
-    vals[6] = hfi_sqwave_get_x_lp();
-    vals[7] = hfi_sqwave_get_y_lp();
+    vals[6] = hfi_tm.x_lp;
+    vals[7] = hfi_tm.y_lp;
     vals[8] = dbg.hfi_omega_rpm;
     vals[9] = dbg.foc_iq;
     vals[10] = dbg.hfi_stage;
     vals[11] = dbg.foc_id;
 #if M1_HFI_GATE == 19
-    /* C4eï¼æ¢ï¿½?Ï_enc / y_lp / Ï_hfi ï¿½?di_d / x_raw / Ud_injï¼ç¦»çº¿ææ³¨å¥ vs è§£è°ï¿½?*/
+    /* C4e：换。ω_enc / y_lp / ω_hfi 。di_d / x_raw / Ud_inj（离线拆注入 vs 解调。*/
     {
         float ud_inj = 0.0f;
         float uq_inj = 0.0f;
 
-        hfi_sqwave_get_inj(&ud_inj, &uq_inj);
+        ud_inj = hfi_tm.ud_inj; uq_inj = hfi_tm.uq_inj;
         (void)uq_inj;
-        vals[5] = hfi_sqwave_get_di_d();
-        vals[7] = hfi_sqwave_get_x_raw();
+        vals[5] = hfi_tm.di_d;
+        vals[7] = hfi_tm.x_raw;
         vals[8] = ud_inj;
     }
 #endif
@@ -1021,19 +1030,20 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif
     telem_write_frame_vals(buf, offset, vals);
     return;
+}
 #endif
 
 #if M1_VOFA_IF_12CH && (TELEM_BRINGUP_K >= 12u)
     /*
-     * I/FâOBS åè§åéèè°ï¼
-     * ch0 Ï_enc  ch1 Ï_ref  ch2 Iq_ref  ch3 Î¸_err(pllâencçç£)
-     * ch4 Ï_obs  ch5 speed_fb(è¿PI)  ch6 Iq  ch7 emag
-     * ch8 Uq     ch9 Î¸_park  ch10 spd_on(0/1)  ch11 ss_state+0.1Î±
-     * å¤è¯»ï¼è¿ OBS ï¿½?ch11ï¿½?.x ï¿½?ch10=0 ï¿½?è§åéæªåï¼ch10ï¿½? ï¿½?ch5è´´ch4 ï¿½?éå·²åï¿½?
+     * I/F→OBS 先角后速联调：
+     * ch0 ω_enc  ch1 ω_ref  ch2 Iq_ref  ch3 θ_err(pll−enc监督)
+     * ch4 ω_obs  ch5 speed_fb(进PI)  ch6 Iq  ch7 emag
+     * ch8 Uq     ch9 θ_park  ch10 spd_on(0/1)  ch11 ss_state+0.1α
+     * 判读：进 OBS 。ch11。.x 。ch10=0 。角切速未切；ch10。 。ch5贴ch4 。速已切。
      */
     vals[0] = dbg.pll_omega_mech_rpm;
     vals[1] = dbg.if_omega_cmd_rpm;
-    /* I/F éæ¾ï¿½?ch1 è·å¤ç¯ï¼|Ï| å¤ï¼å¼å®¹ååï¼æ§ï¼outer>1 ä¼æ ï¿½?000 æ¼æ 0ï¿½?*/
+    /* I/F 释放。ch1 跟外环；|ω| 判，兼容反向（旧：outer>1 会把 。000 漏成 0。*/
     if ((dbg.if_omega_cmd_rpm > -1.0f) && (dbg.if_omega_cmd_rpm < 1.0f) &&
         ((dbg.outer_omega_ref > 1.0f) || (dbg.outer_omega_ref < -1.0f))) {
         vals[1] = dbg.outer_omega_ref;
@@ -1065,7 +1075,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif
 
 #if M1_VOFA_OBS_SMO_RAW_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* ç¦»çº¿éæ¾åæï¼i/u + Î¸/Ïï¼éå¸¦å¨ï¿½?e/PLL ä¾¿äºæ ¸å¯¹ */
+    /* 离线重放原料：i/u + θ/ω；附带在。e/PLL 便于核对 */
     vals[0] = dbg.obs_i_alpha;
     vals[1] = dbg.obs_i_beta;
     vals[2] = dbg.obs_u_alpha;
@@ -1085,13 +1095,13 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #if M1_VOFA_OBS_PLL_12CH && (TELEM_BRINGUP_K >= 12u)
 #if M1_EMF_PLL_USE_SMO
 #if M1_OBS_SPD_PLL_ENABLE
-    /* é«éè½¯åéªæ¶ï¼éåº¦åé¦ / æä»¤ / è§è¯¯ï¿½?/ ç¶æï¼ä¸åï¿½?PLL å¯¹ç§ï¿½?*/
-    vals[0] = dbg.outer_omega_mech_rpm; /* å®éè¿éåº¦ç¯çåé¦ */
+    /* 高速软切验收：速度反馈 / 指令 / 角误。/ 状态（不再。PLL 对照。*/
+    vals[0] = dbg.outer_omega_mech_rpm; /* 实际进速度环的反馈 */
     vals[1] = dbg.outer_omega_ref;
     vals[2] = dbg.foc_iq_ref;
     vals[3] = dbg.obs_pll_theta_err;
     vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.obs_spd_pll_rpm;     /* Î¸ÌâPLLï¿½? kHzï¿½?*/
+    vals[5] = dbg.obs_spd_pll_rpm;     /* θ̂→PLL。 kHz。*/
     vals[6] = dbg.obs_smo_emag;
     vals[7] = dbg.obs_pll_theta_hat;
     vals[8] = (float)g_telem_dbg.isr_delta;
@@ -1103,7 +1113,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[11] = dbg.obs_smo_lpf_hz;
 #endif
 #else
-    /* SMO e ï¿½?PLLï¼ä¸­é´é eÎ±Î² + atan/PLL å¯¹ç§ + cycle */
+    /* SMO e 。PLL：中间量 eαβ + atan/PLL 对照 + cycle */
     vals[0] = dbg.obs_smo_e_alpha;
     vals[1] = dbg.obs_smo_e_beta;
     vals[2] = dbg.obs_smo_theta_err;
@@ -1141,11 +1151,11 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif
 
 #if M1_VOFA_OBS_SMO_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* ä¿çéªæ¶ï¿½?+ DWT cycleï¼float æ¾ç¤ºï¼isr ä¸ºä¸ä¸æå®ï¿½?tickï¿½?*/
+    /* 保留验收。+ DWT cycle（float 显示；isr 为上一拍完。tick。*/
     vals[0] = dbg.obs_i_alpha;
     vals[1] = dbg.obs_i_beta;
     vals[2] = dbg.obs_theta_err;       /* Veq err */
-    vals[3] = dbg.obs_smo_theta_err;   /* SMO err ï¿½?ä¸»éªï¿½?*/
+    vals[3] = dbg.obs_smo_theta_err;   /* SMO err 。主验。*/
     vals[4] = dbg.foc_theta_el;
     vals[5] = dbg.obs_omega_el;
     vals[6] = dbg.obs_smo_emag;
@@ -1159,7 +1169,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif
 
 #if M1_VOFA_OBS_VEQ_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* Veq æè·¯ï¼iÎ±Î² uÎ±Î² eÎ±Î² Î¸Ì Î¸enc Î¸err |e| Ïe Ïinst */
+    /* Veq 旁路：iαβ uαβ eαβ θ̂ θenc θerr |e| ωe ψinst */
     vals[0] = dbg.obs_i_alpha;
     vals[1] = dbg.obs_i_beta;
     vals[2] = dbg.obs_u_alpha;
@@ -1177,7 +1187,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif
 
 #if M1_VOFA_FLUX_ID_6CH && (TELEM_BRINGUP_K >= 6u)
-    /* ææç¨³éä¼° Ïfï¼Id Iq Ud Uq Ï_pll Ï_ref @ D=5 ï¿½?4 kHz */
+    /* 有感稳速估 ψf：Id Iq Ud Uq ω_pll ω_ref @ D=5 。4 kHz */
     vals[0] = dbg.foc_id;
     vals[1] = dbg.foc_iq;
     vals[2] = dbg.foc_ud_out;
