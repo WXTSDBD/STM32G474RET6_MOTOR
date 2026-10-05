@@ -40,6 +40,8 @@ void board_encoder_m1_init(void)
     enc_m1_as5047.hal = &AS5047_spi1_PORT;
     encoder_init(&enc_m1, &as5047_encoder_driver, &enc_m1_as5047, &enc_m1_bus);
     (void)encoder_async_init(&enc_m1);
+    /* Cube 把 CS 初值拉低；空闲须释放，否则 SPI 易卡在半帧 */
+    encoder_spi_bus_cs_high(&enc_m1_bus);
 }
 
 void board_encoder_m1_dma_isr(void)

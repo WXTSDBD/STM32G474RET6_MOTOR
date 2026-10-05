@@ -151,8 +151,7 @@ static void dbg_snapshot_all(void)
   dbg.opamp[2].hal_state = hopamp4.State;
   dbg.adc_shunt[0] = adc_read[0];
   dbg.adc_shunt[1] = adc_read[1];
-  dbg.adc_shunt[2] = adc_read[2];
-  dbg.adc_reg[0] = adc_read[3];
+  dbg.adc_shunt[2] = adc_read[2]; 
   dbg.adc_reg[1] = adc_read[4];
   dbg.adc_reg[2] = adc_read[5];
 }
@@ -167,6 +166,7 @@ int main(void)
 
   /* USER CODE BEGIN 1 */
 
+	
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/

@@ -10,6 +10,7 @@
 
 #include "motor_params_m1.h"
 #include "motor_trig.h"
+#include "hfi_sqwave.h"
 #if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
 #include "emf_smo.h"
 #endif
@@ -70,7 +71,7 @@ static float emf_pll_clamp(float x, float lim)
     return x;
 }
 
-/** e-LPF 相位前馈：φ=−atan(fe/fc)，与 THETA_OFF 同符号约定（负值=提前 θ̂） */
+/** 低通滞后。正转提前 θ̂，反转改为滞后。返回值从 θ̂ 里减去。 */
 static float emf_pll_lpf_phase_ff(float omega_el)
 {
 #if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
@@ -78,13 +79,13 @@ static float emf_pll_lpf_phase_ff(float omega_el)
     float fc;
     float w;
 
-    w = omega_el;
+    fe = omega_el / EMF_PLL_TWO_PI;
+    fc = emf_smo_get_lpf_hz();
+    w = fe;
     if (w < 0.0f) {
         w = -w;
     }
-    fe = w / EMF_PLL_TWO_PI;
-    fc = emf_smo_get_lpf_hz();
-    if (fe < 1.0f || fc < 1.0f) {
+    if (w < 1.0f || fc < 1.0f) {
         return 0.0f;
     }
     return -atanf(fe / fc);
@@ -154,8 +155,12 @@ void emf_pll_update(emf_pll_t *p,
     }
 
     motor_trig_sincos(p->theta, &cos_h, &sin_h);
-    /* eα≈−|e|sinθ, eβ≈+|e|cosθ → ε = |e| sin(θ−θ̂) */
+    /* 正转：eα≈−|e|sinθ，eβ≈+|e|cosθ。反转反电动势反向。
+     * 符号用高频注入转速。滑模自己的转速一旦估反，会把鉴相锁死。 */
     err = -e_alpha * cos_h - e_beta * sin_h;
+    if (hfi_sqwave_get_pll_int_el() < 0.0f) {
+        err = -err;
+    }
 #if M1_EMF_PLL_NORM_ENABLE
     err /= (emag + M1_EMF_PLL_NORM_EPS);
 #endif
@@ -179,12 +184,23 @@ void emf_pll_update(emf_pll_t *p,
 
     p->theta = emf_pll_wrap_pi(p->theta + p->omega_el * dt);
     {
-        const float phi_ff = emf_pll_lpf_phase_ff(p->omega_el);
+        const float phi_ff = emf_pll_lpf_phase_ff(hfi_sqwave_get_pll_int_el());
 
         p->theta_hat = emf_pll_wrap_pi(
             p->theta - M1_EMF_PLL_THETA_OFF_RAD - phi_ff);
     }
     p->theta_err = emf_pll_wrap_pi(p->theta_hat - theta_enc);
+}
+
+float emf_pll_theta_smooth(const emf_pll_t *p, float omega_slow_el)
+{
+    float phi_slow;
+
+    if (p == NULL) {
+        return 0.0f;
+    }
+    phi_slow = emf_pll_lpf_phase_ff(omega_slow_el);
+    return emf_pll_wrap_pi(p->theta - M1_EMF_PLL_THETA_OFF_RAD - phi_slow);
 }
 
 #else /* !M1_EMF_PLL_ENABLE */
@@ -209,6 +225,13 @@ void emf_pll_update(emf_pll_t *p,
     (void)e_beta;
     (void)theta_enc;
     (void)dt;
+}
+
+float emf_pll_theta_smooth(const emf_pll_t *p, float omega_slow_el)
+{
+    (void)p;
+    (void)omega_slow_el;
+    return 0.0f;
 }
 
 #endif /* M1_EMF_PLL_ENABLE */

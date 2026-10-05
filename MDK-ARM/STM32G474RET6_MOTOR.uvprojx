@@ -1431,6 +1431,11 @@
               <FilePath>..\motor\observer\obs_theta_notch.c</FilePath>
             </File>
             <File>
+              <FileName>hfi_sqwave.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\observer\hfi_sqwave.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_outer_loop.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_outer_loop.c</FilePath>

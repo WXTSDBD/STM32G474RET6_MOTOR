@@ -42,6 +42,7 @@ typedef struct {
     /** AS5047 raw（0..16383），供 VOFA 对照 θ 是否由 raw 花点引起 */
     float enc_raw;
     float foc_id;
+    float foc_id_lpf; /* Id PI feedback (LPF when M1_HFI_ID_PI_LPF_ENABLE) */
     float foc_iq;
     float foc_id_ref;
     float foc_iq_ref;
@@ -175,6 +176,28 @@ typedef struct {
     float obs_spd_pll_rpm;
     float obs_spd_pll_err_rad;
     float obs_spd_rpm_err; /* obs_spd_pll_rpm − enc pll rpm */
+    /** HFI 旁路（不进 Park）；VOFA HFI×12 */
+    float hfi_theta_cmd;
+    float hfi_theta_hat;
+    float hfi_theta_err;
+    float hfi_eps;
+    float hfi_di_q;
+    float hfi_di_d;
+    float hfi_x_raw;
+    float hfi_y_raw;
+    float hfi_vh_sign;
+    float hfi_stage;
+    float hfi_lock;           /* 0=CAPTURE 1=LOCKED 2=FAULT */
+    float hfi_omega_rpm;      /* HFI 角速度估计（电→机械 rpm） */
+    float hfi_iq_spd_shadow;  /* 影子速度环 Iq；不进电流环 */
+    float hfi_omega_trim_rpm; /* 仅 HFI PLL 修正量 [rpm mech] */
+    float hfi_ipd_phase;      /* IPD 子相位 0..4；QKICK 时复用为 qkick_phase */
+    float hfi_ipd_pulse_ud;   /* 本格脉冲 Ud [V]；QKICK 时为 Iq_ref [A] */
+    float hfi_qkick_seed;     /* 0=θ̂=θ_cmd，1=θ̂=θ_cmd+π */
+    float hfi_qkick_dth_deg;  /* MCU 踢段 Δθ_enc [deg] */
+    float hfi_qkick_verdict;  /* +1 match / -1 mismatch / 0 nomotion */
+    /** VESC 转速窗 want_smo（0/1，滞回）。S1 观察；S2 硬关；S2b 软交 Id */
+    float hfi_vesc_win_smo;
 } DbgMon_t;
 
 extern volatile DbgMon_t dbg;

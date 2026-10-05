@@ -307,9 +307,15 @@ motor_startup_step_t motor_startup_tick(motor_context_t *ctx, float theta_enc_pa
 void motor_startup_finish_tick(motor_context_t *ctx, float iq_meas,
                                motor_startup_step_t *step)
 {
-    (void)ctx;
+    /*
+     * STARTUP 关闭时：startup_tick 在 HFI 写 iq_ref 之前取样，foc_loop 在
+     * outer=DISABLED 时吃的是 startup.iq_ref。此处跟到本拍 ctx，避免踢段
+     * 用上一拍的 0（C4g 2142：Iq 遥测像在跟，力矩环却可能慢半拍/错拍）。
+     */
     (void)iq_meas;
-    (void)step;
+    if (ctx != NULL && step != NULL) {
+        step->iq_ref = ctx->iq_ref;
+    }
 }
 
 #endif /* M1_STARTUP_ENABLE */

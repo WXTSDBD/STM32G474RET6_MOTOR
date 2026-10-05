@@ -85,7 +85,7 @@
 
 | 实例 ID | 域 | 依赖基线 | 说明 |
 |---------|-----|----------|------|
-| `hfi_low_speed` | OBS/STARTUP | `if_smo_mid_v1` | 低速/零速 HFI → 再与 SMO 软切。入口：[V1 结档 §4](结档_SMO中高速无感V1与HFI开干_2026-09-12.md) |
+| `hfi_low_speed` | OBS/STARTUP | `m1_hfi_standstill` | `M1_HFI_GATE`：1…8；捕获对照见 [9/27 报告](报告_HFI无感捕获现状与对照实验计划_2026-09-27.md)。下一枪 C0=GATE=3。[规划](规划_HFI四步重验收与后续计划_2026-09-26.md) |
 | `if_smo_full_pi` | SPEED | `if_smo_mid_v1` | SMO 回填：`open_seq=248` 满权威+正常 PI（不挡 HFI） |
 | `eso_disturb_reject` | SPEED | `normal_product` | ESO 阶跃 / 0.6 N·m 对比 |
 | `impedance_joint_z` | POSITION | `normal_product` | 关节阻抗 Z 扫频/阶跃 |
@@ -98,6 +98,7 @@
 
 | 实验 | 模式 | 附加 |
 |------|------|------|
+| **HFI 四步（编号见规划）** | `SPEED_IDENT` | **GATE=6=S3c1**（对照 Park=enc 爬）；回退 `5/4/3` |
 | **I/F→SMO 中高速 V1** | `NORMAL`/`SPEED_IDENT` 以 bringup 为准 | `M1_USE_IF_100_PROFILE=1` → `m1_if_100rpm`（DIR_SEQ±1000；结档见上） |
 | Id Bode 签收 | `BODE_ID_OFF_ONLY` | `profiles/m1_bode_id_fc1000.profile.h` |
 | 有感 1000 rpm 估 ψf | `SPEED_IDENT` | `M1_USE_FLUX_ID_PROFILE=1` → `m1_flux_id_1000rpm.profile.h` |
@@ -129,4 +130,4 @@ SMO 三包后 **改 EMF-PLL**：[总结_OBS_SMO旁路与换PLL决策_2026-09-10]
 
 ---
 
-**最后更新**：2026-09-12（SMO 中高速 V1 结档 + HFI 开干入口）
+**最后更新**：2026-09-27（S3c0/S3c1/S3c2/S3d 编号；下一枪 S3c1）

@@ -289,7 +289,7 @@ static void motor_pos_step_test_tick(motor_context_t *ctx)
         dbg.outer_profile_step = s_pos_step_idx;
         dbg.open_seq_phase = (uint8_t)(M1_POS_STEP_SEQ_BASE + s_pos_step_idx);
     } else {
-        s_pos_step_armed = 0u;
+            s_pos_step_armed = 0u;
         dbg.open_seq_phase = (uint8_t)(M1_POS_STEP_SEQ_BASE + n_steps);
     }
     dbg.outer_theta_ref_rad = ctx->theta_ref_rad;
@@ -412,7 +412,7 @@ static float outer_iq_ref_min(const motor_context_t *ctx)
     if (ctx != NULL) {
         return ctx->pi_speed.out_min;
     }
-    return M1_SPEED_PI_OUT_MIN;
+        return M1_SPEED_PI_OUT_MIN;
 }
 
 static float outer_clamp_iq_ref(const motor_context_t *ctx, float ref)
@@ -464,13 +464,18 @@ static void outer_soft_brake_tick(motor_context_t *ctx)
 static float outer_omega_ref_ramped(motor_context_t *ctx)
 {
     const float target = ctx->omega_ref;
-    const float step = M1_SPEED_OMEGA_RAMP_RPM_S * M1_SPEED_TS_S;
+    const float step_up = M1_SPEED_OMEGA_RAMP_RPM_S * M1_SPEED_TS_S;
+#if defined(M1_SPEED_OMEGA_RAMP_DECEL_RPM_S)
+    const float step_dn = M1_SPEED_OMEGA_RAMP_DECEL_RPM_S * M1_SPEED_TS_S;
+#else
+    const float step_dn = step_up;
+#endif
     float delta = target - s_omega_ramped_rpm;
 
-    if (delta > step) {
-        s_omega_ramped_rpm += step;
-    } else if (delta < -step) {
-        s_omega_ramped_rpm -= step;
+    if (delta > step_up) {
+        s_omega_ramped_rpm += step_up;
+    } else if (delta < -step_dn) {
+        s_omega_ramped_rpm -= step_dn;
     } else {
         s_omega_ramped_rpm = target;
     }
@@ -486,6 +491,43 @@ static float outer_speed_pi_step(motor_context_t *ctx,
     float fb = omega_fb;
     float ref_pi = omega_ref;
     float fb_pi;
+#if M1_HFI_GATE == 139
+    /* 低速用以前有感/旧 HFI 的 0.015。200 rpm 以上仍是 0.005。按实测转速，不按指令。 */
+    {
+        static float s_abs_rpm;
+        float w = omega_fb;
+        float kp;
+        const float a = M1_SPEED_TS_S / (0.15f + M1_SPEED_TS_S);
+
+        if (w < 0.0f) {
+            w = -w;
+        }
+        s_abs_rpm += a * (w - s_abs_rpm);
+        if (s_abs_rpm <= 160.0f) {
+            kp = 0.015f;
+        } else if (s_abs_rpm >= 200.0f) {
+            kp = 0.005f;
+        } else {
+            kp = 0.015f + (0.005f - 0.015f) * ((s_abs_rpm - 160.0f) / 40.0f);
+        }
+        ctx->pi_speed.kp = kp;
+        dbg.obs_ss_spd_on = kp;
+    }
+#endif
+#if M1_HFI_GATE == 140
+    /* 100 rpm 指令用 0.015。指令到 200 立刻回到 0.005，不看实测转速。 */
+    {
+        float cmd = omega_ref;
+        float kp;
+
+        if (cmd < 0.0f) {
+            cmd = -cmd;
+        }
+        kp = (cmd <= 130.0f) ? 0.015f : 0.005f;
+        ctx->pi_speed.kp = kp;
+        dbg.obs_ss_spd_on = kp;
+    }
+#endif
 #if M1_IF_OBS_SOFT_BRAKE_ENABLE
     outer_soft_brake_tick(ctx);
 #endif
@@ -1423,10 +1465,10 @@ void motor_outer_loop_tick(motor_context_t *ctx)
     case M1_OUTER_POSITION:
 #if M1_POS_STEP_TEST_ENABLE
         if (s_pos_step_armed) {
-            motor_pos_step_test_tick(ctx);
-        }
+                    motor_pos_step_test_tick(ctx);
+            }
 #endif
-        {
+            {
             uint8_t pos_p_tick = 0u;
 
 #if M1_POS_DECIM > 1u
@@ -1638,12 +1680,12 @@ void motor_outer_set_mode(motor_context_t *ctx,
 
 #if M1_POS_LOOP_ENABLE
     case M1_OUTER_POSITION:
-        motor_outer_arm_position_hold(ctx);
+            motor_outer_arm_position_hold(ctx);
 #if M1_POS_ERR_HYST_ENABLE
-        outer_pos_err_hyst_reset();
+            outer_pos_err_hyst_reset();
 #endif
 #if M1_POS_DECIM > 1u
-        outer_pos_p_decim_arm();
+            outer_pos_p_decim_arm();
 #endif
         foc_pi_bumpless_beta(&ctx->pi_speed, iq_meas, 0.0f, omega_now,
                               M1_SPEED_PI_BETA);

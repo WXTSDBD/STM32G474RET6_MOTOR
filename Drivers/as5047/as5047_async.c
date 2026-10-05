@@ -66,6 +66,7 @@ static int as5047_chip_init(encoder_t *e)
     ctx->full_rotation_offset = 0.0f;
     ctx->kick_cyccnt = 0U;
     ctx->f1_cb_delta = 0U;
+    ctx->skip_busy_n = 0U;
     return 0;
 }
 
@@ -92,10 +93,25 @@ static void as5047_chip_kick(encoder_t *e)
     }
 
     if (ctx->phase != AS5047_PHASE_IDLE) {
-        encoder_profile_notify(e, ENC_EVT_KICK_SKIP_BUSY, as5047_cyccnt(), 0U);
+        /*
+         * FOC ISR 过长时双帧 DMA 来不及 → 每拍 SKIP，raw 永旧。
+         * 连续 SKIP 则 abort，下一拍重新 kick。
+         */
+        if (ctx->skip_busy_n < 0xFFu) {
+            ctx->skip_busy_n++;
+        }
+        if (ctx->skip_busy_n >= 3u) {
+            as5047_abort(e);
+            ctx->skip_busy_n = 0u;
+            encoder_profile_notify(e, ENC_EVT_ERROR, as5047_cyccnt(), 4U);
+        } else {
+            encoder_profile_notify(e, ENC_EVT_KICK_SKIP_BUSY, as5047_cyccnt(),
+                                   (uint32_t)ctx->skip_busy_n);
+        }
         return;
     }
 
+    ctx->skip_busy_n = 0u;
     (void)as5047_kick_frame1(e);
 }
 

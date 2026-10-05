@@ -55,6 +55,7 @@ typedef struct {
     float full_rotation_offset;
     uint32_t kick_cyccnt;
     uint32_t f1_cb_delta;
+    uint8_t skip_busy_n; /* 连续 KICK_SKIP；过大则 abort 自愈 */
 } as5047_ctx_t;
 
 uint16_t as5047_parity_bit_calculate(uint16_t data);
