@@ -10,7 +10,7 @@
 
 #include "observer/obs_cfg.h"
 #include "motor_trig.h"
-#include "hfi_sqwave.h"
+#include "observer/obs_src.h"
 #if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
 #include "emf_smo.h"
 #endif
@@ -156,9 +156,10 @@ void emf_pll_update(emf_pll_t *p,
 
     motor_trig_sincos(p->theta, &cos_h, &sin_h);
     /* 正转：eα≈−|e|sinθ，eβ≈+|e|cosθ。反转反电动势反向。
-     * 符号用高频注入转速。滑模自己的转速一旦估反，会把鉴相锁死。 */
+     * 符号用高频注入转速（低速槽 get_omega，仍是 PLL 积分）。
+     * 滑模自己的转速一旦估反，会把鉴相锁死。 */
     err = -e_alpha * cos_h - e_beta * sin_h;
-    if (hfi_sqwave_get_pll_int_el() < 0.0f) {
+    if (observer_lo_src()->get_omega() < 0.0f) {
         err = -err;
     }
 #if M1_EMF_PLL_NORM_ENABLE
@@ -184,23 +185,12 @@ void emf_pll_update(emf_pll_t *p,
 
     p->theta = emf_pll_wrap_pi(p->theta + p->omega_el * dt);
     {
-        const float phi_ff = emf_pll_lpf_phase_ff(hfi_sqwave_get_pll_int_el());
+        const float phi_ff = emf_pll_lpf_phase_ff(observer_lo_src()->get_omega());
 
         p->theta_hat = emf_pll_wrap_pi(
             p->theta - M1_EMF_PLL_THETA_OFF_RAD - phi_ff);
     }
     p->theta_err = emf_pll_wrap_pi(p->theta_hat - theta_enc);
-}
-
-float emf_pll_theta_smooth(const emf_pll_t *p, float omega_slow_el)
-{
-    float phi_slow;
-
-    if (p == NULL) {
-        return 0.0f;
-    }
-    phi_slow = emf_pll_lpf_phase_ff(omega_slow_el);
-    return emf_pll_wrap_pi(p->theta - M1_EMF_PLL_THETA_OFF_RAD - phi_slow);
 }
 
 #else /* !M1_EMF_PLL_ENABLE */
@@ -225,13 +215,6 @@ void emf_pll_update(emf_pll_t *p,
     (void)e_beta;
     (void)theta_enc;
     (void)dt;
-}
-
-float emf_pll_theta_smooth(const emf_pll_t *p, float omega_slow_el)
-{
-    (void)p;
-    (void)omega_slow_el;
-    return 0.0f;
 }
 
 #endif /* M1_EMF_PLL_ENABLE */

@@ -39,22 +39,9 @@
 #endif
 #if M1_OBS_SOFT_SWITCH_ENABLE
 #include "observer/obs_soft_switch.h"
-#include "observer/obs_theta_notch.h"
 #endif
 #if M1_HFI_ENABLE
 #include "observer/observer_composite.h"
-#if M1_HFI_GATE != 141
-#include "observer/hfi_current_priv.h"
-#endif
-#ifndef M1_HFI_INJECT_AB_ENABLE
-#define M1_HFI_INJECT_AB_ENABLE         0
-#endif
-#ifndef M1_HFI_INJECT_POST_LOOP
-#define M1_HFI_INJECT_POST_LOOP         0
-#endif
-#ifndef M1_HFI_DEMOD_INJ_AXIS
-#define M1_HFI_DEMOD_INJ_AXIS           0
-#endif
 #endif
 #if M1_IDENT_ENABLE
 #include "ident_flow.h"
@@ -73,7 +60,7 @@ static emf_veq_t s_emf_veq;
 static emf_smo_t s_emf_smo;
 #endif
 #if M1_EMF_PLL_ENABLE
-emf_pll_t s_emf_pll;
+static emf_pll_t s_emf_pll;
 #endif
 #if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
 /** 电角域：。EMF-PLL θ̂ 。机械 rpm。 kHz 更新；OBS 时进速度。*/
@@ -117,29 +104,6 @@ static void motor_current_update_observation_dbg(void)
     dbg.outer_theta_mech_rad = s_theta_mech_rad;
 #if M1_PLL_ENABLE
     dbg.outer_omega_mech_rpm = s_speed_fb_rpm;
-#endif
-#if (M1_HFI_GATE == 78) || (M1_HFI_GATE == 79) || (M1_HFI_GATE == 80)
-    {
-        /* 诊断优先 enc PLL；过低则退回速度反馈 / HFI ω */
-        float w = dbg.pll_omega_mech_rpm;
-
-        if (w < 0.0f) {
-            w = -w;
-        }
-        if (w < 20.0f) {
-            w = s_speed_fb_rpm;
-            if (w < 0.0f) {
-                w = -w;
-            }
-        }
-        if (w < 20.0f) {
-            w = dbg.hfi_omega_rpm;
-            if (w < 0.0f) {
-                w = -w;
-            }
-        }
-        hfi_vesc_win_obs_update(w);
-    }
 #endif
 }
 
@@ -412,12 +376,13 @@ void motor_current_init(bsp_axis_t *axis)
     s_m1_ctx.id_ref = 0.0f;
     s_m1_ctx.iq_ref = 0.0f;
     dbg.open_seq_phase = 0u; /* HFI IDLE */
-    observer_composite_init();
+#if M1_EMF_PLL_ENABLE
+    observer_bringup(&s_emf_pll);
+#else
+    observer_bringup(0);
+#endif
     s_m1_obs = observer_ops();
     s_m1_inj = observer_inj_ops();
-#if M1_EMF_PLL_ENABLE
-    observer_bind_emf_pll(&s_emf_pll);
-#endif
 #elif M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
     s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
     s_m1_ctx.id_ref = 0.0f;
@@ -482,9 +447,6 @@ void motor_current_init(bsp_axis_t *axis)
 #endif
 #if M1_OBS_SOFT_SWITCH_ENABLE
     obs_soft_switch_init();
-#endif
-#if M1_OBS_THETA_NOTCH_ENABLE
-    obs_theta_notch_init();
 #endif
 #if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
     {
@@ -770,47 +732,6 @@ void motor_current_tick(bsp_axis_t *axis)
          * 否则 PI 永远吃有感，拍末覆盖只影。VOFA。
          */
         s_speed_fb_rpm = s_pll_omega_mech_rpm;
-#if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE
-#ifndef M1_HFI_SPEED_FB_ENABLE
-#define M1_HFI_SPEED_FB_ENABLE 0
-#endif
-#if M1_HFI_SPEED_FB_ENABLE
-        /*
-         * P3b：进 RUN 起速度反馈只吃上一。HFI ω（须。outer_tick 前）。
-         * 含踢前预锁。不回编码器 PLL，拔线后外环读到的仍。HFI。
-         * SPEED_OBS_INT：吃积分项，不吃 Kp·eps 尖峰。
-         */
-        if (observer_get_stage() == OBS_STAGE_RUN) {
-            const float rpm_scale =
-                60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
-#ifndef M1_HFI_SPEED_OBS_INT
-#define M1_HFI_SPEED_OBS_INT 0
-#endif
-#if M1_HFI_SPEED_OBS_INT
-            s_speed_fb_rpm = s_m1_obs->get_omega() * rpm_scale;
-#else
-            s_speed_fb_rpm = observer_get_omega_el() * rpm_scale;
-#endif
-#if (M1_HFI_GATE == 135) || (M1_HFI_GATE == 136) || (M1_HFI_GATE == 137)
-            s_speed_fb_rpm = hfi_spd_phase_rpm(s_speed_fb_rpm, ctx->omega_ref);
-#elif M1_HFI_GATE == 134
-            s_speed_fb_rpm = hfi_spd_lead_rpm(s_speed_fb_rpm, ctx->omega_ref);
-#elif (M1_HFI_GATE == 132) || (M1_HFI_GATE == 133)
-            s_speed_fb_rpm = hfi_spd_notch_rpm(s_speed_fb_rpm, ctx->omega_ref);
-#elif M1_HFI_GATE == 140
-            s_speed_fb_rpm = hfi_spd_notch24_rpm(s_speed_fb_rpm, ctx->omega_ref);
-#endif
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-            s_speed_fb_rpm = hfi_hand_blend_speed_fb(s_speed_fb_rpm);
-#endif
-        }
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-        else {
-            hfi_smo_hand_idle();
-        }
-#endif
-#endif
-#endif
 #if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE && M1_OBS_SPD_PLL_ENABLE
         /* BLEND 起与角同步往观测速靠，避。OBS 瞬间 enc→obs 硬切。049 晃速） */
         if (obs_soft_switch_speed_use_obs() != 0u) {
@@ -989,9 +910,6 @@ void motor_current_tick(bsp_axis_t *axis)
             if (++s_speed_slow_div >= M1_SPEED_DECIM) {
                 s_speed_slow_div = 0u;
                 motor_outer_loop_tick(ctx);
-#if M1_HFI_GATE == 133
-                ctx->iq_ref = hfi_ripple_iq(ctx->iq_ref, ctx->omega_ref);
-#endif
             }
         }
     }
@@ -1131,12 +1049,6 @@ void motor_current_tick(bsp_axis_t *axis)
             float theta_hat_park = s_emf_pll.theta_hat;
             float ss_theta_err = s_emf_pll.theta_err;
 
-#if M1_OBS_THETA_NOTCH_ENABLE
-            theta_hat_park = obs_theta_notch_apply(s_emf_pll.theta_hat,
-                                                   omega_obs_ss,
-                                                   obs_soft_switch_speed_on_obs(),
-                                                   M1_CTRL_TS_S);
-#endif
 #if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
             /* 门限角差。θ̂−θ_if，不依赖编码器（拔掉编码器仍可判。*/
             if (motor_if_is_driving() != 0u) {
@@ -1333,177 +1245,49 @@ void motor_current_tick(bsp_axis_t *axis)
 #if M1_HFI_ENABLE
     s_m1_obs->pre_park(theta_enc_park, M1_CTRL_TS_S);
     theta_park = s_m1_obs->get_theta();
-#if M1_HFI_GATE == 132
-    dbg.obs_ss_spd_on = (hfi_spd_notch_on() != 0u) ? 1.0f : 0.0f;
-#elif M1_HFI_GATE == 133
-    dbg.obs_ss_spd_on = hfi_rip_amp();
-#elif M1_HFI_GATE == 134
-    dbg.obs_ss_spd_on = hfi_spd_lead_rep();
-#elif (M1_HFI_GATE == 135) || (M1_HFI_GATE == 136) || (M1_HFI_GATE == 137)
-    dbg.obs_ss_spd_on = hfi_spd_ph_rep();
-#endif
 #if M1_HFI_MOTION_BYPASS_ENABLE
     if (observer_get_stage() == OBS_STAGE_RUN) {
         s_hfi_recon_theta = theta_park;
         s_hfi_recon_theta_ok = 1u;
     }
 #endif
-#ifndef M1_HFI_QKICK_SWEEP_ENABLE
-#define M1_HFI_QKICK_SWEEP_ENABLE 0
-#endif
 #ifndef M1_HFI_QKICK_AFTER_LOCK_ENABLE
 #define M1_HFI_QKICK_AFTER_LOCK_ENABLE 0
 #endif
-#if M1_HFI_QKICK_SWEEP_ENABLE || M1_HFI_QKICK_AFTER_LOCK_ENABLE
+#if M1_HFI_QKICK_AFTER_LOCK_ENABLE
     if (observer_consume_pi_reset() != 0u) {
-#if (M1_HFI_GATE == 97) || (M1_HFI_GATE == 98) || (M1_HFI_GATE == 101) || \
-    (M1_HFI_GATE == 102) || (M1_HFI_GATE == 103) || (M1_HFI_GATE == 104) || \
-    (M1_HFI_GATE == 105) || (M1_HFI_GATE == 106) || (M1_HFI_GATE == 107) || \
-    (M1_HFI_GATE == 108) || (M1_HFI_GATE == 109) || (M1_HFI_GATE == 110) || \
-    (M1_HFI_GATE == 111) || (M1_HFI_GATE == 112) || (M1_HFI_GATE == 113) || \
-    (M1_HFI_GATE == 114) || (M1_HFI_GATE == 115) || (M1_HFI_GATE == 116) || \
-    (M1_HFI_GATE == 117) || (M1_HFI_GATE == 118) || (M1_HFI_GATE == 119) || \
-    (M1_HFI_GATE == 120) || (M1_HFI_GATE == 121) || (M1_HFI_GATE == 122) || \
-    (M1_HFI_GATE == 123) || (M1_HFI_GATE == 124) || (M1_HFI_GATE == 125) || \
-    (M1_HFI_GATE == 126) || (M1_HFI_GATE == 127) || (M1_HFI_GATE == 128) || (M1_HFI_GATE == 129) || (M1_HFI_GATE == 130) || (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 132) || (M1_HFI_GATE == 133) || (M1_HFI_GATE == 134) || (M1_HFI_GATE == 135) || (M1_HFI_GATE == 136) || (M1_HFI_GATE == 137) || (M1_HFI_GATE == 139) || (M1_HFI_GATE == 140) || (M1_HFI_GATE == 141)
         /* 踢时只清 Iq PI，Id 积分保持 */
         foc_pi_reset(&ctx->pi_iq);
         ctx->uq_pi = 0.0f;
-#else
-        motor_foc_loop_pi_reset(ctx);
-#endif
     }
 #endif
 #if M1_HFI_MOTION_BYPASS_ENABLE && M1_SPEED_LOOP_ENABLE
     {
-#ifndef M1_HFI_OMEGA_FF_FROM_REF
-#define M1_HFI_OMEGA_FF_FROM_REF 0
-#endif
-#ifndef M1_HFI_OMEGA_FF_LOCKED_USE_ENC
-#define M1_HFI_OMEGA_FF_LOCKED_USE_ENC 1
-#endif
-#ifndef M1_HFI_OMEGA_FF_SRC
-#define M1_HFI_OMEGA_FF_SRC 1
-#endif
-#ifndef M1_HFI_QKICK_AFTER_LOCK_ENABLE
-#define M1_HFI_QKICK_AFTER_LOCK_ENABLE 0
-#endif
-#ifndef M1_HFI_QKICK_IF_ENABLE
-#define M1_HFI_QKICK_IF_ENABLE 0
-#endif
-#ifndef M1_HFI_IQ_RAMP_ENABLE
-#define M1_HFI_IQ_RAMP_ENABLE 0
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_ENABLE
-#define M1_HFI_IQ_AUTH_FEED_ENABLE 0
-#endif
-#ifndef M1_HFI_IQ_PULL_ENABLE
-#define M1_HFI_IQ_PULL_ENABLE 0
-#endif
-#ifndef M1_HFI_SPD_CLOSE_ENABLE
-#define M1_HFI_SPD_CLOSE_ENABLE 0
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH
-#define M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH 0
-#endif
-        float rpm_ff;
-
         if (observer_speed_run_active() != 0u) {
             const float rpm_cmd = observer_get_speed_ref_rpm();
 
             ctx->omega_ref = rpm_cmd;
             dbg.outer_omega_ref = rpm_cmd;
             if (ctx->outer_mode != M1_OUTER_SPEED) {
-#if M1_HFI_IQ_PULL_ENABLE
-                /* 转矩→速度：用拉起电流。HFI 转速做无扰，避免积分从 0 。Iq 撤掉 */
-                {
-                    const float rpm_scale =
-                        60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
-
-                    motor_outer_set_mode(ctx, M1_OUTER_SPEED, M1_HFI_IQ_PULL_A,
-                                         observer_get_pll_int_el() * rpm_scale);
-                }
-#elif M1_HFI_SPD_CLOSE_ENABLE
-                /* 用正在出力的馈流和当。ω* 做无扰，Iq 不要。0 重新。*/
-                motor_outer_set_mode(ctx, M1_OUTER_SPEED, ctx->iq_ref, rpm_cmd);
-#else
                 /* ω* 已写成目标。bumpless 若看见它，积分会预成 -Kp·目标。冷启动。0 交接。*/
                 ctx->omega_ref = 0.0f;
                 motor_outer_set_mode(ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
                 ctx->omega_ref = rpm_cmd;
                 dbg.outer_omega_ref = rpm_cmd;
-#endif
             }
-#if M1_HFI_OMEGA_FF_SRC == 3
-            /* S1 自举混合：角前馈通道。ω_cmd（小权重），主通道。HFI 。*/
-            rpm_ff = rpm_cmd;
-#elif M1_HFI_OMEGA_FF_FROM_REF
-            /*
-             * CAPTURE/FAULT：ω_ff=ω_ref；LOCKED：本档也。ω_ref（LOCKED_USE_ENC=0）。
-             */
-            if ((M1_HFI_OMEGA_FF_LOCKED_USE_ENC != 0) &&
-                (s_m1_obs->is_converged() != 0u)) {
-                rpm_ff = s_pll_omega_mech_rpm;
-            } else {
-                rpm_ff = rpm_cmd;
-            }
-#else
-            rpm_ff = s_pll_omega_mech_rpm;
-#endif
         } else {
-#if M1_HFI_QKICK_AFTER_LOCK_ENABLE || M1_HFI_IQ_RAMP_ENABLE || \
-    M1_HFI_IQ_PULL_ENABLE || \
-    (M1_HFI_IQ_AUTH_FEED_ENABLE && M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH)
-            /* 。蠕动/I–f/Iq 斜坡/固定Iq拉起，或 C4 旧误接（LEGACY）：速度环关时由 HFI 。ref。
-             * 正确 C4（GATE。4）不走此支，过线前与 C3b 同为字面 0。*/
+            /* 速度环关：由 QKICK/HFI 写 id_ref/iq_ref/omega_ref */
             ctx->id_ref = observer_get_id_ref();
             ctx->iq_ref = observer_get_iq_ref();
-#if M1_HFI_IQ_PULL_ENABLE
-            /* 拉起。ω*=0；勿。get_speed_ref（会空推进阶梯） */
-            ctx->omega_ref = 0.0f;
-#else
             ctx->omega_ref = observer_get_speed_ref_rpm();
-#endif
             dbg.outer_omega_ref = ctx->omega_ref;
-#else
-            ctx->id_ref = 0.0f;
-            ctx->iq_ref = 0.0f;
-            ctx->omega_ref = 0.0f;
-            dbg.outer_omega_ref = 0.0f;
-#endif
             if (ctx->outer_mode != M1_OUTER_DISABLED) {
                 motor_outer_set_mode(ctx, M1_OUTER_DISABLED, 0.0f, 0.0f);
             }
-#if M1_HFI_QKICK_IF_ENABLE
-            /* I–f：θ。前馈跟开。ω_cmd，避免只。enc 时起步滞。*/
-            if (observer_if_leave_active() != 0u) {
-                rpm_ff = ctx->omega_ref;
-            } else
-#endif
-#if M1_HFI_OMEGA_FF_FROM_REF
-            {
-                rpm_ff = 0.0f;
-            }
-#else
-            {
-                rpm_ff = s_pll_omega_mech_rpm;
-            }
-#endif
         }
-#if M1_HFI_OMEGA_FF_SRC == 0
-        /* S2（M1_HFI_GATE=2）：禁止 enc PLL 转速进 HFI。S1 同样 SRC=0。*/
-        (void)rpm_ff;
+        /* 141：OMEGA_FF_SRC=0，禁止 enc/指令转速进 HFI 前馈 */
         observer_set_omega_ff_el(0.0f);
-#else
-        {
-            const float omega_ff_el = rpm_ff * (0.104719755f) * (float)M1_POLE_PAIRS;
-            observer_set_omega_ff_el(omega_ff_el);
-        }
-#endif
     }
-#elif M1_HFI_PARK_ENABLE
-    ctx->id_ref = 0.0f;
-    ctx->iq_ref = observer_get_iq_ref();
 #endif
 #endif
     dbg.foc_theta_el = theta_park;
@@ -1545,63 +1329,13 @@ void motor_current_tick(bsp_axis_t *axis)
         ctx->pi_speed.int_min = M1_SPEED_PI_INT_MIN;
     }
 #endif
-#ifndef M1_HFI_IQ_AUTH_FEED_ENABLE
-#define M1_HFI_IQ_AUTH_FEED_ENABLE 0
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH
-#define M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH 0
-#endif
-#if M1_HFI_IQ_AUTH_FEED_ENABLE && !M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH
-    /* C4 正确接法：解。权威之后再写 Iq；未 ok 。get_iq_ref=0，与 C3b 。*/
-    if (observer_speed_run_active() == 0u) {
-        ctx->iq_ref = observer_get_iq_ref();
-    }
-#endif
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE && M1_HFI_HAND_IQ_HOLD_ON_IDUP
-    hfi_hand_iq_hold_apply(ctx);
-#endif
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE && M1_HFI_HAND_DECEL_BRAKE_ENABLE
-    hfi_hand_decel_brake_apply(ctx);
-#endif
-#if (M1_HFI_GATE == 79) && M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-    /* S2：窗内钉 Id*=0；Id PI 仍旁路（硬关对照） */
-    if ((hfi_vesc_win_smo() != 0u) && (hfi_hand_ok() != 0u) &&
-        (hfi_hand_state() == HFI_HAND_SMO)) {
-        ctx->id_ref = 0.0f;
-        dbg.foc_id_ref = 0.0f;
-    }
-#endif
 #endif
 
 #if M1_HFI_ENABLE
-#ifndef M1_HFI_HAND_ID_WITH_VH
-#ifndef M1_HFI_HAND_ID_OVERLAP_ENABLE
-#define M1_HFI_HAND_ID_OVERLAP_ENABLE 0
-#endif
-#ifndef M1_HFI_HAND_OPEN_ID_ENABLE
-#define M1_HFI_HAND_OPEN_ID_ENABLE 0
-#endif
-#ifndef M1_HFI_VESC_ID_HANDOFF_ENABLE
-#define M1_HFI_VESC_ID_HANDOFF_ENABLE 0
-#endif
-#ifndef M1_HFI_HFI_ID_SOFT_ENABLE
-#define M1_HFI_HFI_ID_SOFT_ENABLE 0
-#endif
-#ifndef M1_HFI_ID_ON_FROM_RUN_ENABLE
-#define M1_HFI_ID_ON_FROM_RUN_ENABLE 0
-#endif
-#if M1_HFI_HAND_ID_OVERLAP_ENABLE || M1_HFI_HAND_OPEN_ID_ENABLE || \
-    M1_HFI_VESC_ID_HANDOFF_ENABLE || M1_HFI_HFI_ID_SOFT_ENABLE || \
-    M1_HFI_ID_ON_FROM_RUN_ENABLE
-#define M1_HFI_HAND_ID_WITH_VH 1
-#else
-#define M1_HFI_HAND_ID_WITH_VH 0
-#endif
-#endif
-#if M1_HFI_HAND_ID_WITH_VH
     /*
      * 无扰：id* = (1-soft)·id → 误差 = -soft·id；
      * soft=0 时误差为 0；soft→1 → id*→0。须在 foc_loop 之前。
+     * 141：ID_ON_FROM_RUN → HAND_ID_WITH_VH 常开。
      */
     if (observer_id_pi_bypass() == 0u) {
         const float soft = observer_id_pi_soft_scale();
@@ -1613,47 +1347,15 @@ void motor_current_tick(bsp_axis_t *axis)
         }
     }
 #endif
-#endif
 
     motor_foc_loop_dbg_id_ref(ctx);
     motor_current_update_acdc(id, iq);
 
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
         float id_for_pi = id;
-#if M1_HFI_ENABLE
-#ifndef M1_HFI_ID_PI_LPF_ENABLE
-#define M1_HFI_ID_PI_LPF_ENABLE 0
-#endif
-#ifndef M1_HFI_ID_PI_LPF_A
-#define M1_HFI_ID_PI_LPF_A (0.05f)
-#endif
-#if M1_HFI_ID_PI_LPF_ENABLE
-        /*
-         * Id PI 只追慢 Id；HFI 解调仍用上面的裸 id。
-         * 使 Ud_pi 少打方波频段，带载时更接近旧 ID_PI_OFF+FEED。
-         */
-        {
-            static float s_id_pi_lpf;
-
-            if (observer_id_pi_bypass() == 0u) {
-                s_id_pi_lpf += M1_HFI_ID_PI_LPF_A * (id - s_id_pi_lpf);
-                id_for_pi = s_id_pi_lpf;
-            } else {
-                s_id_pi_lpf = id;
-            }
-            dbg.foc_id_lpf = s_id_pi_lpf;
-        }
-#else
         dbg.foc_id_lpf = id;
-#endif
-#else
-        dbg.foc_id_lpf = id;
-#endif
 #if !M1_IF_ENABLE
         motor_startup_finish_tick(ctx, iq, &startup);
-#endif
-#if M1_HFI_ROTATE_PI_ENABLE && M1_HFI_SMO_HAND_ENABLE
-        hfi_hand_rotate_if_due(ctx, theta_park, id_for_pi, iq);
 #endif
         motor_foc_loop_tick(ctx, id_for_pi, iq, &startup, theta_enc_park);
     }
@@ -1718,11 +1420,7 @@ void motor_current_tick(bsp_axis_t *axis)
                 float soft = observer_id_pi_soft_scale();
                 float ud_db = deadband_service_ud_inject(id);
 
-#if !M1_HFI_HAND_ID_WITH_VH
-                if (soft < 1.0f) {
-                    foc_pi_reset(&ctx->pi_id);
-                }
-#endif
+                /* HAND_ID_WITH_VH：soft 爬坡期间不清 Id 积分 */
                 ud_out = ud_db + soft * ctx->ud_pi;
                 dbg.foc_ud_pi = soft * ctx->ud_pi;
             }
@@ -1758,7 +1456,6 @@ void motor_current_tick(bsp_axis_t *axis)
                 /* 进桥的载波，供 SMO 减 Vh；与本拍 Park 同框 */
                 ua_hfi = ud_inj * cos_el - uq_inj * sin_el;
                 ub_hfi = ud_inj * sin_el + uq_inj * cos_el;
-#if M1_HFI_INJECT_AB_ENABLE || M1_HFI_INJECT_POST_LOOP
                 {
                     float ua_inj;
                     float ub_inj;
@@ -1770,7 +1467,6 @@ void motor_current_tick(bsp_axis_t *axis)
                     ua_hfi += ua_inj;
                     ub_hfi += ub_inj;
                 }
-#endif
             }
         }
 #endif
@@ -1808,116 +1504,35 @@ void motor_current_tick(bsp_axis_t *axis)
     dbg.foc_ud_out = ud_out;
 
 #if M1_HFI_ENABLE
-#ifndef M1_HFI_DELTA_SWEEP_ENABLE
-#define M1_HFI_DELTA_SWEEP_ENABLE 0
-#endif
-#ifndef M1_HFI_IPD_SWEEP_ENABLE
-#define M1_HFI_IPD_SWEEP_ENABLE 0
-#endif
-#ifndef M1_HFI_QKICK_SWEEP_ENABLE
-#define M1_HFI_QKICK_SWEEP_ENABLE 0
-#endif
-#ifndef M1_HFI_QKICK_AFTER_LOCK_ENABLE
-#define M1_HFI_QKICK_AFTER_LOCK_ENABLE 0
-#endif
-#ifndef M1_HFI_AXIS_SEL_ENABLE
-#define M1_HFI_AXIS_SEL_ENABLE 0
-#endif
     {
         observer_view_t tv;
+        const float rpm_scale =
+            60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
 
+        /* T3：此处 harvest snap；其后至 observer_telem_publish 勿再改 snap 源 */
         observer_read_view(&tv);
-#if M1_HFI_DELTA_SWEEP_ENABLE || M1_HFI_IPD_SWEEP_ENABLE || \
-    M1_HFI_QKICK_SWEEP_ENABLE || M1_HFI_QKICK_AFTER_LOCK_ENABLE
-        dbg.hfi_theta_cmd = tv.theta_cmd; /* ch1: θ_cmd/δ [rad] */
-#else
-        dbg.hfi_theta_cmd = ctx->omega_ref; /* ch1: ω_ref [rpm] */
-#endif
+        dbg.hfi_theta_cmd = tv.theta_cmd; /* ch1: θ_cmd [rad] */
         dbg.hfi_theta_hat = tv.theta_hat;
-    dbg.hfi_theta_err = tv.theta_err;
-    dbg.hfi_eps = tv.eps;
-    dbg.hfi_di_q = tv.di_q;
-    dbg.hfi_di_d = tv.di_d;
-    dbg.hfi_x_raw = tv.x_raw;
-    dbg.hfi_y_raw = tv.y_raw;
-    dbg.hfi_vh_sign = tv.vh_sign;
-#if M1_HFI_DELTA_SWEEP_ENABLE
-    dbg.hfi_stage = (float)tv.stage;
-#else
-    dbg.hfi_stage = (float)tv.stage + tv.eps_dead;
-#endif
-    dbg.hfi_lock = (float)tv.lock;
-    {
-        const float rpm_scale = 60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
-
-#ifndef M1_HFI_SPEED_OBS_INT
-#define M1_HFI_SPEED_OBS_INT 0
-#endif
-#if M1_HFI_SPEED_OBS_INT
-        /* 速度观测 = 积分项。角度仍。Kp·eps+。推进。*/
+        dbg.hfi_theta_err = tv.theta_err;
+        dbg.hfi_eps = tv.eps;
+        dbg.hfi_di_q = tv.di_q;
+        dbg.hfi_di_d = tv.di_d;
+        dbg.hfi_x_raw = tv.x_raw;
+        dbg.hfi_y_raw = tv.y_raw;
+        dbg.hfi_vh_sign = tv.vh_sign;
+        dbg.hfi_stage = (float)tv.stage + tv.eps_dead;
+        dbg.hfi_lock = (float)tv.lock;
+        /* 速度观测 = 积分项；角度仍由 Kp·eps + I 推进 */
         dbg.hfi_omega_rpm = tv.pll_int_el * rpm_scale;
-#else
-        dbg.hfi_omega_rpm = tv.omega_el * rpm_scale;
-#endif
-#if ((M1_HFI_GATE == 38) || (M1_HFI_GATE == 53) || (M1_HFI_GATE == 54) || \
-     (M1_HFI_GATE == 55) || (M1_HFI_GATE == 56) || (M1_HFI_GATE == 57) || (M1_HFI_GATE == 58) || (M1_HFI_GATE == 59) || (M1_HFI_GATE == 60) || (M1_HFI_GATE == 61) || (M1_HFI_GATE == 62) || (M1_HFI_GATE == 63) || (M1_HFI_GATE == 64) || (M1_HFI_GATE == 65) || (M1_HFI_GATE == 66) || (M1_HFI_GATE == 67) || (M1_HFI_GATE == 68) || (M1_HFI_GATE == 69) || (M1_HFI_GATE == 70) || (M1_HFI_GATE == 71) || (M1_HFI_GATE == 72) || (M1_HFI_GATE == 73) || (M1_HFI_GATE == 74) || (M1_HFI_GATE == 75) || (M1_HFI_GATE == 76) || (M1_HFI_GATE == 77) || (M1_HFI_GATE == 78) || (M1_HFI_GATE == 79) || (M1_HFI_GATE == 80) || (M1_HFI_GATE == 91) || (M1_HFI_GATE == 92) || (M1_HFI_GATE == 93)) && \
-    M1_SPEED_LOOP_ENABLE
-        hfi_spd_shadow_step(ctx->iq_ref, dbg.hfi_omega_rpm);
-#endif
-#if M1_HFI_IPD_SWEEP_ENABLE
-        /* IPD 扫压：trim 通道塞脉。Ud [V]，勿。rpm 比例 */
-        dbg.hfi_omega_trim_rpm = tv.omega_trim_el;
-        dbg.hfi_ipd_phase = (float)tv.ipd_phase;
-        dbg.hfi_ipd_pulse_ud = tv.ipd_pulse_ud;
-        dbg.hfi_qkick_seed = 0.0f;
-        dbg.hfi_qkick_dth_deg = 0.0f;
-        dbg.hfi_qkick_verdict = 0.0f;
-#elif M1_HFI_DELTA_SWEEP_ENABLE
-        /* δ 标定：ch9 = di_d 解调 */
-        dbg.hfi_omega_trim_rpm = tv.eps_d;
-        dbg.hfi_ipd_phase = 0.0f;
-        dbg.hfi_ipd_pulse_ud = 0.0f;
-        dbg.hfi_qkick_seed = 0.0f;
-        dbg.hfi_qkick_dth_deg = 0.0f;
-        dbg.hfi_qkick_verdict = 0.0f;
-#elif M1_HFI_QKICK_SWEEP_ENABLE || M1_HFI_QKICK_AFTER_LOCK_ENABLE
-#ifndef M1_HFI_SENSED_CAL_ENABLE
-#define M1_HFI_SENSED_CAL_ENABLE 0
-#endif
-#if M1_HFI_SENSED_CAL_ENABLE
-        /* 有感标定：trim = PLL 修正 dw [el rad/s] 。机械 rpm */
-        dbg.hfi_omega_trim_rpm = tv.omega_trim_el * rpm_scale;
-        dbg.hfi_qkick_verdict = tv.qkick_verdict;
-#else
         /* 台架：ch9 = eps_d + 0.1·flip + 0.01·axis_ok */
         dbg.hfi_omega_trim_rpm =
             tv.eps_d + 0.1f * tv.axis_flip_n +
             ((tv.axis_ok != 0u) ? 0.01f : 0.0f);
         dbg.hfi_qkick_verdict = tv.pll_int_el * rpm_scale;
-#endif
         dbg.hfi_ipd_phase = (float)tv.qkick_phase;
         dbg.hfi_ipd_pulse_ud = tv.ipd_pulse_ud;
         dbg.hfi_qkick_seed = tv.qkick_seed;
         dbg.hfi_qkick_dth_deg = tv.qkick_dth * (180.0f / 3.14159265f);
-#elif M1_HFI_AXIS_SEL_ENABLE
-        /* 静置定轴：ch9 同号 */
-        dbg.hfi_omega_trim_rpm =
-            tv.eps_d + 0.1f * tv.axis_flip_n +
-            ((tv.axis_ok != 0u) ? 0.01f : 0.0f);
-        dbg.hfi_ipd_phase = 0.0f;
-        dbg.hfi_ipd_pulse_ud = 0.0f;
-        dbg.hfi_qkick_seed = 0.0f;
-        dbg.hfi_qkick_dth_deg = 0.0f;
-        dbg.hfi_qkick_verdict = tv.pll_int_el * rpm_scale;
-#else
-        dbg.hfi_omega_trim_rpm = tv.omega_trim_el * rpm_scale;
-        dbg.hfi_ipd_phase = 0.0f;
-        dbg.hfi_ipd_pulse_ud = 0.0f;
-        dbg.hfi_qkick_seed = 0.0f;
-        dbg.hfi_qkick_dth_deg = 0.0f;
-        dbg.hfi_qkick_verdict = 0.0f;
-#endif
-    }
     }
     dbg.open_seq_phase = (uint8_t)observer_get_stage();
 #endif
@@ -1938,20 +1553,12 @@ void motor_current_tick(bsp_axis_t *axis)
     M1_EMF_PLL_ENABLE
         /* 旁路相对 θ̂_hfi。速度环未接管前每个周期清掉，避免零速假转速和编码器初值。*/
         theta_obs_ref = observer_get_theta_hat();
-#if M1_HFI_SMO_SUB_VH_ENABLE
         /* 并行观测：只在极性翻面清状态，HFI 段继续跑 SMO */
         if (observer_take_polarity_flip() != 0u) {
-#else
-        if ((observer_speed_run_active() == 0u) ||
-            (observer_take_polarity_flip() != 0u)) {
-#endif
             smo_hold = 1u;
             emf_smo_reset(&s_emf_smo);
-            emf_pll_reset(&s_emf_pll);
+            observer_emf_reset();
             observer_smo_w_ma_reset();
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-            hfi_hand_clear_ok();
-#endif
             dbg.obs_pll_theta_hat = 0.0f;
             dbg.obs_pll_theta_err = 0.0f;
             dbg.obs_pll_omega_el = 0.0f;
@@ -1965,11 +1572,9 @@ void motor_current_tick(bsp_axis_t *axis)
         /* 与电流环同思路：反 Park 复用本拍 Park 。sin/cos（θ_park 帧下。ud/uq。*/
         u_alpha = ud_out * cos_el - uq_out * sin_el;
         u_beta = ud_out * sin_el + uq_out * cos_el;
-#if M1_HFI_SMO_SUB_VH_ENABLE
         /* 桥上仍叠 Vh；磁链/SMO 只吃基波 */
         u_alpha -= ua_hfi;
         u_beta -= ub_hfi;
-#endif
 
 #if M1_EMF_VEQ_ENABLE
         emf_veq_update(&s_emf_veq, i_alpha, i_beta, u_alpha, u_beta,
@@ -2010,21 +1615,21 @@ void motor_current_tick(bsp_axis_t *axis)
 #endif
 #if M1_EMF_PLL_ENABLE
 #if M1_EMF_PLL_USE_SMO
-        emf_pll_update(&s_emf_pll,
-                       s_emf_smo.e_alpha, s_emf_smo.e_beta,
-                       theta_obs_ref, M1_CTRL_TS_S);
+        observer_emf_update(s_emf_smo.e_alpha, s_emf_smo.e_beta,
+                            theta_obs_ref, M1_CTRL_TS_S);
 #else
-        emf_pll_update(&s_emf_pll,
-                       s_emf_veq.e_alpha, s_emf_veq.e_beta,
-                       theta_obs_ref, M1_CTRL_TS_S);
+        observer_emf_update(s_emf_veq.e_alpha, s_emf_veq.e_beta,
+                            theta_obs_ref, M1_CTRL_TS_S);
 #endif
-        dbg.obs_pll_theta_hat = s_emf_pll.theta_hat;
-        dbg.obs_pll_theta_err = s_emf_pll.theta_err;
-        dbg.obs_pll_omega_el = s_emf_pll.omega_el;
-        dbg.obs_pll_pd = s_emf_pll.last_pd;
+        dbg.obs_pll_theta_hat = observer_emf_theta_hat();
+        dbg.obs_pll_theta_err = observer_emf_theta_err();
+        dbg.obs_pll_omega_el = observer_emf_omega_el();
+        dbg.obs_pll_pd = observer_emf_last_pd();
 #if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE && M1_EMF_PLL_ENABLE
         {
-            float dth = s_emf_pll.theta_hat - theta_obs_ref;
+            const float emf_th = observer_emf_theta_hat();
+            const float emf_w = observer_emf_omega_el();
+            float dth = emf_th - theta_obs_ref;
             const float rpm_scale =
                 60.0f / (6.28318530718f * (float)M1_POLE_PAIRS);
 
@@ -2036,16 +1641,11 @@ void motor_current_tick(bsp_axis_t *axis)
             }
             /* 旁路角差 = θ_smo 。θ_hfi。速度环不读这个量。*/
             dbg.obs_pll_theta_err = dth;
-            dbg.obs_spd_rpm_err = s_emf_pll.omega_el * rpm_scale;
+            dbg.obs_spd_rpm_err = emf_w * rpm_scale;
             dbg.obs_spd_pll_rpm = observer_smo_w_ma_step(dbg.obs_spd_rpm_err);
-#if (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 141)
-            observer_pub_step(s_emf_pll.theta_hat, s_emf_pll.omega_el, dth);
+            observer_pub_step(emf_th, emf_w, dth);
             dbg.obs_ss_spd_on = observer_pub_ss();
             dbg.obs_spd_rpm_err = observer_pub_smo_rpm();
-#endif
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-            hfi_hand_note_smo(s_emf_pll.theta_hat, dbg.obs_spd_pll_rpm);
-#endif
         }
 #endif
 #if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
@@ -2092,6 +1692,7 @@ void motor_current_tick(bsp_axis_t *axis)
     g_telem_dbg.foc_delta = (t_pre_obs - foc_t0) + (t_post_svpwm - t_post_obs);
 
 #if M1_HFI_ENABLE
+    /* T3：只提交已 harvest 的 s_harvest，不再二次 getter */
     observer_telem_publish();
 #endif
     telem_bringup_tick();

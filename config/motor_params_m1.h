@@ -247,21 +247,6 @@
 #ifndef M1_OBS_SPD_FB_LPF_HZ
 #define M1_OBS_SPD_FB_LPF_HZ            0 /* [Hz] 0=off；观测速进速度环前一。LPF */
 #endif
-#ifndef M1_OBS_THETA_NOTCH_ENABLE
-#define M1_OBS_THETA_NOTCH_ENABLE       0 /* 1=Park 前对 θ̂ 机械 1/rev 陷波 */
-#endif
-#ifndef M1_OBS_THETA_NOTCH_Q
-#define M1_OBS_THETA_NOTCH_Q            10.0f
-#endif
-#ifndef M1_OBS_THETA_NOTCH_TRACK_HZ
-#define M1_OBS_THETA_NOTCH_TRACK_HZ     3.0f /* 慢跟踪带宽，。<< 1/rev */
-#endif
-#ifndef M1_OBS_THETA_NOTCH_RPM_MIN
-#define M1_OBS_THETA_NOTCH_RPM_MIN      400.0f
-#endif
-#ifndef M1_OBS_THETA_NOTCH_H2_ENABLE
-#define M1_OBS_THETA_NOTCH_H2_ENABLE    0 /* 1=级联 2/rev */
-#endif
 #ifndef M1_VOFA_OBS_VEQ_12CH
 #define M1_VOFA_OBS_VEQ_12CH            0
 #endif
@@ -1730,52 +1715,8 @@
 #if M1_USE_HFI_STANDSTILL_PROFILE && !M1_HFI_ENABLE
 #error "M1_USE_HFI_STANDSTILL_PROFILE requires M1_HFI_ENABLE=1"
 #endif
-#if M1_USE_HFI_STANDSTILL_PROFILE && (M1_HFI_GATE != 1) && (M1_HFI_GATE != 2) && \
-    (M1_HFI_GATE != 3) && (M1_HFI_GATE != 4) && (M1_HFI_GATE != 5) && \
-    (M1_HFI_GATE != 6) && (M1_HFI_GATE != 7) && (M1_HFI_GATE != 8) && \
-    (M1_HFI_GATE != 9) && (M1_HFI_GATE != 10) && (M1_HFI_GATE != 11) && \
-    (M1_HFI_GATE != 12) && (M1_HFI_GATE != 13) && (M1_HFI_GATE != 14) && \
-    (M1_HFI_GATE != 15) && (M1_HFI_GATE != 16) && (M1_HFI_GATE != 17) && \
-    (M1_HFI_GATE != 18) && (M1_HFI_GATE != 19) && (M1_HFI_GATE != 20) && \
-    (M1_HFI_GATE != 21) && (M1_HFI_GATE != 22) && (M1_HFI_GATE != 23) && \
-    (M1_HFI_GATE != 24) && (M1_HFI_GATE != 25) && (M1_HFI_GATE != 26) && \
-    (M1_HFI_GATE != 27) && (M1_HFI_GATE != 28) && (M1_HFI_GATE != 29) && \
-    (M1_HFI_GATE != 30) && (M1_HFI_GATE != 31) && (M1_HFI_GATE != 32) && \
-    (M1_HFI_GATE != 33) && (M1_HFI_GATE != 34) && (M1_HFI_GATE != 35) && \
-    (M1_HFI_GATE != 36) && (M1_HFI_GATE != 37) && (M1_HFI_GATE != 38) && \
-    (M1_HFI_GATE != 39) && (M1_HFI_GATE != 40) && (M1_HFI_GATE != 41) && \
-    (M1_HFI_GATE != 42) && (M1_HFI_GATE != 43) &&     (M1_HFI_GATE != 44) && \
-    (M1_HFI_GATE != 45) && \
-    (M1_HFI_GATE != 46) && \
-    (M1_HFI_GATE != 47) && \
-    (M1_HFI_GATE != 48) && \
-    (M1_HFI_GATE != 49) && \
-    (M1_HFI_GATE != 50) && \
-    (M1_HFI_GATE != 51) && \
-    (M1_HFI_GATE != 52) && \
-    (M1_HFI_GATE != 53) && \
-    (M1_HFI_GATE != 54) && \
-    (M1_HFI_GATE != 55) && \
-    (M1_HFI_GATE != 56) && \
-    (M1_HFI_GATE != 57) && \
-    (M1_HFI_GATE != 58) && \
-    (M1_HFI_GATE != 59) && \
-    (M1_HFI_GATE != 60) && \
-    (M1_HFI_GATE != 61) && \
-    (M1_HFI_GATE != 62) && \
-    (M1_HFI_GATE != 63) && \
-    (M1_HFI_GATE != 64) && \
-    (M1_HFI_GATE != 65) && \
-    (M1_HFI_GATE != 66) && \
-    (M1_HFI_GATE != 67) && \
-    (M1_HFI_GATE != 68) && (M1_HFI_GATE != 69) && (M1_HFI_GATE != 70) && (M1_HFI_GATE != 71) && (M1_HFI_GATE != 72) && (M1_HFI_GATE != 73) && (M1_HFI_GATE != 74) && (M1_HFI_GATE != 75) && (M1_HFI_GATE != 76) && (M1_HFI_GATE != 77) && (M1_HFI_GATE != 78) && (M1_HFI_GATE != 79) && (M1_HFI_GATE != 80) && (M1_HFI_GATE != 81) && (M1_HFI_GATE != 82) && (M1_HFI_GATE != 83) && (M1_HFI_GATE != 84) && (M1_HFI_GATE != 85) && (M1_HFI_GATE != 86) && (M1_HFI_GATE != 87) &&     (M1_HFI_GATE != 88) && (M1_HFI_GATE != 89) &&     (M1_HFI_GATE != 90) && (M1_HFI_GATE != 91) && (M1_HFI_GATE != 92) &&     (M1_HFI_GATE != 93) &&     (M1_HFI_GATE != 94) &&     (M1_HFI_GATE != 95) &&     (M1_HFI_GATE != 96) && (M1_HFI_GATE != 97) && (M1_HFI_GATE != 98) &&     (M1_HFI_GATE != 99) && (M1_HFI_GATE != 100) && (M1_HFI_GATE != 101) && (M1_HFI_GATE != 102) && (M1_HFI_GATE != 103) && (M1_HFI_GATE != 104) && (M1_HFI_GATE != 105) && (M1_HFI_GATE != 106) && (M1_HFI_GATE != 107) &&     (M1_HFI_GATE != 108) && (M1_HFI_GATE != 109) &&     (M1_HFI_GATE != 110) && \
-    (M1_HFI_GATE != 111) && (M1_HFI_GATE != 112) && (M1_HFI_GATE != 113) && \
-    (M1_HFI_GATE != 114) && (M1_HFI_GATE != 115) && (M1_HFI_GATE != 116) && \
-    (M1_HFI_GATE != 117) && (M1_HFI_GATE != 118) && (M1_HFI_GATE != 119) && \
-    (M1_HFI_GATE != 120) && (M1_HFI_GATE != 121) && (M1_HFI_GATE != 122) && \
-    (M1_HFI_GATE != 123) && (M1_HFI_GATE != 124) && (M1_HFI_GATE != 125) && \
-    (M1_HFI_GATE != 126) &&     (M1_HFI_GATE != 127) &&     (M1_HFI_GATE != 128) && (M1_HFI_GATE != 129) && (M1_HFI_GATE != 130) && (M1_HFI_GATE != 131) && (M1_HFI_GATE != 132) && (M1_HFI_GATE != 133) && (M1_HFI_GATE != 134) && (M1_HFI_GATE != 135) &&     (M1_HFI_GATE != 136) && (M1_HFI_GATE != 137) &&     (M1_HFI_GATE != 138) && (M1_HFI_GATE != 139) && (M1_HFI_GATE != 140) && (M1_HFI_GATE != 141)
-#error "M1_HFI_GATE must be 1..141 (S1..S2j / HFI-SMO / V1-V5 / VESC尺)"
+#if M1_USE_HFI_STANDSTILL_PROFILE && (M1_HFI_GATE != 141)
+#error "M1_HFI_GATE must be 141 (HFI standstill delivery)"
 #endif
 #ifndef M1_HFI_ID_PI_OFF_ENABLE
 #define M1_HFI_ID_PI_OFF_ENABLE         0
@@ -1861,145 +1802,11 @@
 #ifndef M1_HFI_DEMOD_INJ_AXIS
 #define M1_HFI_DEMOD_INJ_AXIS           0 /* 1：注入轴 αβ 电流解调 */
 #endif
-/*
- * HFI↔SMO 加速交接（38/53。2）：
- * 55：残 Vh。KILL→VH_END。 或微地板）。OPEN_ID：残 Vh 下开 Id。
- * 62：开 Id 。W_HOLD（速度反馈守卫，通用路径）。
- */
-#ifndef M1_HFI_SMO_HAND_ENABLE
-#define M1_HFI_SMO_HAND_ENABLE          0
-#endif
 #ifndef M1_HFI_SMO_SUB_VH_ENABLE
 #define M1_HFI_SMO_SUB_VH_ENABLE        0 /* 1：SMO 用 u−u_hfi，HFI 段不停观测 */
 #endif
 #ifndef M1_HFI_ROTATE_PI_ENABLE
 #define M1_HFI_ROTATE_PI_ENABLE         0 /* 1：Park 切 SMO 时旋 Id/Iq PI */
-#endif
-#ifndef M1_HFI_HAND_ID_OVERLAP_ENABLE
-#define M1_HFI_HAND_ID_OVERLAP_ENABLE   0
-#endif
-#ifndef M1_HFI_HAND_OPEN_ID_ENABLE
-#define M1_HFI_HAND_OPEN_ID_ENABLE      0
-#endif
-#ifndef M1_HFI_HAND_KILL_VH_ENABLE
-#define M1_HFI_HAND_KILL_VH_ENABLE      0
-#endif
-#ifndef M1_HFI_HAND_IQ_HOLD_ON_IDUP
-#define M1_HFI_HAND_IQ_HOLD_ON_IDUP     0
-#endif
-#ifndef M1_HFI_HAND_W_HOLD_ON_IDUP
-#define M1_HFI_HAND_W_HOLD_ON_IDUP      0
-#endif
-#ifndef M1_HFI_HAND_W_REL_N
-#define M1_HFI_HAND_W_REL_N            4000u
-#endif
-#ifndef M1_HFI_HAND_W_SLEW_ENABLE
-#define M1_HFI_HAND_W_SLEW_ENABLE       0
-#endif
-#ifndef M1_HFI_HAND_W_SLEW_RPM_S
-#define M1_HFI_HAND_W_SLEW_RPM_S        (200.0f)
-#endif
-#ifndef M1_HFI_HAND_W_SLEW_IDUP_ONLY
-#define M1_HFI_HAND_W_SLEW_IDUP_ONLY    0
-#endif
-#ifndef M1_HFI_HAND_W_SLEW_SMO_N
-#define M1_HFI_HAND_W_SLEW_SMO_N       4000u
-#endif
-#ifndef M1_HFI_HAND_VH0_SOFT_ENABLE
-#define M1_HFI_HAND_VH0_SOFT_ENABLE     0
-#endif
-#ifndef M1_HFI_HAND_STOP_AFTER
-#define M1_HFI_HAND_STOP_AFTER          0
-#endif
-#ifndef M1_HFI_HAND_VH_FLOOR
-#define M1_HFI_HAND_VH_FLOOR            (0.25f)
-#endif
-#ifndef M1_HFI_HAND_VH_END
-#define M1_HFI_HAND_VH_END              (0.0f) /* KILL 终点 scale */
-#endif
-#ifndef M1_HFI_HAND_ID_WEAK
-#define M1_HFI_HAND_ID_WEAK             (0.12f)
-#endif
-#ifndef M1_HFI_HAND_HOLD_N
-#define M1_HFI_HAND_HOLD_N             10000u
-#endif
-#ifndef M1_HFI_HAND_FADE_N
-#define M1_HFI_HAND_FADE_N             4000u
-#endif
-#ifndef M1_HFI_HAND_VH0_N
-#define M1_HFI_HAND_VH0_N              20000u
-#endif
-#ifndef M1_HFI_HAND_IDUP_N
-#define M1_HFI_HAND_IDUP_N             20000u
-#endif
-#ifndef M1_HFI_HAND_REV_ENABLE
-#define M1_HFI_HAND_REV_ENABLE          0 /* 1：SMO 减速过 REV_RPM 。HFI */
-#endif
-#ifndef M1_HFI_HAND_REV_WAKE_ENABLE
-#define M1_HFI_HAND_REV_WAKE_ENABLE     0 /* 1：RVH 。hold + RQUAL */
-#endif
-#ifndef M1_HFI_HAND_REV_VH_WAKE
-#define M1_HFI_HAND_REV_VH_WAKE         M1_HFI_HAND_VH_FLOOR /* 68=1.0 满注入 */
-#endif
-#ifndef M1_HFI_HAND_REV_RVH_HOLD_ENABLE
-#define M1_HFI_HAND_REV_RVH_HOLD_ENABLE 0 /* 1：RVH 钉 θ̂；69 */
-#endif
-#ifndef M1_HFI_HAND_REV_RESEED_N
-#define M1_HFI_HAND_REV_RESEED_N       2000u
-#endif
-#ifndef M1_HFI_HAND_RQUAL_X_MAX_ENABLE
-#define M1_HFI_HAND_RQUAL_X_MAX_ENABLE  1
-#endif
-#ifndef M1_HFI_HAND_RQUAL_X_MAX
-#define M1_HFI_HAND_RQUAL_X_MAX         (0.45f)
-#endif
-#ifndef M1_HFI_HAND_REV_OBS_ENABLE
-#define M1_HFI_HAND_REV_OBS_ENABLE      0 /* 1: RVH->ROBS observe only */
-#endif
-#ifndef M1_HFI_HAND_REV_VH_MIRROR_ENABLE
-#define M1_HFI_HAND_REV_VH_MIRROR_ENABLE 0
-#endif
-#ifndef M1_HFI_HAND_DECEL_BRAKE_ENABLE
-#define M1_HFI_HAND_DECEL_BRAKE_ENABLE  0 /* 1: SMO decel |Iq| floor (74) */
-#endif
-#ifndef M1_HFI_HAND_DECEL_BRAKE_IQ_A
-#define M1_HFI_HAND_DECEL_BRAKE_IQ_A    (1.5f) /* |Iq|_min */
-#endif
-#ifndef M1_HFI_HAND_DECEL_BRAKE_END_RPM
-#define M1_HFI_HAND_DECEL_BRAKE_END_RPM (920.0f) /* release on SMO ω */
-#endif
-#ifndef M1_HFI_HAND_DECEL_BRAKE_ARM_RPM
-#define M1_HFI_HAND_DECEL_BRAKE_ARM_RPM (1400.0f)
-#endif
-#ifndef M1_HFI_HAND_DECEL_BRAKE_DROP_RPM
-#define M1_HFI_HAND_DECEL_BRAKE_DROP_RPM (80.0f)
-#endif
-#ifndef M1_HFI_HAND_SPD_X_KILL_HI
-#define M1_HFI_HAND_SPD_X_KILL_HI       (0.62f)
-#endif
-#ifndef M1_HFI_HAND_REV_RPM
-#define M1_HFI_HAND_REV_RPM             (1400.0f)
-#endif
-#ifndef M1_HFI_HAND_REV_ARM_RPM
-#define M1_HFI_HAND_REV_ARM_RPM         (1450.0f)
-#endif
-#ifndef M1_HFI_HAND_RVH_N
-#define M1_HFI_HAND_RVH_N              20000u
-#endif
-#ifndef M1_HFI_HAND_RQUAL_N
-#define M1_HFI_HAND_RQUAL_N            8000u
-#endif
-#ifndef M1_HFI_HAND_RQUAL_TIMEOUT_N
-#define M1_HFI_HAND_RQUAL_TIMEOUT_N    60000u
-#endif
-#ifndef M1_HFI_HAND_RANG_N
-#define M1_HFI_HAND_RANG_N             20000u
-#endif
-#ifndef M1_HFI_HAND_RFADE_N
-#define M1_HFI_HAND_RFADE_N            16000u
-#endif
-#ifndef M1_HFI_HAND_RSPD_N
-#define M1_HFI_HAND_RSPD_N             40000u
 #endif
 #ifndef M1_HFI_QKICK_FORCE_PI
 #define M1_HFI_QKICK_FORCE_PI           0

@@ -170,14 +170,6 @@
 #undef M1_SPEED_PI_KI
 #define M1_SPEED_PI_KI                  0.002f
 
-/* Park 前 θ̂ 陷波：探底先关，单变量看下限 */
-#undef M1_OBS_THETA_NOTCH_ENABLE
-#define M1_OBS_THETA_NOTCH_ENABLE       0
-#undef M1_OBS_THETA_NOTCH_Q
-#define M1_OBS_THETA_NOTCH_Q            10.0f
-#undef M1_OBS_THETA_NOTCH_H2_ENABLE
-#define M1_OBS_THETA_NOTCH_H2_ENABLE    0
-
 #undef M1_CLOSURE_BRINGUP
 #define M1_CLOSURE_BRINGUP              0
 

@@ -324,8 +324,6 @@
 #define M1_SPEED_PI_KP                  0.0008f /* 再弱：抑 ~1Hz 大摆 */
 #undef M1_SPEED_PI_KI
 #define M1_SPEED_PI_KI                  0.00005f
-#undef M1_OBS_THETA_NOTCH_ENABLE
-#define M1_OBS_THETA_NOTCH_ENABLE       0
 
 #undef M1_VOFA_UNIFIED_12CH
 #define M1_VOFA_UNIFIED_12CH            1

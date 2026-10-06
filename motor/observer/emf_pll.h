@@ -36,11 +36,6 @@ void emf_pll_update(emf_pll_t *p,
                     float e_alpha, float e_beta,
                     float theta_enc,
                     float dt);
-/**
- * 积分角扣偏置。相位超前按 omega_slow_el 算，不用瞬时转速。
- * 交接时用 20 ms 转速，避免 theta_hat 每拍跟着相位补偿跳。
- */
-float emf_pll_theta_smooth(const emf_pll_t *p, float omega_slow_el);
 
 #ifdef __cplusplus
 }

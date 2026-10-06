@@ -1,6 +1,6 @@
 /**
  * @file observer_composite.c
- * @brief 两相位 ops + inj 槽；init 后冻结指针。不改解调。
+ * @brief HFI Composite 聚合器：ops/inj、发布角、EMF-PLL 包装、低速槽。
  */
 #include "observer/observer_composite.h"
 #include "observer/obs_cfg.h"
@@ -8,20 +8,14 @@
 #ifndef M1_HFI_ENABLE
 #define M1_HFI_ENABLE 0
 #endif
-#ifndef M1_HFI_SMO_HAND_ENABLE
-#define M1_HFI_SMO_HAND_ENABLE 0
-#endif
 
 #if M1_HFI_ENABLE
 #include "observer/hfi_sqwave.h"
-#include "observer/hfi_current_priv.h"
 #include "observer/obs_angle.h"
 #include "observer/obs_inj.h"
 #include "observer/hfi_pub.h"
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-#include "motor_math.h"
+#include "observer/hfi_spd_obs.h"
 #include "observer/emf_pll.h"
-#endif
 #include <stddef.h>
 
 _Static_assert((int)OBS_STAGE_IDLE   == (int)HFI_STAGE_IDLE,   "OBS_STAGE_IDLE");
@@ -80,29 +74,13 @@ static uint8_t hfi_ops_is_converged(void)
     return (hfi_sqwave_get_lock() == HFI_LOCK_LOCKED) ? 1u : 0u;
 }
 
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-static emf_pll_t *s_pll;
-#endif
-
 static float hfi_ops_get_theta(void)
 {
     float theta_park = obs_get_theta();
 
-#if (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 141)
     if (hfi_pub_smo_active() != 0u) {
         theta_park = hfi_pub_theta();
     }
-#endif
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-    hfi_sqwave_set_torque_theta(0.0f, 0u);
-    if (hfi_hand_ang() >= 1.0f) {
-        if (s_pll != 0) {
-            theta_park = emf_pll_theta_smooth(s_pll, hfi_hand_w_el());
-        }
-    } else if (hfi_hand_ang() > 0.0f) {
-        theta_park = motor_wrap_pi(theta_park + hfi_hand_ang() * hfi_hand_dth());
-    }
-#endif
     return theta_park;
 }
 
@@ -122,8 +100,15 @@ static const observer_inj_ops_t s_hfi_inj = {
     obs_get_inj_ab,
 };
 
+static const observer_src_slot_t s_lo_src = {
+    observer_get_theta_hat,
+    hfi_ops_get_omega,
+    observer_speed_run_active,
+};
+
 static const observer_ops_t *s_obs;
 static const observer_inj_ops_t *s_inj;
+static emf_pll_t *s_bound_emf_pll;
 
 void observer_composite_init(void)
 {
@@ -132,13 +117,70 @@ void observer_composite_init(void)
     s_obs->init();
 }
 
+void observer_bringup(void *emf_pll)
+{
+    observer_composite_init();
+    observer_bind_emf_pll(emf_pll);
+}
+
 void observer_bind_emf_pll(void *pll)
 {
+    s_bound_emf_pll = (emf_pll_t *)pll;
     obs_angle_bind_pll(pll);
-#if M1_HFI_SMO_HAND_ENABLE && M1_EMF_PLL_ENABLE
-    s_pll = (emf_pll_t *)pll;
-    hfi_hand_bind_pll(pll);
-#endif
+}
+
+float observer_emf_theta_hat(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_hat : 0.0f;
+}
+
+float observer_emf_omega_el(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->omega_el : 0.0f;
+}
+
+float observer_emf_theta_err(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_err : 0.0f;
+}
+
+float observer_emf_last_pd(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->last_pd : 0.0f;
+}
+
+void observer_emf_reset(void)
+{
+    if (s_bound_emf_pll != 0) {
+        emf_pll_reset(s_bound_emf_pll);
+    }
+}
+
+void observer_emf_update(float e_alpha, float e_beta, float theta_enc, float dt)
+{
+    if (s_bound_emf_pll != 0) {
+        emf_pll_update(s_bound_emf_pll, e_alpha, e_beta, theta_enc, dt);
+    }
+}
+
+const observer_src_slot_t *observer_lo_src(void)
+{
+    return &s_lo_src;
+}
+
+void observer_lo_set_inj_scale(float scale)
+{
+    hfi_sqwave_set_inj_scale(scale);
+}
+
+void observer_lo_set_iq_auth_hold(uint8_t hold)
+{
+    hfi_sqwave_set_iq_auth_hold(hold);
+}
+
+void observer_lo_seed_hat(float theta_el, float omega_el)
+{
+    hfi_sqwave_seed_hat(theta_el, omega_el);
 }
 
 const observer_ops_t *observer_ops(void)
@@ -158,13 +200,7 @@ void observer_telem_publish(void)
 
 void observer_pub_step(float theta_smo, float omega_el, float dth)
 {
-#if (M1_HFI_GATE == 131) || (M1_HFI_GATE == 138) || (M1_HFI_GATE == 141)
     hfi_pub_step(theta_smo, omega_el, dth);
-#else
-    (void)theta_smo;
-    (void)omega_el;
-    (void)dth;
-#endif
 }
 
 float observer_pub_ss(void)
@@ -304,6 +340,7 @@ uint8_t observer_take_polarity_flip(void)
 #else /* !M1_HFI_ENABLE */
 
 #include "observer/obs_angle.h"
+#include "observer/emf_pll.h"
 
 static void obs_stub_init(void) {}
 static void obs_stub_reset(void) {}
@@ -335,6 +372,13 @@ static const observer_ops_t s_stub_ops = {
 
 static const observer_ops_t *s_obs = &s_stub_ops;
 static const observer_inj_ops_t *s_inj;
+static emf_pll_t *s_bound_emf_pll;
+
+static const observer_src_slot_t s_lo_src = {
+    observer_get_theta_hat,
+    obs_stub_get_omega,
+    observer_speed_run_active,
+};
 
 void observer_composite_init(void)
 {
@@ -342,9 +386,71 @@ void observer_composite_init(void)
     s_inj = 0;
 }
 
+void observer_bringup(void *emf_pll)
+{
+    observer_composite_init();
+    observer_bind_emf_pll(emf_pll);
+}
+
 void observer_bind_emf_pll(void *pll)
 {
+    s_bound_emf_pll = (emf_pll_t *)pll;
     obs_angle_bind_pll(pll);
+}
+
+float observer_emf_theta_hat(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_hat : 0.0f;
+}
+
+float observer_emf_omega_el(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->omega_el : 0.0f;
+}
+
+float observer_emf_theta_err(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_err : 0.0f;
+}
+
+float observer_emf_last_pd(void)
+{
+    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->last_pd : 0.0f;
+}
+
+void observer_emf_reset(void)
+{
+    if (s_bound_emf_pll != 0) {
+        emf_pll_reset(s_bound_emf_pll);
+    }
+}
+
+void observer_emf_update(float e_alpha, float e_beta, float theta_enc, float dt)
+{
+    if (s_bound_emf_pll != 0) {
+        emf_pll_update(s_bound_emf_pll, e_alpha, e_beta, theta_enc, dt);
+    }
+}
+
+const observer_src_slot_t *observer_lo_src(void)
+{
+    return &s_lo_src;
+}
+
+void observer_lo_set_inj_scale(float scale)
+{
+    (void)scale;
+}
+
+void observer_lo_set_iq_auth_hold(uint8_t hold)
+{
+    (void)hold;
+}
+
+void observer_lo_seed_hat(float theta_el, float omega_el)
+{
+    (void)theta_el;
+    (void)omega_el;
 }
 
 const observer_ops_t *observer_ops(void)

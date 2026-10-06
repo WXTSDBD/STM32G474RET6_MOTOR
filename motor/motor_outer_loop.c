@@ -491,43 +491,6 @@ static float outer_speed_pi_step(motor_context_t *ctx,
     float fb = omega_fb;
     float ref_pi = omega_ref;
     float fb_pi;
-#if M1_HFI_GATE == 139
-    /* 低速用以前有感/旧 HFI 的 0.015。200 rpm 以上仍是 0.005。按实测转速，不按指令。 */
-    {
-        static float s_abs_rpm;
-        float w = omega_fb;
-        float kp;
-        const float a = M1_SPEED_TS_S / (0.15f + M1_SPEED_TS_S);
-
-        if (w < 0.0f) {
-            w = -w;
-        }
-        s_abs_rpm += a * (w - s_abs_rpm);
-        if (s_abs_rpm <= 160.0f) {
-            kp = 0.015f;
-        } else if (s_abs_rpm >= 200.0f) {
-            kp = 0.005f;
-        } else {
-            kp = 0.015f + (0.005f - 0.015f) * ((s_abs_rpm - 160.0f) / 40.0f);
-        }
-        ctx->pi_speed.kp = kp;
-        dbg.obs_ss_spd_on = kp;
-    }
-#endif
-#if M1_HFI_GATE == 140
-    /* 100 rpm 指令用 0.015。指令到 200 立刻回到 0.005，不看实测转速。 */
-    {
-        float cmd = omega_ref;
-        float kp;
-
-        if (cmd < 0.0f) {
-            cmd = -cmd;
-        }
-        kp = (cmd <= 130.0f) ? 0.015f : 0.005f;
-        ctx->pi_speed.kp = kp;
-        dbg.obs_ss_spd_on = kp;
-    }
-#endif
 #if M1_IF_OBS_SOFT_BRAKE_ENABLE
     outer_soft_brake_tick(ctx);
 #endif

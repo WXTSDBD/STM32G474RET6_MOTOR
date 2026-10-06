@@ -1,6 +1,6 @@
 /**
  * @file hfi_pub.h
- * @brief 131/138/141 发布角。电流环走 Composite；obs_angle 只读 getter。
+ * @brief GATE 141 发布角。电流环走 Composite；obs_angle 只读 getter。
  */
 #ifndef MOTOR_OBSERVER_HFI_PUB_H
 #define MOTOR_OBSERVER_HFI_PUB_H

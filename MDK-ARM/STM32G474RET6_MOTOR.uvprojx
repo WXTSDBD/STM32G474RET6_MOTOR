@@ -1426,29 +1426,14 @@
               <FilePath>..\motor\observer\obs_soft_switch.c</FilePath>
             </File>
             <File>
-              <FileName>obs_theta_notch.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\observer\obs_theta_notch.c</FilePath>
-            </File>
-            <File>
               <FileName>hfi_sqwave.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\observer\hfi_sqwave.c</FilePath>
             </File>
             <File>
-              <FileName>hfi_speed_filt.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\observer\hfi_speed_filt.c</FilePath>
-            </File>
-            <File>
               <FileName>hfi_spd_obs.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\observer\hfi_spd_obs.c</FilePath>
-            </File>
-            <File>
-              <FileName>hfi_hand.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\observer\hfi_hand.c</FilePath>
             </File>
             <File>
               <FileName>hfi_pub.c</FileName>

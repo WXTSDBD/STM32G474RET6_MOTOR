@@ -11,6 +11,7 @@
 #define M1_HFI_ENABLE 0
 #endif
 
+/* 空壳：与 M1_HFI_ENABLE 无关。Composite bind 对称保留；PLL 由 Composite/HAND 持有。 */
 void obs_angle_bind_pll(void *pll)
 {
     (void)pll;
