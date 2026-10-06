@@ -8,7 +8,8 @@
 #include "observer/observer_composite.h"
 
 /* 0=发布 HFI，1=发布 SMO。旧交接状态机不参与。
- * 141：门槛跟实测转速的绝对值。 */
+ * 141：未发布门槛用 HFI ω；已发布用 SMO ω（对齐 VESC 观测器 dθ/dt）。
+ * 不要用卡住的 HFI 积分决定退发布。 */
 static uint8_t s_hfi_pub_smo;
 static float s_hfi_pub_a;
 static float s_hfi_pub_theta;
@@ -26,9 +27,10 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
     const float rpm_scale = 60.0f / (6.28318530718f * (float)OBS_POLE_PAIRS);
     const float ang_ok = 0.436332f;
     const float ang_snap = 0.174533f;
-    const float gate_rpm = motor_absf(observer_lo_src()->get_omega() * rpm_scale);
+    const float hfi_rpm = motor_absf(observer_lo_src()->get_omega() * rpm_scale);
     float smo_rpm;
     float dw;
+    float gate_rpm;
 
     if (s_smo_w_init == 0u) {
         s_smo_w_lp = omega_el;
@@ -39,6 +41,8 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
     smo_rpm = s_smo_w_lp * rpm_scale;
     dw = smo_rpm - (observer_lo_src()->get_omega() * rpm_scale);
     s_pub_smo_rpm = smo_rpm;
+    /* 未发布：HFI ω 决定何时切出去。已发布：SMO ω 决定注入/退回，避免积分钉死。 */
+    gate_rpm = (s_hfi_pub_smo != 0u) ? motor_absf(smo_rpm) : hfi_rpm;
     if (observer_lo_src()->running() == 0u) {
         s_hfi_pub_smo = 0u;
         s_hfi_pub_a = 0.0f;
@@ -80,6 +84,7 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
             s_hfi_pub_theta = theta_smo;
             observer_lo_seed_hat(theta_smo, s_smo_w_lp);
         }
+        gate_rpm = motor_absf(smo_rpm);
         if (gate_rpm <= M1_HFI_PUB_DOWN_RPM) {
             if (s_hfi_pub_dn < 2000u) {
                 s_hfi_pub_dn++;
@@ -94,8 +99,7 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
             s_hfi_pub_dn = 0u;
         }
     }
-    /* 还在 HFI 上时不关注入。SMO 已发布且门槛到 INJ_OFF 才关。
-     * 141 的门槛是实测转速绝对值。 */
+    /* 还在 HFI 上时不关注入。SMO 已发布且 SMO ω 到 INJ_OFF 才关。 */
     if ((s_hfi_pub_smo != 0u) && (s_hfi_pub_a >= 1.0f) &&
         (gate_rpm >= M1_HFI_PUB_INJ_OFF_RPM)) {
         s_inj_on = 0u;

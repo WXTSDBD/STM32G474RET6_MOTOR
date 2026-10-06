@@ -6,15 +6,16 @@
  * 控制 getter（含 consume_pi_reset、take_polarity_flip 副作用）。禁止收成一次 update。
  * 141 pub overlay 在 Composite get_theta，angle 壳只做 Park。
  *
- * 收口新增（可改实现）：observer_bringup、observer_emf_*、observer_src_slot_t /
- * observer_lo_*、observer_pub_*、observer_smo_w_ma_*、observer_read_view、
- * observer_telem_publish。
+ * 收口新增（可改实现）：observer_bringup、observer_emf_*、observer_lo_*、
+ * observer_pub_*、observer_smo_w_ma_*、observer_read_view、
+ * observer_telem_publish。低速槽类型在 obs_src.h。
  */
 #ifndef MOTOR_OBSERVER_COMPOSITE_H
 #define MOTOR_OBSERVER_COMPOSITE_H
 
 #include <stdint.h>
 #include "observer/observer_ops.h"
+#include "observer/obs_src.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,15 +60,6 @@ float observer_emf_theta_err(void);
 float observer_emf_last_pd(void);
 void observer_emf_reset(void);
 void observer_emf_update(float e_alpha, float e_beta, float theta_enc, float dt);
-
-/** 低速槽：θ, ω, running。回执不在这张表里。 */
-typedef struct {
-    float (*get_theta)(void);
-    float (*get_omega)(void);
-    uint8_t (*running)(void);
-} observer_src_slot_t;
-
-const observer_src_slot_t *observer_lo_src(void);
 
 void observer_lo_set_inj_scale(float scale);
 void observer_lo_set_iq_auth_hold(uint8_t hold);

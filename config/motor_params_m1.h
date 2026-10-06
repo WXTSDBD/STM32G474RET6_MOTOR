@@ -165,6 +165,9 @@
 #ifndef M1_HFI_MOTION_BYPASS_ENABLE
 #define M1_HFI_MOTION_BYPASS_ENABLE     0
 #endif
+#ifndef M1_HFI_SPEED_FB_ENABLE
+#define M1_HFI_SPEED_FB_ENABLE          0
+#endif
 #ifndef M1_HFI_OMEGA_FF_SRC
 #define M1_HFI_OMEGA_FF_SRC             0
 #endif

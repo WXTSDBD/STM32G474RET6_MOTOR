@@ -732,6 +732,20 @@ void motor_current_tick(bsp_axis_t *axis)
          * 否则 PI 永远吃有感，拍末覆盖只影。VOFA。
          */
         s_speed_fb_rpm = s_pll_omega_mech_rpm;
+#if M1_HFI_ENABLE && M1_HFI_SPEED_FB_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE
+        /* 141 纯无感：速度环吃观测 ω（未发布 HFI pll_int，ss≥1 用 SMO）。
+         * enc PLL 只留 VOFA ch5。smo_rpm 是上一拍 pub_step。 */
+        {
+            const float rpm_scale =
+                60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
+
+            if (observer_pub_ss() >= 1.0f) {
+                s_speed_fb_rpm = observer_pub_smo_rpm();
+            } else {
+                s_speed_fb_rpm = observer_get_pll_int_el() * rpm_scale;
+            }
+        }
+#endif
 #if M1_OBS_SOFT_SWITCH_ENABLE && M1_OBS_SS_SPEED_SWITCH_ENABLE && M1_OBS_SPD_PLL_ENABLE
         /* BLEND 起与角同步往观测速靠，避。OBS 瞬间 enc→obs 硬切。049 晃速） */
         if (obs_soft_switch_speed_use_obs() != 0u) {
