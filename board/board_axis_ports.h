@@ -1,6 +1,11 @@
 /**
  * @file board_axis_ports.h
- * @brief M1/M2 轴级 pwm_port 与 adc_foc_port 实例。
+ * @date 2026-10-06
+ * @brief M1/M2 的 PWM 口和 ADC 口实例。
+
+ *
+ * bind_hal 由 bridge 在上电调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef BOARD_AXIS_PORTS_H

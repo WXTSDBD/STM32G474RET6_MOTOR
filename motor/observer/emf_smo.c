@@ -1,6 +1,11 @@
 /**
  * @file emf_smo.c
- * @brief Classic SMO — ISR: mul/add + atan2; LPF α：固定 / 分档表 / 线性 fc(n)。
+ * @date 2026-10-06
+ * @brief 电流滑模观测器。系数在 init 预计算。
+ *
+ * 默认不进 Park。节拍限制见 emf_smo.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "emf_smo.h"
@@ -84,14 +89,23 @@
 #endif
 #endif /* band sched */
 
+/** 离散电流方程系数 a。 */
 static float s_disc_a;
+/** 离散电流方程系数 b。 */
 static float s_disc_b;
+/** e-LPF 系数。 */
 static float s_lpf_alpha;
+/** 当前 LPF 截止频率，单位 Hz。 */
 static float s_lpf_hz;
+/** LPF 用的节拍，单位 s。 */
 static float s_lpf_ts;
+/** 机械 rpm 到电角速度的系数。 */
 static float s_rpm_to_we;
+/** 饱和函数的 1/ε。 */
 static float s_inv_sat;
-static float s_rpm_to_fe; /* |rpm| → fe [Hz] = rpm * pp / 60 */
+/** |rpm| 到电频率 Hz 的系数：极对数/60。 */
+static float s_rpm_to_fe;
+/** 1=系数已经算过。 */
 static uint8_t s_coeff_ready;
 #if M1_EMF_SMO_LPF_SCHED_ENABLE && !M1_EMF_SMO_LPF_LINEAR_ENABLE
 static float s_lpf_alpha_tab[7];
@@ -184,6 +198,10 @@ static void emf_smo_coeff_init(void)
     s_coeff_ready = 1u;
 }
 
+/**
+ * @brief 预计算系数并复位状态。
+ * @param o 观测器。不可为 NULL。
+ */
 void emf_smo_init(emf_smo_t *o)
 {
     if (s_coeff_ready == 0u) {
@@ -192,6 +210,10 @@ void emf_smo_init(emf_smo_t *o)
     emf_smo_reset(o);
 }
 
+/**
+ * @brief 清估计电流和反电势。保留系数。
+ * @param o 观测器。不可为 NULL。
+ */
 void emf_smo_reset(emf_smo_t *o)
 {
     if (o == NULL) {
@@ -220,6 +242,11 @@ void emf_smo_reset(emf_smo_t *o)
 #endif
 }
 
+/**
+ * @brief 按机械转速改 e-LPF 截止频率。
+ * @param omega_mech_rpm 机械转速，单位 rpm。
+ * @return 分档时为档号；线性调度返回 0。
+ */
 uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
 {
 #if M1_EMF_SMO_LPF_ENABLE && M1_EMF_SMO_LPF_LINEAR_ENABLE
@@ -295,6 +322,9 @@ uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
 #endif
 }
 
+/**
+ * @brief 当前 LPF 截止频率，单位 Hz。
+ */
 float emf_smo_get_lpf_hz(void)
 {
 #if M1_EMF_SMO_ENABLE
@@ -307,6 +337,16 @@ float emf_smo_get_lpf_hz(void)
 #endif
 }
 
+/**
+ * @brief 用 iαβ、uαβ 推进一步。
+ * @param o 观测器。不可为 NULL。
+ * @param i_alpha α 电流，单位 A。
+ * @param i_beta β 电流，单位 A。
+ * @param u_alpha α 电压，单位 V。
+ * @param u_beta β 电压，单位 V。
+ * @param theta_enc 对照电角，单位 rad。
+ * @param omega_mech_rpm 机械转速，单位 rpm。
+ */
 void emf_smo_update(emf_smo_t *o,
                     float i_alpha, float i_beta,
                     float u_alpha, float u_beta,

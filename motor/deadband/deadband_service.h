@@ -1,9 +1,11 @@
 /**
  * @file deadband_service.h
- * @brief 死区补偿 Service 门面：上电 boot、profile 切换、热路径 Ud 注入。
+ * @date 2026-10-06
+ * @brief 死区补偿门面：上电、切 profile、热路径 Ud 注入。
+
  *
- * Phase 1：收敛 motor_current / ident 中重复的 deadband_set_mode 与 LUT 切换。
- * 标定 capture/commit 仍直接调用 deadband_cal_*（Phase 2 再迁入编排层）。
+ * ud_inject 只允许从电流环节拍、PI 之后调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_SERVICE_H

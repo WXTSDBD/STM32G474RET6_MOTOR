@@ -1,6 +1,11 @@
 /**
  * @file motor_if.c
- * @brief ALIGN → RAMP → HOLD → STOP；θ 斜坡 + 恒 Iq，电流 PI 闭环。
+ * @date 2026-10-06
+ * @brief I-f：对中、爬速、保持。电流 PI 闭环，Park 用强制电角。
+ *
+ * 节拍限制见 motor_if.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_if.h"
@@ -15,8 +20,11 @@
 
 #if M1_IF_ENABLE
 
+/** 当前 I-f 状态。 */
 static m1_if_state_t s_state;
+/** 状态内拍计数。 */
 static uint32_t s_tick;
+/** 强制电角，单位 rad。 */
 static float s_theta_if;
 #if !(M1_IF_TO_OBS_ENABLE || M1_ENC_OPTIONAL_ENABLE)
 static float s_theta_enc_prev;
@@ -141,6 +149,9 @@ static void if_goto_run(void)
     s_released = 0u;
 }
 
+/**
+ * @brief 清状态，目标转速取默认宏。
+ */
 void motor_if_init(motor_context_t *ctx)
 {
     (void)ctx;
@@ -154,6 +165,9 @@ void motor_if_arm(motor_context_t *ctx)
     if_goto_run();
 }
 
+/**
+ * @brief 交给无感后调用：停止强制 θ 和 Iq。
+ */
 void motor_if_release(void)
 {
     s_released = 1u;
@@ -166,6 +180,9 @@ void motor_if_set_target_rpm(float rpm)
     s_target_rpm = rpm;
 }
 
+/**
+ * @brief 读目标转速，单位 rpm。
+ */
 float motor_if_get_target_rpm(void)
 {
     return s_target_rpm;
@@ -182,6 +199,9 @@ uint8_t motor_if_is_driving(void)
     return 1u;
 }
 
+/**
+ * @brief 读当前 I-f 状态。
+ */
 m1_if_state_t motor_if_get_state(void)
 {
     return s_state;

@@ -1,3 +1,13 @@
+/**
+ * @file encoder_spi_bus.c
+ * @date 2026-10-06
+ * @brief 编码器 SPI 总线薄转发。
+
+ *
+ * 节拍限制见 encoder_spi_bus.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "encoder_spi_bus.h"
 
 #include <stddef.h>
@@ -10,6 +20,9 @@ static const encoder_spi_bus_ops_t *encoder_spi_bus_get_ops(const encoder_spi_bu
     return bus->ops;
 }
 
+/**
+ * @brief 拉低片选。
+ */
 void encoder_spi_bus_cs_low(encoder_spi_bus_t *bus)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -19,6 +32,9 @@ void encoder_spi_bus_cs_low(encoder_spi_bus_t *bus)
     }
 }
 
+/**
+ * @brief 拉高片选。
+ */
 void encoder_spi_bus_cs_high(encoder_spi_bus_t *bus)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -28,6 +44,9 @@ void encoder_spi_bus_cs_high(encoder_spi_bus_t *bus)
     }
 }
 
+/**
+ * @brief 配置 SPI/DMA。
+ */
 void encoder_spi_bus_hw_init(encoder_spi_bus_t *bus)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -37,6 +56,9 @@ void encoder_spi_bus_hw_init(encoder_spi_bus_t *bus)
     }
 }
 
+/**
+ * @brief 停 DMA。
+ */
 void encoder_spi_bus_hw_stop(encoder_spi_bus_t *bus)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -46,6 +68,9 @@ void encoder_spi_bus_hw_stop(encoder_spi_bus_t *bus)
     }
 }
 
+/**
+ * @brief 启动一帧。忙则返回非 0。
+ */
 int encoder_spi_bus_start_word(encoder_spi_bus_t *bus, const uint16_t *tx, uint16_t *rx)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -56,6 +81,9 @@ int encoder_spi_bus_start_word(encoder_spi_bus_t *bus, const uint16_t *tx, uint1
     return ops->start_word(bus, tx, rx);
 }
 
+/**
+ * @brief 不停 DMA 再发下一帧。
+ */
 int encoder_spi_bus_restart_word(encoder_spi_bus_t *bus, const uint16_t *tx, uint16_t *rx)
 {
     const encoder_spi_bus_ops_t *ops = encoder_spi_bus_get_ops(bus);
@@ -66,6 +94,9 @@ int encoder_spi_bus_restart_word(encoder_spi_bus_t *bus, const uint16_t *tx, uin
     return ops->restart_word(bus, tx, rx);
 }
 
+/**
+ * @brief 1=DMA 进行中。
+ */
 uint8_t encoder_spi_bus_is_busy(const encoder_spi_bus_t *bus)
 {
     if (bus == NULL) {

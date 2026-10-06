@@ -1,3 +1,13 @@
+/**
+ * @file motor_trig_cordic.c
+ * @date 2026-10-06
+ * @brief 片上 CORDIC 求正余弦。
+
+ *
+ * 初始化一次。sincos 在电流环节拍里等结果。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "motor_trig_cfg.h"
 
 #if MOTOR_TRIG_BACKEND == MOTOR_TRIG_BACKEND_CORDIC

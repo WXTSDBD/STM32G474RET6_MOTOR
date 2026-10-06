@@ -1,6 +1,12 @@
 /**
  * @file motor_outer_loop.c
- * @brief M1 2kHz 外环调度实现：DISABLED / TORQUE / SPEED / POSITION + bumpless 切换。
+ * @date 2026-10-06
+ * @brief 外环实现：力矩、速度、位置，以及无扰切换。
+ *
+ * 本文件写出 iq_ref。电流 PI 和 Park 不在这里。
+ * 节拍限制见 motor_outer_loop.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_outer_loop.h"
@@ -56,6 +62,9 @@ static uint8_t motor_speed_profile_step_count(void)
     return (uint8_t)(steps_f + 0.5f);
 }
 
+/**
+ * @brief 重置转速阶梯，从首档写 omega_ref。
+ */
 void motor_speed_profile_arm(motor_context_t *ctx)
 {
     motor_speed_profile_arm_ex(ctx, (M1_SPEED_PROFILE_REPEAT != 0) ? 1u : 0u);
@@ -76,6 +85,10 @@ void motor_speed_profile_arm_ex(motor_context_t *ctx, uint8_t repeat_en)
     dbg.outer_profile_step = 0u;
 }
 
+/**
+ * @brief 单次阶梯结束标志。读一次清一次。
+ * @return 1=本轮刚结束。
+ */
 uint8_t motor_speed_profile_consume_ladder_done(void)
 {
     if (s_profile_ladder_done == 0u) {
@@ -121,6 +134,9 @@ static uint8_t s_reversal_armed;
 static uint32_t s_reversal_tick;
 static int8_t s_reversal_sign;
 
+/**
+ * @brief 武装正反转速交替试验。
+ */
 void motor_speed_reversal_arm(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -240,6 +256,9 @@ static float motor_pos_step_dwell_s(uint8_t step_idx)
     return M1_POS_STEP_DWELL_S;
 }
 
+/**
+ * @brief 武装相对当前位置的阶跃试验。
+ */
 void motor_pos_step_test_arm(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -621,6 +640,10 @@ static void outer_pos_p_decim_arm(void)
 #endif /* M1_POS_DECIM > 1u */
 #endif /* M1_POS_LOOP_ENABLE */
 
+/**
+ * @brief 装速度 PI，默认 DISABLED。
+ * @param ctx 控制上下文。不可为 NULL。
+ */
 void motor_outer_loop_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -702,6 +725,9 @@ void motor_outer_loop_init(motor_context_t *ctx)
 }
 
 #if M1_IF_OBS_EW_CLAMP_ENABLE
+/**
+ * @brief I-f 交观测后武装转速误差限幅计时。
+ */
 void motor_outer_if_obs_ew_guard_arm(void)
 {
     s_if_obs_ew_guard_s = M1_IF_OBS_EW_CLAMP_S;
@@ -1031,6 +1057,10 @@ static void outer_cruise_s3_probe_tick(motor_context_t *ctx, float dt)
 }
 #endif
 
+/**
+ * @brief 武装巡航：浅刹后再逐步放开负流。
+ * @param omega_fb 当前机械转速，单位 rpm。
+ */
 void motor_outer_if_obs_cruise_arm(motor_context_t *ctx, float omega_fb)
 {
     float cruise_rpm;
@@ -1094,6 +1124,11 @@ void motor_outer_if_obs_cruise_arm(motor_context_t *ctx, float omega_fb)
     dbg.open_seq_phase = 246u; /* cruise① soft-brake */
 }
 
+/**
+ * @brief 推进巡航门控。
+ * @param omega_fb 当前机械转速，单位 rpm。
+ * @param dt 外环节拍，单位 s。
+ */
 void motor_outer_if_obs_cruise_tick(motor_context_t *ctx, float omega_fb, float dt)
 {
     if ((ctx == NULL) || (s_if_cruise_phase == 0u)) {
@@ -1362,6 +1397,9 @@ void motor_outer_if_obs_cruise_tick(motor_context_t *ctx, float omega_fb, float 
 }
 
 #if M1_IF_OBS_DIR_SEQ_ENABLE
+/**
+ * @brief 1=滑行段，速度环应松手，Iq/Id 强制 0。
+ */
 uint8_t motor_outer_if_obs_dir_seq_is_coast(void)
 {
     return s_dir_seq_coast;
@@ -1376,6 +1414,9 @@ uint8_t motor_outer_if_obs_dir_seq_consume_obs_reset(void)
     return 1u;
 }
 
+/**
+ * @brief 近零后请求再起反向 I-f。读一次清一次。
+ */
 uint8_t motor_outer_if_obs_dir_seq_consume_rearm(void)
 {
     if (s_dir_seq_rearm_req == 0u) {
@@ -1391,6 +1432,10 @@ uint8_t motor_outer_if_obs_dir_seq_consume_rearm(void)
 #endif
 #endif
 
+/**
+ * @brief 按外环模式写 id_ref / iq_ref。DISABLED 不写。
+ * @param ctx 控制上下文。不可为 NULL。
+ */
 void motor_outer_loop_tick(motor_context_t *ctx)
 {
     float omega_mech_rpm;
@@ -1566,6 +1611,10 @@ void motor_outer_loop_tick(motor_context_t *ctx)
     dbg.outer_omega_ref = ctx->omega_ref;
 }
 
+/**
+ * @brief 把当前机械角锁成位置指令。
+ * @param ctx 控制上下文。不可为 NULL。
+ */
 void motor_outer_arm_position_hold(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -1584,6 +1633,12 @@ void motor_outer_arm_position_hold(motor_context_t *ctx)
     dbg.outer_omega_ref = 0.0f;
 }
 
+/**
+ * @brief PLL 就绪后同步斜坡起点和速度 PI。模式已是 SPEED 时 set_mode 会早退，用本函数补。
+ * @param ctx 控制上下文。不可为 NULL。
+ * @param iq_meas 当前 Iq，单位 A。
+ * @param omega_now 当前机械转速，单位 rpm。
+ */
 void motor_outer_sync_speed_boot(motor_context_t *ctx,
                                   float iq_meas,
                                   float omega_now)
@@ -1605,6 +1660,10 @@ void motor_outer_sync_speed_boot(motor_context_t *ctx,
     }
 }
 
+/**
+ * @brief 只改 ω 斜坡起点，不碰 PI。I-f 交接钉指令速时用。
+ * @param omega_rpm 机械转速，单位 rpm。
+ */
 void motor_outer_set_omega_ramp_rpm(float omega_rpm)
 {
 #if M1_SPEED_OMEGA_RAMP_ENABLE
@@ -1614,6 +1673,13 @@ void motor_outer_set_omega_ramp_rpm(float omega_rpm)
 #endif
 }
 
+/**
+ * @brief 切换外环模式，并用当前 Iq 与转速做无扰交接。
+ * @param ctx 控制上下文。不可为 NULL。
+ * @param new_mode 目标模式。
+ * @param iq_meas 当前 Iq，单位 A。
+ * @param omega_now 当前机械转速，单位 rpm。
+ */
 void motor_outer_set_mode(motor_context_t *ctx,
                            m1_outer_mode_t new_mode,
                            float iq_meas,

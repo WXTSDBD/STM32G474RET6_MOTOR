@@ -1,6 +1,11 @@
 /**
  * @file deadband_service.c
- * @brief 死区补偿 Service 门面实现。
+ * @date 2026-10-06
+ * @brief 死区补偿门面实现。
+
+ *
+ * 节拍限制见 deadband_service.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_service.h"
@@ -23,6 +28,9 @@ static void deadband_service_apply_lut_runtime_abc(void)
     deadband_set_runtime_apply_ud(0u);
 }
 
+/**
+ * @brief 上电：init 并按联调模式选默认 profile。
+ */
 void deadband_service_boot(deadband_service_boot_t *boot)
 {
     uint8_t nvm_loaded = 0u;
@@ -59,6 +67,9 @@ void deadband_service_boot(deadband_service_boot_t *boot)
     }
 }
 
+/**
+ * @brief 回到 OFF。辨识开始前用。
+ */
 void deadband_service_reset_runtime(void)
 {
     deadband_init();
@@ -108,6 +119,9 @@ void deadband_service_apply_profile(deadband_profile_t profile)
     }
 }
 
+/**
+ * @brief PI 后叠加 d 轴补偿，单位 V。无补偿返回 0。
+ */
 float deadband_service_ud_inject(float id_a)
 {
 #if M1_DEADBAND_LUT_APPLY_UD

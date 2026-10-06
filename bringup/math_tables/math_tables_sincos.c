@@ -1,4 +1,13 @@
-/** @file math_tables_sincos.c - sin[256] on [0,2pi), linear lerp; cos via pi/2 offset. */
+/**
+ * @file math_tables_sincos.c
+ * @date 2026-10-06
+ * @brief 正弦表数据。
+
+ *
+ * 烤好的 LUT，不再逐点注释。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "math_tables.h"
 #include <stddef.h>
 #include <stdint.h>

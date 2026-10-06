@@ -1,6 +1,8 @@
 /**
  * @file factory_nvm.c
+ * @date 2026-10-06
  * @brief 片内 Flash 尾区 0x0807F000（4 KB，scatter 预留）。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "factory_nvm.h"
@@ -185,6 +187,11 @@ static bool factory_nvm_program_record(const factory_nvm_record_t *rec)
     return true;
 }
 
+/**
+ * @brief 从 Flash 尾区读出厂记录。
+ * @param out 写出缓冲。不可为 NULL。
+ * @return 魔数和 CRC 通过为 true。
+ */
 bool factory_nvm_load(factory_nvm_record_t *out)
 {
     if (out == NULL) {
@@ -194,6 +201,11 @@ bool factory_nvm_load(factory_nvm_record_t *out)
     return factory_nvm_read_raw(out);
 }
 
+/**
+ * @brief 把相序写入 Flash，保留已有死区表。
+ * @param phase 有效 binding。不可为 NULL。
+ * @return 编程成功为 true。
+ */
 bool factory_nvm_write_phase(const motor_phase_binding_t *phase)
 {
     factory_nvm_record_t rec;
@@ -216,6 +228,11 @@ bool factory_nvm_write_phase(const motor_phase_binding_t *phase)
     return factory_nvm_program_record(&rec);
 }
 
+/**
+ * @brief 把死区表写入 Flash，保留已有相序。
+ * @param deadband 有效表。不可为 NULL。
+ * @return 编程成功为 true。
+ */
 bool factory_nvm_write_deadband(const factory_nvm_deadband_t *deadband)
 {
     factory_nvm_record_t rec;
@@ -238,6 +255,10 @@ bool factory_nvm_write_deadband(const factory_nvm_deadband_t *deadband)
     return factory_nvm_program_record(&rec);
 }
 
+/**
+ * @brief 从 Flash 装相序并激活 remap。
+ * @return 记录有效且已激活为 true。
+ */
 bool factory_nvm_apply_phase_binding(void)
 {
     factory_nvm_record_t rec;
@@ -254,6 +275,10 @@ bool factory_nvm_apply_phase_binding(void)
     return true;
 }
 
+/**
+ * @brief 从 Flash 装死区表到运行时 LUT。
+ * @return 表有效且已应用为 true。
+ */
 bool factory_nvm_apply_deadband(void)
 {
     factory_nvm_record_t rec;

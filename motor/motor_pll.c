@@ -1,6 +1,11 @@
 /**
  * @file motor_pll.c
- * @brief 机械角域 Type-II PLL（相位误差 PI → ω → ∫θ）。
+ * @date 2026-10-06
+ * @brief 机械角 Type-II PLL：相位误差 PI 得到 ω，再积分 θ。
+ *
+ * 节拍限制见 motor_pll.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_pll.h"
@@ -15,6 +20,9 @@
 #define MOTOR_PLL_PI 3.14159265359f
 #endif
 
+/**
+ * @brief 折到 (-π, π]。
+ */
 static float motor_pll_wrap_pi(float rad)
 {
     while (rad > MOTOR_PLL_PI) {
@@ -26,6 +34,9 @@ static float motor_pll_wrap_pi(float rad)
     return rad;
 }
 
+/**
+ * @brief 折到 [0, 2π)。
+ */
 static float motor_pll_wrap_0_2pi(float rad)
 {
     while (rad >= MOTOR_PLL_TWO_PI) {
@@ -37,6 +48,9 @@ static float motor_pll_wrap_0_2pi(float rad)
     return rad;
 }
 
+/**
+ * @brief 按绝对值上限截断。
+ */
 static float motor_pll_clamp(float x, float limit)
 {
     if (x > limit) {
@@ -48,6 +62,14 @@ static float motor_pll_clamp(float x, float limit)
     return x;
 }
 
+/**
+ * @brief 写入增益和限幅并清状态。
+ * @param pll PLL。不可为 NULL。
+ * @param kp 比例。
+ * @param ki 积分。
+ * @param omega_limit |ω| 上限，单位 rad/s。
+ * @param integrator_limit |积分| 上限，单位 rad/s。
+ */
 void motor_pll_init(motor_pll_t *pll,
                     float kp,
                     float ki,
@@ -68,6 +90,11 @@ void motor_pll_init(motor_pll_t *pll,
     pll->last_err = 0.0f;
 }
 
+/**
+ * @brief 把跟踪角放到 theta0，清 ω 和积分。
+ * @param pll PLL。不可为 NULL。
+ * @param theta0 机械角，单位 rad。
+ */
 void motor_pll_reset(motor_pll_t *pll, float theta0)
 {
     if (pll == NULL) {
@@ -80,6 +107,12 @@ void motor_pll_reset(motor_pll_t *pll, float theta0)
     pll->last_err = 0.0f;
 }
 
+/**
+ * @brief 用测量机械角推进一步。
+ * @param pll PLL。不可为 NULL。
+ * @param theta_meas 测量机械角，单位 rad。
+ * @param dt 节拍，单位 s。
+ */
 void motor_pll_update(motor_pll_t *pll, float theta_meas, float dt)
 {
     float err;
@@ -111,6 +144,9 @@ void motor_pll_update(motor_pll_t *pll, float theta_meas, float dt)
     pll->theta += pll->omega * dt;
 }
 
+/**
+ * @brief 读跟踪机械角，单位 rad。pll 为 NULL 时返回 0。
+ */
 float motor_pll_get_theta(const motor_pll_t *pll)
 {
     if (pll == NULL) {
@@ -127,6 +163,9 @@ float motor_pll_get_omega_mech(const motor_pll_t *pll)
     return pll->omega;
 }
 
+/**
+ * @brief 读机械转速，单位 rpm。
+ */
 float motor_pll_get_omega_mech_rpm(const motor_pll_t *pll)
 {
     if (pll == NULL) {
@@ -135,6 +174,9 @@ float motor_pll_get_omega_mech_rpm(const motor_pll_t *pll)
     return pll->omega * 60.0f / MOTOR_PLL_TWO_PI;
 }
 
+/**
+ * @brief 读最近一次相位误差，单位 rad。
+ */
 float motor_pll_get_last_err(const motor_pll_t *pll)
 {
     if (pll == NULL) {

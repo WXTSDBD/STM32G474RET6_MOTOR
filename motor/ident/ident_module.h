@@ -1,8 +1,11 @@
 /**
  * @file ident_module.h
- * @brief 堵转辨识激励发生器：Iq 阶跃 / Bode sin 扫频（不含 deadband 切换）。
+ * @date 2026-10-06
+ * @brief 堵转辨识激励：Iq 阶跃和正弦扫频。不含死区切换。
+
  *
- * VOFA unified12：ch4=Iq ch9=Iq_ref ch7=Uq_pi；open_seq 由 ident_flow 维护
+ * tick 只允许从电流环节拍调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef IDENT_MODULE_H

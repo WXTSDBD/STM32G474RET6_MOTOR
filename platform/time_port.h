@@ -1,6 +1,11 @@
 /**
  * @file time_port.h
- * @brief 单调时间 Port 契约（无 HAL）。P4 接 DWT / RTOS backend。
+ * @date 2026-10-06
+ * @brief 单调时间：毫秒和 DWT 周期。
+
+ *
+ * init 在上电调用一次。cycles 可在中断里读。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef TIME_PORT_H

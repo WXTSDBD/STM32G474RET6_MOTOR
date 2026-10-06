@@ -1,6 +1,11 @@
 /**
  * @file deadband_geo.h
- * @brief 论文 §4.4 电压域反变换与 phase LUT 几何建表（②③④⑤）。
+ * @date 2026-10-06
+ * @brief 电压域反变换和相表几何建表。
+
+ *
+ * 建表在标定 commit 里调用，不进 20 kHz 热路径。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_GEO_H

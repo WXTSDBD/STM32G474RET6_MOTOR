@@ -1,6 +1,11 @@
 /**
  * @file deadband_id_cal.h
- * @brief Id 锁轴扫表编排（Pass0 / commit / Iq 探路）。
+ * @date 2026-10-06
+ * @brief Id 锁轴扫表状态机：Pass0、commit、Iq 探路。
+
+ *
+ * tick 只允许从电流环节拍调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_ID_CAL_H

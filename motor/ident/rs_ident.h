@@ -1,6 +1,11 @@
 /**
  * @file rs_ident.h
- * @brief Pass0 commit 后 d 轴 Id 慢 ramp Rs 辨识（论文 2.5 累加 LS，MCU 省 RAM）。
+ * @date 2026-10-06
+ * @brief d 轴慢斜坡辨识定子电阻。
+
+ *
+ * tick 只允许从电流环节拍调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef RS_IDENT_H

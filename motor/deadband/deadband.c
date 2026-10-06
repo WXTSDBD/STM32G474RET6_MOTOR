@@ -1,7 +1,11 @@
 /**
  * @file deadband.c
- * @brief 运行时死区补偿（FIXED / LUT / Ud / abc duty）。
- * @see motor/deadband/deadband_module.h
+ * @date 2026-10-06
+ * @brief 运行时死区补偿：FIXED、LUT、Ud 注入和三相占空比。
+
+ *
+ * 节拍限制见 deadband.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband.h"
@@ -293,6 +297,9 @@ static float deadband_comp_mag_v(float i_abs)
     return deadband_comp_mag_v_ph(0u, i_abs);
 }
 
+/**
+ * @brief 按电机参数装默认固定补偿。
+ */
 void deadband_init(void)
 {
     /* 上电默认不补偿；标定/探路/ident 会话内显式 set_mode */
@@ -336,6 +343,9 @@ float deadband_get_lut_runtime_scale(void)
     return s_lut_runtime_scale;
 }
 
+/**
+ * @brief 切补偿模式。
+ */
 void deadband_set_mode(m1_deadband_mode_t mode)
 {
     s_cfg.mode = mode;
@@ -351,6 +361,9 @@ const m1_deadband_cfg_t *deadband_get_cfg(void)
     return &s_cfg;
 }
 
+/**
+ * @brief 注册单表。len 须至少 2。
+ */
 void deadband_set_lut(const float *amps, const float *vals, uint8_t len)
 {
     if (amps == NULL || vals == NULL || len < 2u || len > M1_DEADBAND_LUT_MAX) {
@@ -445,6 +458,9 @@ void deadband_set_cluster_luts(const float *amps_a, const float *vals_a,
     s_two_cluster = 1u;
 }
 
+/**
+ * @brief 单相补偿电压，单位 V，带符号。OFF 返回 0。
+ */
 float deadband_comp_v(float i_a)
 {
     return deadband_comp_v_ph(0u, i_a);
@@ -474,6 +490,9 @@ float deadband_comp_v_ph(uint8_t phase, float i_a)
     return mag_v * sign_i;
 }
 
+/**
+ * @brief d 轴补偿电压，单位 V。仅 LUT 且 Ud 路径打开时用。
+ */
 float deadband_ud_comp_v(float id_a)
 {
     float id_abs;
@@ -504,6 +523,9 @@ float deadband_ud_comp_v(float id_a)
 #endif
 }
 
+/**
+ * @brief 在三相占空比上叠加补偿并截到 [0,1]。
+ */
 void deadband_apply_duty(float ia, float ib, float ic,
                          float theta_el, float id_dq, float iq_dq,
                          float *duty_a, float *duty_b, float *duty_c)

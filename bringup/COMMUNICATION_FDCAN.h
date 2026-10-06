@@ -1,3 +1,13 @@
+/**
+ * @file COMMUNICATION_FDCAN.h
+ * @date 2026-10-06
+ * @brief 早期 FDCAN 调速口。现行电流环不走这里。
+
+ *
+ * 保留给旧上位机。新业务不要再往本头加接口。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #ifndef __COMMUNICATION_FDCAN_H__
 #define __COMMUNICATION_FDCAN_H__
 #include "stdint.h"

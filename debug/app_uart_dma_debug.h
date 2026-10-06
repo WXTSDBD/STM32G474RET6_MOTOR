@@ -1,6 +1,11 @@
 /**
  * @file app_uart_dma_debug.h
- * @brief VOFA JustFloat 双缓冲 + LPUART DMA（ISR 写帧，RTOS 任务发送）。
+ * @date 2026-10-06
+ * @brief VOFA JustFloat：ISR 填帧，任务走 DMA 发出。
+
+ *
+ * tick 可从电流环节拍调用。try_send 给 UART 任务。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef APP_UART_DMA_DEBUG_H

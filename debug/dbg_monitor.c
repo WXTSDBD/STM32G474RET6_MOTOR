@@ -1,6 +1,11 @@
 /**
  * @file dbg_monitor.c
- * @brief 调试镜像单例（原 main.c USER 区）。
+ * @date 2026-10-06
+ * @brief 调试镜像单例。
+
+ *
+ * 只有一份 dbg。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "dbg_monitor.h"

@@ -1,10 +1,14 @@
 /**
  * @file m1_hfi_standstill.profile.h
- * @brief HFI standstill delivery profile — GATE 141 only.
+ * @date 2026-10-06
+ * @brief 无感静止起动交付 profile：打开 HFI、运动旁路、观测速度反馈、编码器可选。
  *
- * Switch experiments only via config/bringup_active.h (must keep M1_HFI_GATE=141).
- * Demod / PLL / inject stay in hfi_sqwave.c; this file only lays macros.
+ * 切回有感只改 bringup_active.h 里选哪份 profile。解调、PLL、注入仍在 hfi_sqwave.c。
+ * 本文件只铺宏，不含函数。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
 #define CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
 

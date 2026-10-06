@@ -1,6 +1,11 @@
 /**
  * @file adc_foc_port_stm32g4_reg.c
- * @brief STM32G4 FOC ADC JEOC backend：直读 JDR，热路径无 LL API。
+ * @date 2026-10-06
+ * @brief 从 JDR 读三相电流并交给 adc_sample。
+
+ *
+ * 节拍限制见 adc_foc_port.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "adc_foc_port.h"

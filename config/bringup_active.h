@@ -1,11 +1,12 @@
 /**
  * @file bringup_active.h
- * @brief 联调实例选择 — 平时只改本文件。
+ * @date 2026-10-06
+ * @brief 联调实例选择。平时只改本文件。
  *
- * Bode / SPEED / FLUX / OBS_VEQ / IF：见各 profile。
- * HFI：config/profiles/m1_hfi_standstill.profile.h
- *   交付只认 M1_HFI_GATE=141（±1500 保持 0.5 s 换向 ×5）。
- *   1…140 旧关卡注释已废，勿改 GATE 回退。
+ * 无感静止起动打开 M1_USE_HFI_STANDSTILL_PROFILE。切回有感把它置 0，再打开对应有感 profile。
+ * 本文件只选 profile，不含函数。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 #ifndef CONFIG_BRINGUP_ACTIVE_H
 #define CONFIG_BRINGUP_ACTIVE_H

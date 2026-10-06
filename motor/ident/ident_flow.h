@@ -1,8 +1,11 @@
 /**
  * @file ident_flow.h
- * @brief ident 编排：deadband profile 切换 + VOFA open_seq（Phase 4）。
+ * @date 2026-10-06
+ * @brief 堵转辨识编排：切死区 profile，推进 ident_module。
+
  *
- * ident_module 只产生 Iq_ref；本层在状态/轮次变化时调用 deadband_service。
+ * tick 只允许从电流环节拍调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef IDENT_FLOW_H

@@ -1,7 +1,11 @@
 /**
  * @file deadband_cal.c
- * @brief Id 锁轴扫表在线建 deadband LUT（Pass0 capture / commit / 双表切换）。
- * @see motor/deadband/deadband_module.h
+ * @date 2026-10-06
+ * @brief 扫表采样、排序去重、几何建表和 NVM 导出。
+
+ *
+ * 节拍限制见 deadband_cal.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_cal.h"

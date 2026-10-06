@@ -1,6 +1,14 @@
 /**
  * @file motor_current.c
- * @brief M1 JEOC：。。采样 。Park 。foc_loop 。SVPWM 。kick 。telem。
+ * @date 2026-10-06
+ * @brief M1 电流环节拍编排：采样、选 Park 角、电流 PI、SVPWM。
+ *
+ * 本文件负责把一步串起来，并在编码器、I-f、观测器之间选角度。
+ * 本文件不填 HAL 句柄，不含 HFI 解调。观测器算法在 motor/observer/。
+ * 节拍和中断限制见 motor_current.h 文件头，这里不重复。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ * @see docs/电机驱动软件框架——完整架构设计文档_v3.0.md 热路径一节
  */
 
 #include "motor_current.h"
@@ -51,6 +59,7 @@
 #include "speed_ident_module.h"
 #endif
 
+/** M1 控制上下文。电流环和外环都写这里。 */
 static motor_context_t s_m1_ctx;
 
 #if M1_EMF_VEQ_ENABLE
@@ -63,42 +72,53 @@ static emf_smo_t s_emf_smo;
 static emf_pll_t s_emf_pll;
 #endif
 #if M1_OBS_SPD_PLL_ENABLE && M1_PLL_ENABLE
-/** 电角域：。EMF-PLL θ̂ 。机械 rpm。 kHz 更新；OBS 时进速度。*/
+/** 观测器速度 PLL。输入是电角，输出经换算得到机械转速。只在观测器速度反馈路径使用。 */
 static motor_pll_t s_obs_spd_pll;
+/** 1=已经用第一帧电角对齐过；0=下一帧要先对齐，不能当转速用。 */
 static uint8_t s_obs_spd_pll_primed;
+/** 速度环分频计数。满了才更新一次 PLL。 */
 static uint16_t s_obs_spd_div;
+/** PLL 换算后的机械转速，单位 rpm。 */
 static float s_obs_spd_pll_rpm;
+/** 速度反馈低通后的机械转速，单位 rpm。 */
 static float s_obs_spd_fb_lpf_rpm;
+/** 1=速度反馈低通已经对齐。 */
 static uint8_t s_obs_spd_fb_lpf_on;
 #endif
 #if M1_PLL_ENABLE
-/** 外环实际速度反馈（有。编码。PLL；OBS+速切=观测 PLL。*/
+/** 外环实际速度反馈，单位 rpm。有感走编码器 PLL；无感速度反馈打开时走观测 PLL。 */
 static float s_speed_fb_rpm;
 #endif
 
 
 #if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
-/** 0=尚未 ident_flow_init；第一。JEOC 。boot（PWM/PI/ADC 零偏已就绪） */
+/** 0=辨识流程还未 init。第一拍电流环里再 boot，避免 PWM 未就绪。 */
 static uint8_t s_ident_booted;
 #endif
 
 #if M1_SPEED_IDENT_ENABLE
-/** 0=尚未 speed_ident boot；第一。JEOC 。boot（与 Bode 同理，避。init 。PLL/编码器未稳） */
+/** 0=速度辨识还未 boot。第一拍电流环里再 boot，避免 PLL 未稳。 */
 static uint8_t s_speed_ident_booted;
 #endif
 
 #if M1_PLL_ENABLE
+/** 有感机械角 PLL。 */
 static motor_pll_t s_m1_pll;
+/** 上一拍机械角，单位 rad。用来 unwrap。 */
 static float s_pll_theta_mech_prev;
+/** 1=已经有上一拍机械角。 */
 static uint8_t s_pll_theta_mech_prev_valid;
+/** 编码器 PLL 机械转速，单位 rpm。 */
 static float s_pll_omega_mech_rpm;
 #endif
 
-/** 20 kHz unwrap 机械。[rad]，外。VOFA 只读 */
+/** 20 kHz unwrap 机械角，单位 rad。外环和遥测只读。 */
 static float s_theta_mech_rad;
 
 
-/** 速度/位置观测：与 outer_mode 无关，持续更新 dbg */
+/**
+ * @brief 把机械角和转速写进遥测。与外环模式无关。
+ */
 static void motor_current_update_observation_dbg(void)
 {
     dbg.outer_theta_mech_rad = s_theta_mech_rad;
@@ -108,40 +128,51 @@ static void motor_current_update_observation_dbg(void)
 }
 
 #if M1_SPEED_LOOP_ENABLE
+/** 外环分频计数。满 M1_SPEED_DECIM 才调一次外环。 */
 static uint8_t s_speed_slow_div;
 #endif
 #if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE
-static uint8_t s_if_to_obs_handed; /* 1=已进 OBS（I/F 已释放） */
-static float s_if_omega_cmd_latched; /* 释放前最后一。I/F 指令。*/
+/** 1=已经从 I-f 进入观测器，I-f 不再接管。 */
+static uint8_t s_if_to_obs_handed;
+/** 释放前最后一拍 I-f 速度指令，单位 rpm。 */
+static float s_if_omega_cmd_latched;
 #if M1_IF_OBS_BLEND_SPEED_ENABLE
-static uint8_t s_if_blend_speed_on; /* 1=BLEND 起已开弱速度。*/
+/** 1=融合段已经开了弱速度环。 */
+static uint8_t s_if_blend_speed_on;
+/** 融合段弱速度环分频。 */
 static uint8_t s_if_blend_speed_div;
 #if M1_IF_OBS_CRUISE_ENABLE
+/** 1=巡航已经武装。 */
 static uint8_t s_if_cruise_armed;
+/** 巡航落稳计时，单位 s。 */
 static float s_if_cruise_settle_s;
 #endif
 #endif
 #if M1_IF_OBS_ANGLE_ONLY_ENABLE
-static float s_if_obs_iq_freeze; /* 只切角：OBS 后钉死的 Iq */
+/** 只切角时钉死的 Iq，单位 A。避免交角瞬间力矩阶跃。 */
+static float s_if_obs_iq_freeze;
 #endif
 #endif
 #if M1_ENC_OPTIONAL_ENABLE || (M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE)
-/* 上一。Park 角：电流重构/无感兜底，避免拔编码器后吃垃。θ_enc */
+/** 上一拍 Park 角，单位 rad。电流重构和无感兜底用，不要改回吃浮空 θ_enc。 */
 static float s_theta_park_last;
 #endif
 #if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE
-/* RUN 起用上一拍 θ̂ 做扇区重构。未进 RUN 前不拿编码器角改电流。 */
+/** RUN 起用上一拍 θ̂ 做扇区重构，单位 rad。 */
 static float s_hfi_recon_theta;
+/** 1=重构角有效。未进 RUN 前不要用编码器角改电流。 */
 static uint8_t s_hfi_recon_theta_ok;
 #endif
 #if M1_HFI_ENABLE
+/** 本轴观测器 ops。init 后冻结。 */
 static const observer_ops_t *s_m1_obs;
+/** 本轴注入表。 */
 static const observer_inj_ops_t *s_m1_inj;
 #endif
 
 #if M1_IF_ENABLE && M1_IF_TO_OBS_ENABLE && M1_IF_OBS_DIR_SEQ_ENABLE
 /**
- * @brief 进滑行时。SMO/PLL，避。Iq=0 。ω̂ 假挂。144 ~400rpm。
+ * @brief 进滑行时清 SMO/PLL，避免 Iq=0 时观测转速假挂。
  */
 static void motor_current_dir_seq_try_obs_reset(void)
 {
@@ -224,6 +255,11 @@ static void motor_current_dir_seq_try_rearm(motor_context_t *ctx)
 
 #define M1_ACDC_WINDOW_TICKS  10000u
 
+/**
+ * @brief 更新 Id/Iq 有效值一类遥测。
+ * @param id Id，单位 A。
+ * @param iq Iq，单位 A。
+ */
 static void motor_current_update_acdc(float id, float iq)
 {
     static uint32_t tick;
@@ -289,6 +325,9 @@ static void motor_current_update_acdc(float id, float iq)
 }
 
 #if M1_CURRENT_RECON_ENABLE
+/**
+ * @brief 电流重构用的 Uq，单位 V。
+ */
 static float motor_current_uq_for_sector(const motor_context_t *ctx)
 {
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
@@ -297,6 +336,9 @@ static float motor_current_uq_for_sector(const motor_context_t *ctx)
     return ctx->uq_open;
 }
 
+/**
+ * @brief 电流重构用的 Ud，单位 V。
+ */
 static float motor_current_ud_for_sector(const motor_context_t *ctx)
 {
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
@@ -305,6 +347,9 @@ static float motor_current_ud_for_sector(const motor_context_t *ctx)
     return 0.0f;
 }
 
+/**
+ * @brief 由占空比和母线电压重构三相电流。
+ */
 static void motor_current_reconstruct_abc(const motor_context_t *ctx,
                                            float theta_svpwm,
                                            float *ia, float *ib, float *ic)
@@ -339,6 +384,11 @@ static void motor_current_reconstruct_abc(const motor_context_t *ctx,
 }
 #endif
 
+/**
+ * @brief 初始化 M1 电流环上下文，并按 profile 装配 I-f、HFI 或辨识。
+ * @param axis 轴实例。不可为 NULL。
+ * @note 辨识和速度 ident 的真正 boot 推迟到第一拍 tick，避免 TIM 与 ADC 零偏未就绪。
+ */
 void motor_current_init(bsp_axis_t *axis)
 {
     if (axis == NULL) {
@@ -506,6 +556,11 @@ void motor_current_init(bsp_axis_t *axis)
 #endif /* M1_SPEED_LOOP_ENABLE && (!IF || IF_TO_OBS) */
 }
 
+/**
+ * @brief 取该轴的电机上下文。
+ * @param axis 轴实例。可为 NULL，此时返回 NULL。
+ * @return 上下文指针；axis 为空时返回 NULL。
+ */
 motor_context_t *motor_current_ctx(const bsp_axis_t *axis)
 {
     if (axis == NULL) {
@@ -514,6 +569,11 @@ motor_context_t *motor_current_ctx(const bsp_axis_t *axis)
     return (motor_context_t *)axis->motor_ctx;
 }
 
+/**
+ * @brief 切换电流环工作模式。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param mode 目标模式。切入电流环时会清 PI，并按 profile 重新武装 I-f 或开环启动。
+ */
 void motor_current_set_mode(bsp_axis_t *axis, m1_ctrl_mode_t mode)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -534,6 +594,12 @@ void motor_current_set_mode(bsp_axis_t *axis, m1_ctrl_mode_t mode)
     ctx->mode = mode;
 }
 
+/**
+ * @brief 写入 Id、Iq 电流指令。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param id_ref d 轴指令，单位 A。本函数不做绝对值钳位。
+ * @param iq_ref q 轴指令，单位 A。本函数不做绝对值钳位。
+ */
 void motor_current_set_idq_ref(bsp_axis_t *axis, float id_ref, float iq_ref)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -546,6 +612,10 @@ void motor_current_set_idq_ref(bsp_axis_t *axis, float id_ref, float iq_ref)
     ctx->iq_ref = iq_ref;
 }
 
+/**
+ * @brief 读取本拍交给外环的机械转速。
+ * @return 机械转速，单位 rpm。无 PLL 时返回 0。HFI 速度反馈打开时是观测转速，不是编码器 PLL。
+ */
 float motor_current_get_pll_omega_mech_rpm(void)
 {
 #if M1_PLL_ENABLE
@@ -555,11 +625,19 @@ float motor_current_get_pll_omega_mech_rpm(void)
 #endif
 }
 
+/**
+ * @brief 读取缓存的机械角。
+ * @return 多圈连续机械角，单位 rad，上电相对零。来自编码器解包，不是观测角。
+ */
 float motor_current_get_theta_mech_rad(void)
 {
     return s_theta_mech_rad;
 }
 
+/**
+ * @brief 把编码器 PLL 和速度反馈清零，角度对齐当前机械角。
+ * @note 给速度 ident 或模式切换前用。观测器速度 PLL 若编进来也会一起复位。
+ */
 void motor_current_pll_reset_now(void)
 {
 #if M1_PLL_ENABLE
@@ -586,6 +664,11 @@ void motor_current_pll_reset_now(void)
 }
 
 #if M1_SPEED_LOOP_ENABLE
+/**
+ * @brief 切换外环模式，并用当前 Iq 与转速做无扰交接。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param mode 外环模式。
+ */
 void motor_current_outer_set_mode(bsp_axis_t *axis, m1_outer_mode_t mode)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -598,6 +681,11 @@ void motor_current_outer_set_mode(bsp_axis_t *axis, m1_outer_mode_t mode)
                          motor_current_get_pll_omega_mech_rpm());
 }
 
+/**
+ * @brief 写速度指令。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param rpm 机械转速指令，单位 rpm。
+ */
 void motor_current_set_omega_ref_rpm(bsp_axis_t *axis, float rpm)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -610,6 +698,11 @@ void motor_current_set_omega_ref_rpm(bsp_axis_t *axis, float rpm)
     dbg.outer_omega_ref = rpm;
 }
 
+/**
+ * @brief 写位置指令。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param theta_rad 机械角指令，单位 rad。
+ */
 void motor_current_set_theta_ref_rad(bsp_axis_t *axis, float theta_rad)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -622,6 +715,10 @@ void motor_current_set_theta_ref_rad(bsp_axis_t *axis, float theta_rad)
     dbg.outer_theta_ref_rad = theta_rad;
 }
 
+/**
+ * @brief 把当前位置锁成位置指令，不改外环模式。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ */
 void motor_current_arm_position_hold(bsp_axis_t *axis)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -633,6 +730,11 @@ void motor_current_arm_position_hold(bsp_axis_t *axis)
     motor_outer_arm_position_hold(ctx);
 }
 
+/**
+ * @brief 写力矩通道的 Iq 指令，并按绝对值上限截断。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @param iq_a q 轴指令，单位 A。超过 M1_I_REF_ABS_MAX 则截断。
+ */
 void motor_current_set_iq_cmd(bsp_axis_t *axis, float iq_a)
 {
     motor_context_t *ctx = motor_current_ctx(axis);
@@ -651,6 +753,11 @@ void motor_current_set_iq_cmd(bsp_axis_t *axis, float iq_a)
 }
 #endif
 
+/**
+ * @brief 重新武装开环启动序列。
+ * @param axis 轴实例。找不到上下文则直接返回。
+ * @note 仅 STARTUP 编进来时有效；会清电流 PI。未开启动时为空操作。
+ */
 void motor_startup_arm_axis(bsp_axis_t *axis)
 {
 #if M1_STARTUP_ENABLE
@@ -667,10 +774,11 @@ void motor_startup_arm_axis(bsp_axis_t *axis)
 #endif
 }
 
-
-
-
-
+/**
+ * @brief 电流环一步：采样，选 Park 角，电流 PI，SVPWM。
+ * @param axis 轴实例。M1 以外当前在入口直接返回。不可为 NULL，且必须已绑编码器和 PWM。
+ * @note 无感打开时 Park 用观测角。编码器可选打开时，重构用上一拍控制角，不要改回吃浮空 θ_enc。
+ */
 void motor_current_tick(bsp_axis_t *axis)
 {
     motor_context_t *ctx;

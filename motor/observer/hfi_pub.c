@@ -1,27 +1,46 @@
 /**
  * @file hfi_pub.c
- * @brief P5: HFI helpers moved from motor_current.c (call order unchanged).
+ * @date 2026-10-06
+ * @brief HFI 与 SMO 发布角：切出去、退回来、关注入。
+ *
+ * 未发布用低速 ω 出门限。已发布用 SMO ω 决定注入和退回，避免 HFI 积分钉死。
+ * 节拍限制见 hfi_pub.h 文件头，这里不重复。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 #include "observer/hfi_pub.h"
 #include "observer/obs_cfg.h"
 #include "motor_math.h"
 #include "observer/observer_composite.h"
 
-/* 0=发布 HFI，1=发布 SMO。旧交接状态机不参与。
- * 141：未发布门槛用 HFI ω；已发布用 SMO ω（对齐 VESC 观测器 dθ/dt）。
- * 不要用卡住的 HFI 积分决定退发布。 */
+/** 0=仍发布 HFI 角；1=已切到 SMO。 */
 static uint8_t s_hfi_pub_smo;
+/** 角融合系数 [0,1]。到 1 后 Park 用 SMO 角。 */
 static float s_hfi_pub_a;
+/** 发布给 Park 的电角，单位 rad。 */
 static float s_hfi_pub_theta;
+/** 出门限连续满足的拍数。满约 100 ms 才切出去。 */
 static uint16_t s_hfi_pub_qual;
+/** 退门限连续满足的拍数。 */
 static uint16_t s_hfi_pub_dn;
+/** SMO 电角速度低通，单位 rad/s。 */
 static float s_smo_w_lp;
+/** 1=低通已经用第一帧对齐。 */
 static uint8_t s_smo_w_init;
+/** 1=注入开着。 */
 static uint8_t s_inj_on = 1u;
+/** 发布阶段：0 HFI，0.5 融合，1 SMO 仍注入，2 SMO 注入关。 */
 static float s_pub_ss;
+/** 低通后的 SMO 机械转速，单位 rpm。 */
 static float s_pub_smo_rpm;
 
 /* SMO 转速做 5 ms 低通再拿来比。差在 25° 和 50 rpm 里连续 100 ms 才交。 */
+/**
+ * @brief 按转速和角差决定发布角、融合和注入。
+ * @param theta_smo SMO 电角，单位 rad。
+ * @param omega_el SMO 电角速度，单位 rad/s。
+ * @param dth wrap(θ_smo − θ̂_hfi)，单位 rad。
+ */
 void hfi_pub_step(float theta_smo, float omega_el, float dth)
 {
     const float rpm_scale = 60.0f / (6.28318530718f * (float)OBS_POLE_PAIRS);
@@ -119,6 +138,9 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
     }
 }
 
+/**
+ * @brief 1=已经切到 SMO 发布。
+ */
 uint8_t hfi_pub_smo_active(void)
 {
     return s_hfi_pub_smo;
@@ -129,6 +151,9 @@ float hfi_pub_theta(void)
     return s_hfi_pub_theta;
 }
 
+/**
+ * @brief 读发布阶段：0 / 0.5 / 1 / 2。
+ */
 float hfi_pub_ss(void)
 {
     return s_pub_ss;

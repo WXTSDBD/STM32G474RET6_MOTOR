@@ -1,9 +1,11 @@
 /**
  * @file deadband_flow.h
- * @brief 死区标定 + 辨识配方调度（Id 扫表 → ident Bode/阶跃）。
+ * @date 2026-10-06
+ * @brief 死区标定和辨识配方调度。
+
  *
- * Phase 3：按 M1_BRINGUP_MODE 推导的步骤表驱动 deadband_id_cal / ident_module，
- * motor_current 热路径只调用 boot/tick/id_cal_active。
+ * tick 只允许从电流环节拍调用。boot 给上电一次。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_FLOW_H

@@ -1,39 +1,11 @@
 /**
- * @brief VOFA JustFloat 双缓。+ LPUART DMA（位。debug/，R5 。bringup 迁入）。
+ * @file app_uart_dma_debug.c
+ * @date 2026-10-06
+ * @brief 双缓冲组帧和 LPUART DMA 发送。
+
  *
- * 数据路径。
- *   TIM1 ISR：telem_bringup_tick() 。仅写双缓。
- *   RTOS 任务：telem_bringup_try_send() 。READY 。DMA 发。
- *   TxCplt：SENDING 。UNLOCKED
- *
- * 统一 VOFA×12（M1_VOFA_UNIFIED_12CH=1，bringup 全阶段不变）。
- *   ch0=Ia ch1=Ib ch2=Ic ch3=Id ch4=Iq ch5=θ_el
- *   M1_VOFA_IDENT_DUTY_12CH=1：ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq
- *     VASI seq57：ch8=grid ch9=proc ch10=L_uH（ch6/7 仍为 duty→dq 端电压）
- *   M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out；ch8。1 。M1_VOFA_MIT/SPEED/PLL
- * 相序/增益诊断（phase_cal）：ch0。=adc ch3=pwm_idx ch4=Δ。ch5=cal_st（仅标定态）
- * 正常运行（非 bringup unified）：ch0。=adc ch3=Iq ch4=Id ch5=θ
- *
- * AS5047 DMA 耗时（g_telem_dbg，与 isr_delta 互补）：
- *   enc_dma_kick_delta  FRAME1 kick (LL DMA chain or HAL DmaKick)
- *   enc_dma_f1_cb_delta / enc_dma_f2_cb_delta  两次 SPI DMA 回调 CPU
- *   enc_dma_cpu_delta     f1_cb + f2_cb
- *   enc_dma_seq_delta     kick→FRAME2 完成（含硬件等待，非。CPU。
- *   enc_total_delta       isr_delta + enc_dma_cpu_delta（整拍参考）
- *
- * VOFA+。000000，JustFloat×K，△t = D/20000 s（D=M1_TELEM_BRINGUP_DECIMATION。
- * 磁链估（M1_VOFA_FLUX_ID_6CH）：ch0=Id ch1=Iq ch2=Ud ch3=Uq ch4=ω_pll ch5=ω_ref
- * Veq 旁路（M1_VOFA_OBS_VEQ_12CH）：iα iβ uα uβ eα eβ θ̂ θenc θerr |e| ωe ψinst
- * SMO 旁路+耗时（M1_VOFA_OBS_SMO_12CH）：
- *   iα iβ err_veq err_smo θenc ωe |e|_s |e|_v isr_delta foc_delta obs_delta enc_dma_cpu
- * EMF-PLL 旁路（M1_VOFA_OBS_PLL_12CH）：
- *   Veq源：iα iβ err_veq err_pll θenc ωe_pll |e|_v θ̂_pll isr foc obs enc_dma
- *   SMO源：eα eβ err_atan err_pll θenc ωe_pll |e|_s θ̂_pll isr foc obs lpf_hz
- *     VOFA 建议通道名：e_alpha, e_beta, err_atan, err_pll, theta_enc, we_pll,
- *                     emag, theta_hat_pll, isr_cyc, foc_cyc, obs_cyc, lpf_hz
- * SMO 离线原料（M1_VOFA_OBS_SMO_RAW_12CH）：
- *   iα iβ uα uβ θenc ω_mech_rpm eα eβ err_pll |e| θ̂_pll lpf_hz
- * HFI 旁路（M1_VOFA_HFI_12CH）：日常 θ/ω；IPD_SWEEP 改为 Ia Ib Ic Ud Uq 原料
+ * 节拍限制见 app_uart_dma_debug.h 文件头。通道语义改了才重录金样。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "app_uart_dma_debug.h"
@@ -189,6 +161,9 @@ static void telem_enc_profile_cb(const encoder_t *e, const enc_profile_event_t *
     }
 }
 
+/**
+ * @brief 绑编码器事件回调。
+ */
 void telem_encoder_profile_bind(encoder_t *e)
 {
     encoder_set_profile_cb(e, telem_enc_profile_cb);
@@ -785,6 +760,9 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     telem_write_frame_vals(buf, offset, vals);
 }
 
+/**
+ * @brief ISR 侧组一帧。
+ */
 void telem_bringup_tick(void)
 {
     telem_buf_t *buf;
@@ -831,6 +809,9 @@ void telem_bringup_tick(void)
     g_telem_dbg.tick_frame_ok++;
 }
 
+/**
+ * @brief 任务侧若有就绪缓冲则启动 DMA。
+ */
 void telem_bringup_try_send(void)
 {
     telem_buf_t *buf;
@@ -880,6 +861,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
     }
 }
 
+/**
+ * @brief 初始化双缓冲和 UART DMA。
+ */
 void telem_bringup_init(void)
 {
     uint32_t i;

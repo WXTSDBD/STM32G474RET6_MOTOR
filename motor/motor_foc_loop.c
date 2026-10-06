@@ -1,6 +1,11 @@
 /**
  * @file motor_foc_loop.c
- * @brief M1 Id/Iq PI 编排（算法在 foc_pi.c）。
+ * @date 2026-10-06
+ * @brief Id/Iq PI 编排：限幅、无扰、标定和闭环分支。
+ *
+ * 算法在 foc_pi.c。节拍限制见 motor_foc_loop.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_foc_loop.h"
@@ -15,6 +20,9 @@
 #include "motor_params_m1.h"
 #include "speed_ident_flow.h"
 
+/**
+ * @brief 按电流指令绝对值上限截断，单位 A。
+ */
 static float motor_foc_loop_clamp_ref(float ref)
 {
     if (ref > M1_I_REF_ABS_MAX) {
@@ -38,6 +46,10 @@ static void motor_foc_loop_pi_apply_ident_limits(motor_context_t *ctx)
 }
 #endif
 
+/**
+ * @brief 按电机参数装 Id/Iq PI。
+ * @param ctx 控制上下文。不可为 NULL。
+ */
 void motor_foc_loop_pi_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -75,6 +87,10 @@ void motor_foc_loop_pi_init(motor_context_t *ctx)
 #endif
 }
 
+/**
+ * @brief 清 Id/Iq 积分。
+ * @param ctx 控制上下文。不可为 NULL。
+ */
 void motor_foc_loop_pi_reset(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -87,6 +103,9 @@ void motor_foc_loop_pi_reset(motor_context_t *ctx)
     ctx->uq_pi = 0.0f;
 }
 
+/**
+ * @brief 辨识流程若请求重配 PI 限幅，在此消费。
+ */
 void motor_foc_loop_on_flow_tick(motor_context_t *ctx)
 {
 #if M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS
@@ -98,6 +117,9 @@ void motor_foc_loop_on_flow_tick(motor_context_t *ctx)
 #endif
 }
 
+/**
+ * @brief 电流环模式下把 id_ref/iq_ref 写进遥测。
+ */
 void motor_foc_loop_dbg_id_ref(const motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -126,6 +148,14 @@ void motor_foc_loop_dbg_id_ref(const motor_context_t *ctx)
     }
 }
 
+/**
+ * @brief Park 后跑电流 PI，写出 ud_pi/uq_pi。
+ * @param ctx 控制上下文。不可为 NULL。
+ * @param id 测量 Id，单位 A。
+ * @param iq 测量 Iq，单位 A。
+ * @param startup 开环启动本拍结果。可为占位。
+ * @param theta_enc_park 对照电角，单位 rad。
+ */
 void motor_foc_loop_tick(motor_context_t *ctx,
                          float id,
                          float iq,

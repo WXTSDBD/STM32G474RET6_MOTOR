@@ -1,7 +1,11 @@
 /**
  * @file deadband_cal.h
- * @brief Id 锁轴扫表在线建 deadband LUT（段 2 capture / 段 3 commit）。
- * @note 模块目录：motor/deadband/
+ * @date 2026-10-06
+ * @brief Id 锁轴扫表，在线建立死区 LUT。
+
+ *
+ * capture 从标定节拍调用。commit 在任务或配方步里调用，不要在同拍改 PWM。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_CAL_H

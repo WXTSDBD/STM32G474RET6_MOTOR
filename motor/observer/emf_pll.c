@@ -1,6 +1,11 @@
 /**
  * @file emf_pll.c
- * @brief EMF 正交 Type-II PLL — ISR: sincos + PI + 积分（无 atan2）
+ * @date 2026-10-06
+ * @brief 反电势正交 Type-II PLL：sincos、PI、积分。热路径不用 atan2。
+ *
+ * 默认不进 Park。节拍限制见 emf_pll.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "emf_pll.h"
@@ -49,6 +54,9 @@
 #define EMF_PLL_PI       3.14159265358979323846f
 #define EMF_PLL_TWO_PI   6.28318530717958647692f
 
+/**
+ * @brief 把角折回 (-π, π]。
+ */
 static float emf_pll_wrap_pi(float x)
 {
     while (x > EMF_PLL_PI) {
@@ -60,6 +68,9 @@ static float emf_pll_wrap_pi(float x)
     return x;
 }
 
+/**
+ * @brief 按绝对值上限截断。
+ */
 static float emf_pll_clamp(float x, float lim)
 {
     if (x > lim) {
@@ -95,6 +106,10 @@ static float emf_pll_lpf_phase_ff(float omega_el)
 #endif
 }
 
+/**
+ * @brief 按自然频率和阻尼算 Kp/Ki，然后复位。
+ * @param p PLL。不可为 NULL。
+ */
 void emf_pll_init(emf_pll_t *p)
 {
     const float wn = EMF_PLL_TWO_PI * M1_EMF_PLL_FN_HZ;
@@ -109,6 +124,10 @@ void emf_pll_init(emf_pll_t *p)
     emf_pll_reset(p);
 }
 
+/**
+ * @brief 清角、ω 和积分。保留增益。
+ * @param p PLL。不可为 NULL。
+ */
 void emf_pll_reset(emf_pll_t *p)
 {
     if (p == NULL) {
@@ -124,6 +143,14 @@ void emf_pll_reset(emf_pll_t *p)
     p->primed = 0u;
 }
 
+/**
+ * @brief 用 eαβ 推进 PLL。
+ * @param p PLL。不可为 NULL。
+ * @param e_alpha 反电势 α，单位 V。
+ * @param e_beta 反电势 β，单位 V。
+ * @param theta_enc 对照电角，单位 rad。
+ * @param dt 节拍，单位 s。
+ */
 void emf_pll_update(emf_pll_t *p,
                     float e_alpha, float e_beta,
                     float theta_enc,

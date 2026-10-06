@@ -1,3 +1,13 @@
+/**
+ * @file as5047.h
+ * @date 2026-10-06
+ * @brief AS5047 寄存器、句柄和 raw 换角。DMA 状态机在 as5047_async。
+ *
+ * 静态换角函数可在电流环节拍里调用。不要在这里踢 SPI。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #ifndef AS5047_H
 #define AS5047_H
 
@@ -23,10 +33,15 @@
 #define AS5047_ANGLE_SCALE     0.00038349519f  /* 2*pi / 16384 */
 
 typedef struct {
+    /** HAL SPI 与片选。 */
     SPI_HandleTypeDef *hspi;
+    /** 片选 GPIO 口。 */
     GPIO_TypeDef *cs_gpio_port;
+    /** 片选引脚。 */
     uint16_t cs_gpio_pin;
+    /** 上一圈机械角，unwrap 用。 */
     float angle_data_prev;
+    /** 多圈偏置，单位 rad。 */
     float full_rotation_offset;
 } AS5047_HandleTypeDef;
 
@@ -39,23 +54,40 @@ extern AS5047_HandleTypeDef AS5047_spi3_PORT;
     ((handle)->cs_gpio_port->BSRR = (uint32_t)((handle)->cs_gpio_pin))
 
 typedef enum {
+    /** 空闲，可以踢下一帧。 */
     AS5047_PHASE_IDLE = 0,
+    /** 第一帧已发出，等 DMA。 */
     AS5047_PHASE_FRAME1 = 1,
+    /** 第二帧 NOP 已发出。 */
     AS5047_PHASE_FRAME2 = 2,
 } as5047_phase_t;
 
+/**
+ * 异步双帧状态。ISR 写 raw，任务不要直改。
+ */
 typedef struct {
+    /** 绑定的 HAL 句柄。 */
     AS5047_HandleTypeDef *hal;
+    /** 本拍发出的读命令。 */
     uint16_t tx_cmd;
+    /** 第二帧 NOP。 */
     uint16_t tx_nop;
+    /** 最近一帧收到的字。 */
     uint16_t rx_buf;
+    /** 最新角度 raw。 */
     volatile uint16_t raw;
+    /** 双帧相位。 */
     volatile uint8_t phase;
+    /** 上一拍 raw，unwrap 用。 */
     uint16_t raw_prev;
+    /** 多圈偏置，单位 rad。 */
     float full_rotation_offset;
+    /** 踢帧时的 DWT 周期。 */
     uint32_t kick_cyccnt;
+    /** 第一帧完成相对踢帧的周期差。 */
     uint32_t f1_cb_delta;
-    uint8_t skip_busy_n; /* 连续 KICK_SKIP；过大则 abort 自愈 */
+    /** 连续因忙跳过的次数。过大则中止自愈。 */
+    uint8_t skip_busy_n;
 } as5047_ctx_t;
 
 uint16_t as5047_parity_bit_calculate(uint16_t data);

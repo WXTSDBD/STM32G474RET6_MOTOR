@@ -1,9 +1,11 @@
 /**
  * @file speed_ident_module.h
- * @brief 速度环辨识激励：ω_ref 阶跃 / Bode sin（deadband OFF，不锁轴）。
+ * @date 2026-10-06
+ * @brief 速度环辨识激励：ω_ref 阶跃和正弦。
+
  *
- * @note 2 kHz（M1_SPEED_TS_S）；由 motor_outer_loop_tick 调用。
- * VOFA：ch8=ω_pll ch9=ω_ref ch10=iq_ref ch11=open_seq（M1_SPEED_IDENT_ENABLE）
+ * tick 随外环调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef SPEED_IDENT_MODULE_H

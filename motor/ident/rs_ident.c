@@ -1,6 +1,11 @@
 /**
  * @file rs_ident.c
- * @brief Id 慢 ramp + 在线最小二乘 Rs（LUT abc duty；仅上报不写 NVM）。
+ * @date 2026-10-06
+ * @brief 电阻辨识实现。
+
+ *
+ * 节拍限制见 rs_ident.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "rs_ident.h"

@@ -1,7 +1,13 @@
 /**
  * @file motor_math.h
- * @brief Shared hot-path scalar helpers (P3). Interval of wrap is [-pi, pi].
+ * @date 2026-10-06
+ * @brief 热路径标量：折角、绝对值、牛顿开方、限幅。
+
+ *
+ * 函数都是 static inline，注释写在本头。折角区间是 [-π, π]。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef MOTOR_MATH_H
 #define MOTOR_MATH_H
 

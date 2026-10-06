@@ -1,15 +1,13 @@
 /**
  * @file m1_obs_veq_1000rpm.profile.h
- * @brief Sensored Veq bypass only (SMO off) + VOFA x12 + ladder 400->1000 rpm
+ * @date 2026-10-06
+ * @brief 电压方程观测器旁路对照 profile。
+
  *
- * Layout M1_VOFA_OBS_VEQ_12CH:
- *   ch0=iα  ch1=iβ  ch2=uα  ch3=uβ
- *   ch4=eα  ch5=eβ  ch6=θ̂  ch7=θ_enc
- *   ch8=θ_err  ch9=|e|  ch10=ωe  ch11=ψinst
- *
- * Sequence: settle -> HOLD to 400 -> 400..1000 x10s -> DONE@1000
- * Enable: bringup_active -> SPEED_IDENT + M1_USE_OBS_VEQ_PROFILE=1
+ * 默认不进 Park。只铺宏。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_OBS_VEQ_1000RPM_PROFILE_H
 #define CONFIG_PROFILES_M1_OBS_VEQ_1000RPM_PROFILE_H
 

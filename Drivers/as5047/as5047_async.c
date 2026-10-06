@@ -1,3 +1,13 @@
+/**
+ * @file as5047_async.c
+ * @date 2026-10-06
+ * @brief AS5047 双帧 DMA 状态机。
+
+ *
+ * kick 从电流环节拍进。收完回调从 DMA 中断进。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "as5047.h"
 
 #include "encoder_spi_bus.h"
@@ -7,6 +17,9 @@ static as5047_ctx_t *as5047_ctx(encoder_t *e)
     return (as5047_ctx_t *)e->chip_ctx;
 }
 
+/**
+ * @brief 读 DWT 周期计数。
+ */
 static uint32_t as5047_cyccnt(void)
 {
     return *(volatile uint32_t *)&DWT->CYCCNT;
@@ -25,6 +38,9 @@ static void as5047_abort(encoder_t *e)
     ctx->phase = AS5047_PHASE_IDLE;
 }
 
+/**
+ * @brief 发出读角度的第一帧。
+ */
 static int as5047_kick_frame1(encoder_t *e)
 {
     as5047_ctx_t *ctx = as5047_ctx(e);
@@ -50,6 +66,9 @@ static int as5047_kick_frame1(encoder_t *e)
     return 0;
 }
 
+/**
+ * @brief 填读命令，相位回到空闲。
+ */
 static int as5047_chip_init(encoder_t *e)
 {
     as5047_ctx_t *ctx = as5047_ctx(e);
@@ -70,6 +89,9 @@ static int as5047_chip_init(encoder_t *e)
     return 0;
 }
 
+/**
+ * @brief 阻塞读一帧种子，再启动 DMA 硬件。
+ */
 static int as5047_chip_async_init(encoder_t *e)
 {
     as5047_ctx_t *ctx = as5047_ctx(e);
@@ -84,6 +106,9 @@ static int as5047_chip_async_init(encoder_t *e)
     return 0;
 }
 
+/**
+ * @brief 空闲则踢第一帧；连续忙则中止自愈。
+ */
 static void as5047_chip_kick(encoder_t *e)
 {
     as5047_ctx_t *ctx = as5047_ctx(e);
@@ -115,6 +140,9 @@ static void as5047_chip_kick(encoder_t *e)
     (void)as5047_kick_frame1(e);
 }
 
+/**
+ * @brief 读最新 14 位角度 raw。
+ */
 static uint16_t as5047_chip_get_raw(const encoder_t *e)
 {
     const as5047_ctx_t *ctx = (const as5047_ctx_t *)e->chip_ctx;
@@ -125,6 +153,9 @@ static uint16_t as5047_chip_get_raw(const encoder_t *e)
     return ctx->raw;
 }
 
+/**
+ * @brief 第一帧后再发 NOP；第二帧锁存 raw。
+ */
 static void as5047_chip_on_rx_complete(encoder_t *e)
 {
     as5047_ctx_t *ctx = as5047_ctx(e);
@@ -165,6 +196,9 @@ static void as5047_chip_on_rx_complete(encoder_t *e)
     }
 }
 
+/**
+ * @brief 出错则中止并通知。
+ */
 static void as5047_chip_on_error(encoder_t *e)
 {
     as5047_abort(e);

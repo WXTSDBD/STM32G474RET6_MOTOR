@@ -1,15 +1,16 @@
 /**
  * @file observer_composite.h
- * @brief HFI Composite 聚合口。电流环不 include hfi_sqwave.h。
+ * @date 2026-10-06
+ * @brief 无感对外聚合口：ops、注入、发布角、EMF-PLL 包装、低速槽。
  *
- * 冻结（同 observer_ops.h，不得改签名）：init / ops() / inj_ops() / bind_emf_pll /
- * 控制 getter（含 consume_pi_reset、take_polarity_flip 副作用）。禁止收成一次 update。
- * 141 pub overlay 在 Composite get_theta，angle 壳只做 Park。
+ * 电流环只通过本头拿观测器，不要 include hfi_sqwave.h。
+ * 热路径函数随电流环节拍调用。consume_pi_reset、take_polarity_flip
+ * 有读清副作用，禁止在任务里调。
+ * ops 与 inj 函数指针签名已冻，不要改；要加源另开结构。
  *
- * 收口新增（可改实现）：observer_bringup、observer_emf_*、observer_lo_*、
- * observer_pub_*、observer_smo_w_ma_*、observer_read_view、
- * observer_telem_publish。低速槽类型在 obs_src.h。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef MOTOR_OBSERVER_COMPOSITE_H
 #define MOTOR_OBSERVER_COMPOSITE_H
 
@@ -23,10 +24,8 @@ extern "C" {
 
 void observer_composite_init(void);
 const observer_ops_t *observer_ops(void);
-/** 无注入时返回 NULL。GATE 141 冻结为 HFI inj 表。 */
 const observer_inj_ops_t *observer_inj_ops(void);
 void observer_bind_emf_pll(void *pll);
-/** init + bind，电流环 HFI 装配口。不改 ops 签名。 */
 void observer_bringup(void *emf_pll);
 
 void observer_telem_publish(void);
@@ -53,7 +52,6 @@ uint8_t observer_id_pi_bypass(void);
 float observer_id_pi_soft_scale(void);
 float observer_get_theta_hat(void);
 uint8_t observer_take_polarity_flip(void);
-/** 中高速槽（已 bind 的 EMF-PLL）只读；与 HFI θ̂ 不是同一个量。 */
 float observer_emf_theta_hat(void);
 float observer_emf_omega_el(void);
 float observer_emf_theta_err(void);

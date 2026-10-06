@@ -1,17 +1,13 @@
 /**
  * @file m1_bode_id_fc1000.profile.h
- * @brief Id 电流环 Bode 签收配方（固化 fc=1000 Hz）
+ * @date 2026-10-06
+ * @brief 堵转 Bode 扫频 profile。
+
  *
- * 对齐 docs/总结_电流环Bode扫频与带宽上限_2026-09-09.md：
- *   HOLD 2s → OFF-lo 0.25A±50mA → OFF-hi 1.25A±100mA → DONE
- *   θ=30°，死区 ON，LUT OFF，VOFA 6ch @20kHz
- *   频表：F0=10, F1=5000, split=500 → ident_bode_freq_table.h（69 点）
- *
- * 启用方式：config/bringup_active.h 选 BODE_ID_OFF_ONLY。
- * 改扫频参数：只改本文件（勿在 motor_params_m1.h 的 #elif 里堆第二份）。
- *
- * 主录波对照：VOFA+CSV/20260909/1726/1727/1728（f−3dB≈2137 Hz）
+ * 只铺宏。切实验改 bringup_active.h。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_BODE_ID_FC1000_PROFILE_H
 #define CONFIG_PROFILES_M1_BODE_ID_FC1000_PROFILE_H
 

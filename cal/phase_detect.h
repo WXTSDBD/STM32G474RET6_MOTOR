@@ -1,6 +1,10 @@
 /**
  * @file phase_detect.h
+ * @date 2026-10-06
  * @brief 出厂单相脉冲 rank/sign/gain 诊断（三档 Δ，zeroed LSB）。
+ *
+ * jeoc_tick 只在标定期间从注入完成中断调用。正常 FOC 不要进本模块。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef PHASE_DETECT_H

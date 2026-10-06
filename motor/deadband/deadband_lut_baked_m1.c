@@ -1,8 +1,11 @@
 /**
  * @file deadband_lut_baked_m1.c
- * @brief 硬编码 phase LUT（Pass0 commit 后由 parse_lut_vofa.py --emit-baked 生成）。
+ * @date 2026-10-06
+ * @brief 烤表数据和注册函数。
+
  *
- * STALE：下方数据为旧表，三步联调 ② 完成后必须 --emit-baked 覆盖本文件再跑 ③。
+ * 数组是纯数据，不在这里解释每个点。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_lut_baked_m1.h"

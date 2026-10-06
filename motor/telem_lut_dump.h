@@ -1,8 +1,11 @@
 /**
  * @file telem_lut_dump.h
- * @brief 标定结束后经 VOFA JustFloat 突发 LUT 表（头帧 + 数据 + 尾帧）。
+ * @date 2026-10-06
+ * @brief 死区 LUT 经串口突发发送。
+
  *
- * 需 M1_VOFA_LUT_DUMP_ENABLE=1 且 M1_ID_LOCK_CAL_SWEEP=1；否则 API 为空 stub。
+ * next 由遥测任务调用。突发未完不要进下一标定段。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef TELEM_LUT_DUMP_H

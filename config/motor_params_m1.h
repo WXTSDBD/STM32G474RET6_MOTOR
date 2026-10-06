@@ -1,8 +1,12 @@
 /**
  * @file motor_params_m1.h
- * @brief M1 电机硬件常数：电流采样链路的标度（初始化预计算，热路径只乘不除）。
+ * @date 2026-10-06
+ * @brief M1 电机与控制宏的默认值。profile 可覆盖。
+
  *
- * ADC2 三相：外部放。×10，采样电。10 mΩ。2bit 单端 @ VDDA。
+ * 本头条目很多。第一刀只保证文件头；改到哪条宏再补哪条注释。
+ * 电流热路径用预计算的安培/LSB，不要在 ISR 里做除法。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef MOTOR_PARAMS_M1_H
@@ -156,15 +160,19 @@
      (M1_USE_HFI_STANDSTILL_PROFILE != 0)) > 1
 #error "M1_USE_SPEED_1000 / FLUX / OBS_VEQ / IF_100 / HFI_STANDSTILL profiles are mutually exclusive"
 #endif
+/** 1=编进 HFI 与 Composite。默认 0；profile 可覆盖。关掉时 Composite 走空桩。 */
 #ifndef M1_HFI_ENABLE
 #define M1_HFI_ENABLE                   0
 #endif
+/** 1=Park 用 HFI 估计角。默认 0；profile 可覆盖。 */
 #ifndef M1_HFI_PARK_ENABLE
 #define M1_HFI_PARK_ENABLE              0
 #endif
+/** 1=无感运动旁路：速度环用观测转速。默认 0；profile 可覆盖。 */
 #ifndef M1_HFI_MOTION_BYPASS_ENABLE
 #define M1_HFI_MOTION_BYPASS_ENABLE     0
 #endif
+/** 1=速度反馈走观测 PLL，不吃编码器。默认 0；profile 可覆盖。须与运动旁路一起开。 */
 #ifndef M1_HFI_SPEED_FB_ENABLE
 #define M1_HFI_SPEED_FB_ENABLE          0
 #endif
@@ -758,8 +766,8 @@
 #define M1_IF_TO_OBS_ENABLE             0
 #endif
 /**
- * 1=编码器可选：控制不吃 SPI。插着只给 VOFA 金样；拔掉仍走无感。
- * 141 与 I/F→SMO 都用这开关。
+ * 1=编码器可选：控制不吃 SPI。插着只给遥测对照；拔掉仍走无感。
+ * 默认 0；profile 可覆盖。
  */
 #ifndef M1_ENC_OPTIONAL_ENABLE
 #define M1_ENC_OPTIONAL_ENABLE          0

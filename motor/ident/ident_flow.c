@@ -1,6 +1,11 @@
 /**
  * @file ident_flow.c
- * @brief ident 死区档位与 dbg.open_seq 编排。
+ * @date 2026-10-06
+ * @brief 堵转辨识编排实现。
+
+ *
+ * 节拍限制见 ident_flow.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "ident_flow.h"
@@ -201,6 +206,9 @@ static void ident_flow_sync(motor_context_t *ctx, uint8_t force)
     ident_flow_sync_dbg();
 }
 
+/**
+ * @brief 初始化堵转辨识编排。
+ */
 void ident_flow_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -214,6 +222,9 @@ void ident_flow_init(motor_context_t *ctx)
     ident_flow_sync(ctx, 1u);
 }
 
+/**
+ * @brief 推进辨识并在换段时切死区。
+ */
 void ident_flow_tick(motor_context_t *ctx)
 {
     if (ctx == NULL) {

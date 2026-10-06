@@ -1,6 +1,11 @@
 /**
  * @file pwm_port.h
- * @brief 三相 PWM duty 输出 Port 契约（无 HAL）。P1 起接 stm32g4 寄存器 backend。
+ * @date 2026-10-06
+ * @brief 三相 PWM 占空比输出口。不含 HAL。
+
+ *
+ * set_duty3 只允许从电流环节拍调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef PWM_PORT_H

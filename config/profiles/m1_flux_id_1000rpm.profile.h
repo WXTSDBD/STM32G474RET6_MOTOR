@@ -1,15 +1,13 @@
 /**
  * @file m1_flux_id_1000rpm.profile.h
- * @brief 有感稳速 1000 rpm，离线估磁链（ψf）
+ * @date 2026-10-06
+ * @brief 磁链/Id 相关辨识 profile。
+
  *
- * VOFA 布局与历史 SPEED_IDENT 签收一致（JustFloat×12），ch11 改为 raw：
- *   ch0–2=Ia/Ib/Ic  ch3=Id  ch4=Iq  ch5=θ_el
- *   ch6=Ud  ch7=Uq  ch8=ω_pll  ch9=ω_ref  ch10=Iq_ref  ch11=enc_raw(0..16383)
- * 离线 ψf ≈ (Uq - R·Iq - ωe·Ld·Id) / ωe ，取 STEP/DONE 稳态段。
- *
- * 遥测：D=5 → 4 kHz（够稳态平均；不必 20 kHz）
- * 启用：bringup_active → SPEED_IDENT + M1_USE_FLUX_ID_PROFILE=1
+ * 只铺宏。切实验改 bringup_active.h。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_FLUX_ID_1000RPM_PROFILE_H
 #define CONFIG_PROFILES_M1_FLUX_ID_1000RPM_PROFILE_H
 

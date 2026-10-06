@@ -1,17 +1,13 @@
 /**
  * @file m1_if_100rpm.profile.h
- * @brief I/F → SMO：通用 |ω| 路径；方向只改 M1_IF_DIR_SIGN（+1/−1）
+ * @date 2026-10-06
+ * @brief I-f 爬到目标后再软切观测器。
+
  *
- * 时序：RAMP→|1000|；≥920→BLEND→OBS→①浅刹；
- * DIR_SEQ：正转① soak → Iq=0 滑行 → 近零 → 再 I/F 反转到 −1000。
- * Iq：I/F 与速度环交接均用 +|Iq|；DIR 只乘转速目标（勿在 BLEND 把 Iq 乘成负）。
- *
- * VOFA×12：
- *   ch0 ω_enc  ch1 ω_ref  ch2 Iq_ref  ch3 θ_err
- *   ch4 ω_obs  ch5 speed_fb  ch6 Iq  ch7 emag
- *   ch8 Uq  ch9 θ_park  ch10 spd_on(0→1)  ch11 ss_state+0.1α
- * open_seq：246=巡航①  230=滑行  231=近零待反起  232=反转腿结束
+ * 只铺宏。方向用 M1_IF_DIR_SIGN。切实验改 bringup_active.h。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_IF_100RPM_PROFILE_H
 #define CONFIG_PROFILES_M1_IF_100RPM_PROFILE_H
 

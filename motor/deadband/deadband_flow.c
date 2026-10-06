@@ -1,6 +1,11 @@
 /**
  * @file deadband_flow.c
- * @brief 配方表 + 步骤调度。
+ * @date 2026-10-06
+ * @brief 按配方表推进 Id 标定、开环阶梯和辨识。
+
+ *
+ * 节拍限制见 deadband_flow.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_flow.h"
@@ -264,6 +269,9 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
     }
 }
 
+/**
+ * @brief 进入配方第一步。
+ */
 void deadband_flow_boot(motor_context_t *ctx)
 {
     if (ctx == NULL || DEADBAND_FLOW_RECIPE_LEN == 0u) {
@@ -279,6 +287,9 @@ void deadband_flow_boot(motor_context_t *ctx)
     deadband_flow_enter_step(ctx, 0u, 0u);
 }
 
+/**
+ * @brief 推进当前配方步。
+ */
 void deadband_flow_tick(motor_context_t *ctx)
 {
     if (ctx == NULL || DEADBAND_FLOW_RECIPE_LEN == 0u ||
@@ -384,6 +395,9 @@ void deadband_flow_tick(motor_context_t *ctx)
     }
 }
 
+/**
+ * @brief 1=Id 标定仍占用热路径。
+ */
 uint8_t deadband_flow_id_cal_active(void)
 {
 #if M1_ID_LOCK_CAL_SWEEP
@@ -405,6 +419,9 @@ uint8_t deadband_flow_id_cal_active(void)
 #endif
 }
 
+/**
+ * @brief 1=需要重配 PI 限幅。读一次清一次。
+ */
 uint8_t deadband_flow_consume_ident_pi_retune(void)
 {
     const uint8_t pending = s_ident_pi_retune_pending;

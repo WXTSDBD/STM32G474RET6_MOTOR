@@ -1,5 +1,10 @@
 /**
  * @file motor_phase_binding.c
+ * @date 2026-10-06
+ * @brief 相序 binding 实现：PWM CCR 与 ADC 三相重映射。
+ *
+ * 节拍限制见 motor_phase_binding.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_phase_binding.h"
@@ -12,6 +17,10 @@
 static motor_phase_binding_t s_binding;
 static bool s_active;
 
+/**
+ * @brief 填成恒等映射：通道 i 对应相 i，符号全 +1。
+ * @param b 写出缓冲。不可为 NULL。
+ */
 void motor_phase_binding_set_identity(motor_phase_binding_t *b)
 {
     uint8_t i;
@@ -29,6 +38,11 @@ void motor_phase_binding_set_identity(motor_phase_binding_t *b)
     b->reserved = 0u;
 }
 
+/**
+ * @brief 检查魔数、置换完整、符号只能是 ±1。
+ * @param b 待查表。
+ * @return 合法为 true。
+ */
 bool motor_phase_binding_is_valid(const motor_phase_binding_t *b)
 {
     uint8_t i;
@@ -59,6 +73,11 @@ bool motor_phase_binding_is_valid(const motor_phase_binding_t *b)
             seen_adc[0] && seen_adc[1] && seen_adc[2]);
 }
 
+/**
+ * @brief 启用或关闭运行时 remap。
+ * @param b 启用时必须合法。enable 为 false 时可传 NULL。
+ * @param enable true=拷贝并启用。
+ */
 void motor_phase_binding_set_active(const motor_phase_binding_t *b, bool enable)
 {
     if (enable && b != NULL && motor_phase_binding_is_valid(b)) {
@@ -69,16 +88,31 @@ void motor_phase_binding_set_active(const motor_phase_binding_t *b, bool enable)
     }
 }
 
+/**
+ * @brief 查询 remap 是否已启用。
+ * @return 已启用为 true。
+ */
 bool motor_phase_binding_is_active(void)
 {
     return s_active;
 }
 
+/**
+ * @brief 取出当前静态 binding，未启用时内容仍可能是旧值。
+ * @return 内部表指针，不要释放。
+ */
 const motor_phase_binding_t *motor_phase_binding_get(void)
 {
     return &s_binding;
 }
 
+/**
+ * @brief 物理 JDR 顺序电流换成逻辑 Ia/Ib/Ic。
+ * @param i_phys 长度 3，单位 A。不可为 NULL。
+ * @param ia 逻辑 A 相，可为 NULL。
+ * @param ib 逻辑 B 相，可为 NULL。
+ * @param ic 逻辑 C 相，可为 NULL。
+ */
 void motor_phase_binding_map_abc(const float i_phys[3], float *ia, float *ib, float *ic)
 {
     float logical[3];
@@ -118,6 +152,14 @@ void motor_phase_binding_map_abc(const float i_phys[3], float *ia, float *ib, fl
     }
 }
 
+/**
+ * @brief 逻辑占空写成 TIM CCR，启用时按 pwm_ch_to_phase 换通道。
+ * @param htim PWM 定时器。不可为 NULL。
+ * @param ta 逻辑 A 相归一化占空。
+ * @param tb 逻辑 B 相归一化占空。
+ * @param tc 逻辑 C 相归一化占空。
+ * @param pwm_period 定时器周期计数。
+ */
 void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
                                    float ta, float tb, float tc,
                                    uint16_t pwm_period)

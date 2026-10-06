@@ -1,5 +1,11 @@
 /**
  * @file foc_pi.c
+ * @date 2026-10-06
+ * @brief 离散 PI：积分、限幅、回算抗饱和。
+
+ *
+ * 节拍限制见 foc_pi.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include <stddef.h>
@@ -16,6 +22,9 @@ static void foc_pi_clamp_integrator(foc_pi_t *pi)
     }
 }
 
+/**
+ * @brief 写入增益和限幅，积分清零。
+ */
 void foc_pi_init(foc_pi_t *pi, float kp, float ki,
                  float out_min, float out_max,
                  float int_min, float int_max)
@@ -33,6 +42,9 @@ void foc_pi_init(foc_pi_t *pi, float kp, float ki,
     pi->int_max = int_max;
 }
 
+/**
+ * @brief 只清积分。
+ */
 void foc_pi_reset(foc_pi_t *pi)
 {
     if (pi == NULL) {
@@ -47,6 +59,9 @@ void foc_pi_bumpless(foc_pi_t *pi, float u_prev, float ref, float fb)
     foc_pi_bumpless_beta(pi, u_prev, ref, fb, 1.0f);
 }
 
+/**
+ * @brief 走一步 PI。β=1。
+ */
 float foc_pi_step(foc_pi_t *pi, float ref, float fb)
 {
     return foc_pi_step_beta(pi, ref, fb, 1.0f);
@@ -81,6 +96,9 @@ float foc_pi_step_beta(foc_pi_t *pi, float ref, float fb, float beta)
     return out;
 }
 
+/**
+ * @brief 与 step_beta 相同，但 hold_i=1 时冻结积分。
+ */
 float foc_pi_step_beta_hold_i(foc_pi_t *pi, float ref, float fb, float beta,
                               uint8_t hold_i)
 {
@@ -113,6 +131,9 @@ float foc_pi_step_beta_hold_i(foc_pi_t *pi, float ref, float fb, float beta,
     return out;
 }
 
+/**
+ * @brief 带 β 的无扰预载。
+ */
 void foc_pi_bumpless_beta(foc_pi_t *pi, float u_prev, float ref, float fb, float beta)
 {
     if (pi == NULL) {

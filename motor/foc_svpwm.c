@@ -1,6 +1,11 @@
 /**
  * @file foc_svpwm.c
- * @brief Clarke/Park + SVPWM + 死区 duty 补偿。
+ * @date 2026-10-06
+ * @brief Clarke、Park、SVPWM 和死区占空比补偿。
+ *
+ * 节拍限制见 foc_svpwm.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "foc_svpwm.h"
@@ -32,6 +37,9 @@
 #define SVPWM_ALLOW_OVERMOD 0
 #endif
 
+/**
+ * @brief 由扇区内角和电压幅值算两矢量作用时间。
+ */
 static void svpwm_t1_t2_from_theta(float theta, float Uref, float *T1, float *T2)
 {
     float s;
@@ -46,6 +54,9 @@ static void svpwm_t1_t2_from_theta(float theta, float Uref, float *T1, float *T2
     *T2 = scale * s;
 }
 
+/**
+ * @brief αβ 到 dq。Id/Iq 指针不可为 NULL。
+ */
 void Park_Transform(float Ialpha, float Ibeta, float theta, float *Id, float *Iq)
 {
     float sin_val;
@@ -56,6 +67,9 @@ void Park_Transform(float Ialpha, float Ibeta, float theta, float *Id, float *Iq
     *Iq = -Ialpha * sin_val + Ibeta * cos_val;
 }
 
+/**
+ * @brief αβ 到 dq，正余弦由调用方提供，避免再算一次。
+ */
 void Park_Transform_sc(float Ialpha, float Ibeta,
                        float sin_el, float cos_el,
                        float *Id, float *Iq)
@@ -64,6 +78,9 @@ void Park_Transform_sc(float Ialpha, float Ibeta,
     *Iq = -Ialpha * sin_el + Ibeta * cos_el;
 }
 
+/**
+ * @brief dq 到 αβ。
+ */
 void Anti_Park_Transform(float mod_d, float mod_q, float theta, float *mod_alpha, float *mod_beta)
 {
     float sin_val;
@@ -74,6 +91,9 @@ void Anti_Park_Transform(float mod_d, float mod_q, float theta, float *mod_alpha
     *mod_beta = mod_d * sin_val + mod_q * cos_val;
 }
 
+/**
+ * @brief dq 到 αβ，正余弦由调用方提供。
+ */
 void Anti_Park_Transform_sc(float mod_d, float mod_q,
                             float sin_el, float cos_el,
                             float *mod_alpha, float *mod_beta)
@@ -82,6 +102,9 @@ void Anti_Park_Transform_sc(float mod_d, float mod_q,
     *mod_beta = mod_d * sin_el + mod_q * cos_el;
 }
 
+/**
+ * @brief 三相到 αβ。Iα=Ia，Iβ=(Ib−Ic)/√3。
+ */
 void Clarke_Transform(float Ia, float Ib, float Ic, float *Ialpha, float *Ibeta)
 {
     *Ialpha = Ia;
@@ -136,6 +159,9 @@ static float svpwm_duty_dev(float ta, float tb, float tc)
     return da;
 }
 
+/**
+ * @brief 由 dq 电压和电角判断扇区，1..6。
+ */
 int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el)
 {
     float angle_ref;
@@ -331,6 +357,13 @@ static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
     svpwm_write_ccr(htim, Ta, Tb, Tc);
 }
 
+/**
+ * @brief 写出三相 PWM。不带电流重构补偿。
+ * @param axis 轴。不可为 NULL。
+ * @param Uq q 轴电压，单位 V。
+ * @param Ud d 轴电压，单位 V。
+ * @param angle_el 电角，单位 rad。
+ */
 void foc_svpwm_apply(bsp_axis_t *axis, float Uq, float Ud, float angle_el)
 {
     if (axis == NULL || axis->pwm == NULL || axis->pwm->hw == NULL) {
@@ -341,6 +374,9 @@ void foc_svpwm_apply(bsp_axis_t *axis, float Uq, float Ud, float angle_el)
                          0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
 }
 
+/**
+ * @brief 写出三相 PWM，并可按相电流做死区补偿。
+ */
 void foc_svpwm_apply_abc(bsp_axis_t *axis,
                          float Uq, float Ud, float angle_el,
                          float ia, float ib, float ic,

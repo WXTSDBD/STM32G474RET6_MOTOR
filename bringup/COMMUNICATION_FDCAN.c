@@ -1,10 +1,19 @@
+/**
+ * @file COMMUNICATION_FDCAN.c
+ * @date 2026-10-06
+ * @brief æ—©æœŸ FDCAN è°ƒé€Ÿå®ç°ã€‚ç°è¡Œç”µæµç¯ä¸èµ°è¿™é‡Œã€‚
+ *
+ * èŠ‚æ‹é™åˆ¶è§ COMMUNICATION_FDCAN.h æ–‡ä»¶å¤´ã€‚
+ * @note æœ¬å¤´ä¸ºåè¡¥ã€‚æºæ–‡ä»¶æ›´æ—©ï¼Œè¯ç”Ÿæ—¥æœŸä»¥ git ä¸ºå‡†ã€‚
+ */
+
 #include "COMMUNICATION_FDCAN.h"
 #include "main.h"
 #include "fdcan.h"
 #include "stdint.h"
 //motor_measure_t motor[7];
 //	uint8_t rx_data[8];
-// ĞÂµÄºê¶¨Òå£º´¦ÀíÃ¿¸öµç»úµÄÊı¾İ£¨×´Ì¬ºÍËÙ¶È£©
+// é‚æ‰®æ®‘ç€¹å¿“ç•¾æ¶”å¤›ç´°æ¾¶å‹­æ‚Šå§£å¿é‡œé¢å«æº€é¨å‹¬æšŸé¹ï¿½é”›å ¢å§¸é¬ä½¸æ‹°é–«ç†·å®³é”›ï¿½
 the_new_order order;
 #define deal_with_data(ptr, data, i) \
 { \
@@ -12,13 +21,13 @@ the_new_order order;
     uint8_t new_state = (uint8_t)((raw_value >> 15) & 0x01); \
     (ptr)->state = new_state; \
 	motor_now.state = (ptr)->state; \
-    /* ¸ù¾İ×´Ì¬¸üĞÂÄ¿±êÖµ */ \
+    /* éè§„åµé˜èˆµâ‚¬ä½¹æ´¿é‚æ‰®æ´°éå›§â‚¬ï¿½ */ \
     if (new_state == 0) { \
-        /* ×´Ì¬0£º¸üĞÂµçÁ÷Öµ£¨mAµ¥Î»£©*/ \
+        /* é˜èˆµâ‚¬ï¿½0é”›æ°­æ´¿é‚æ‰®æ•¸å¨´ä½¸â‚¬ç¡·ç´™mAé—æ›šç¶…é”›ï¿½*/ \
 		(ptr)->given_current = raw_value & 0x7FFF; \
         motor_now.I_target = (ptr)->given_current; \
     } else { \
-        /* ×´Ì¬1£º¸üĞÂËÙ¶ÈÖµ */ \
+        /* é˜èˆµâ‚¬ï¿½1é”›æ°­æ´¿é‚ä¼´â‚¬ç†·å®³éŠï¿½ */ \
 		(ptr)->speed = raw_value & 0x7FFF;     \
        motor_now.speed_target = (ptr)->speed; \
     } \
@@ -27,31 +36,31 @@ FDCAN_TxHeaderTypeDef TxHeader;
 FDCAN_RxHeaderTypeDef RxHeader;
 extern uint8_t TxData[8];
 extern uint8_t RxData[8];
-/*------------------------ FDCAN ÅäÖÃº¯Êı ------------------------*/
+/*------------------------ FDCAN é–°å¶‡ç–†é‘èŠ¥æšŸ ------------------------*/
 void FDCAN1_Config(void)
 {
     FDCAN_FilterTypeDef sFilterConfig;
 
-    /*---------------- 1. ÅäÖÃ±ê×¼IDÑÚÂëÂË²¨Æ÷£¨½ÓÊÜËùÓĞ±ê×¼ID£© ----------------*/
-    sFilterConfig.IdType       = FDCAN_STANDARD_ID;      // ±ê×¼IDÄ£Ê½
-    sFilterConfig.FilterIndex  = 0;                     // ÂË²¨Æ÷Ë÷Òı0
-    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;     // ÑÚÂëÄ£Ê½
-    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0; // ´æÈëRX FIFO0
-    sFilterConfig.FilterID1    = 0x200;                // Ä¿±êID = 0x0000
-    sFilterConfig.FilterID2    = 0x7FF;                // ÑÚÂë = 0x0000£¨È«²»¼ì²é£©
+    /*---------------- 1. é–°å¶‡ç–†éå›§å™¯IDéºâ•ƒçˆœå©Šã‚†å°é£ï¿½é”›å Ÿå¸´é™æ¥å¢éˆå¤‹çˆ£é‘å’ºDé”›ï¿½ ----------------*/
+    sFilterConfig.IdType       = FDCAN_STANDARD_ID;      // éå›§å™¯IDå¦¯â€³ç´¡
+    sFilterConfig.FilterIndex  = 0;                     // å©Šã‚†å°é£ã„§å‚¨å¯®ï¿½0
+    sFilterConfig.FilterType   = FDCAN_FILTER_MASK;     // éºâ•ƒçˆœå¦¯â€³ç´¡
+    sFilterConfig.FilterConfig = FDCAN_FILTER_TO_RXFIFO0; // ç€›æ¨ºå†RX FIFO0
+    sFilterConfig.FilterID1    = 0x200;                // é©ï¿½éå˜”D = 0x0000
+    sFilterConfig.FilterID2    = 0x7FF;                // éºâ•ƒçˆœ = 0x0000é”›å åæ¶“å¶†ï¿½â‚¬éŒãƒ¯ç´š
 
     HAL_FDCAN_ConfigFilter(&hfdcan1, &sFilterConfig);
-    /*---------------- 2. È«¾Ö¹ıÂËÆ÷ÅäÖÃ£¨¹Ø¼ü¾Ü¾øÀ©Õ¹IDºÍÔ¶³ÌÖ¡£© ----------------*/
+    /*---------------- 2. éã„¥çœ¬æ©å›¨æŠ¤é£ã„©å¤ç¼ƒï¿½é”›å å§é–¿ï¿½é·æ”ç²·éµâ•çIDéœå²ƒç¹™ç»‹å¬ªæŠšé”›ï¿½ ----------------*/
     HAL_FDCAN_ConfigGlobalFilter(
         &hfdcan1,
         FDCAN_REJECT, FDCAN_REJECT,
         FDCAN_FILTER_REMOTE, FDCAN_FILTER_REMOTE
     );
-    /*---------------- 3. Æô¶¯FDCAN²¢ÆôÓÃÍ¨Öª ----------------*/
+    /*---------------- 3. éšï¿½é”â€µDCANéªè·ºæƒé¢ã„©â‚¬æ°±ç…¡ ----------------*/
     HAL_FDCAN_Start(&hfdcan1);
     HAL_FDCAN_ActivateNotification(&hfdcan1, FDCAN_IT_RX_FIFO0_NEW_MESSAGE, 0);
     
-    /*---------------- 4. ·¢ËÍÅäÖÃ£¨±£³ÖÓëÔ­CANÒ»ÖÂ£© ----------------*/
+    /*---------------- 4. é™æˆ¦â‚¬ä¾€å¤ç¼ƒï¿½é”›å œç¹šé¸ä½·ç¬Œé˜çƒ ANæ¶“â‚¬é‘·è¾¾ç´š ----------------*/
     TxHeader.Identifier           = CAN1_M2_ID;
     TxHeader.IdType               = FDCAN_STANDARD_ID;
     TxHeader.TxFrameType          = FDCAN_DATA_FRAME;
@@ -63,20 +72,20 @@ void FDCAN1_Config(void)
     TxHeader.MessageMarker        = 0x00;
 }
     FDCAN_RxHeaderTypeDef rx_header;
-    uint8_t rx_data[8]; // ¹Ì¶¨8×Ö½ÚÊı¾İ£¨ÓëÔ­CAN¼æÈİ£©
-/*------------------------ FDCAN ½ÓÊÕ»Øµ÷º¯Êı ------------------------*/
+    uint8_t rx_data[8]; // é¥å“„ç•¾8ç€›æ¥„å¦­éç‰ˆåµé”›å œç¬Œé˜çƒ ANéç…ï¿½ç™¸ç´š
+/*------------------------ FDCAN éºãƒ¦æ•¹é¥ç‚¶çšŸé‘èŠ¥æšŸ ------------------------*/
 void HAL_FDCAN_RxFifo0Callback(FDCAN_HandleTypeDef *hfdcan, uint32_t RxFifo0ITs)
 {
 
 
-    // ¶ÁÈ¡ÏûÏ¢Í·ºÍÊı¾İ
+    // ç’‡è¯²å½‡å¨‘å Ÿä¼…æ¾¶æ‘æ‹°éç‰ˆåµ
      HAL_FDCAN_GetRxMessage(hfdcan, FDCAN_RX_FIFO0, &rx_header, rx_data); 
 
-    /* Ë«ÖØÑéÖ¤£ºÈ·±£ÊÇ±ê×¼IDÊı¾İÖ¡£¨·ÀÓùĞÔ±à³Ì£© */
+    /* é™å²„å™¸æ¥ å²ƒç˜‰é”›æ°±â€˜æ·‡æ¿‡æ§¸éå›§å™¯IDéç‰ˆåµç”¯Ñç´™é—ƒæ’å°½é¬Ñ…ç´ªç»‹å¬¶ç´š */
     if ((rx_header.IdType == FDCAN_STANDARD_ID) && 
         (rx_header.RxFrameType == FDCAN_DATA_FRAME)) 
     {
-                // ¼ÆËãµç»úË÷Òı£¨ÓëÔ­Âß¼­ÍêÈ«Ò»ÖÂ£©
+                // ç’ï¼„ç•»é¢å«æº€ç»±ãˆ ç´©é”›å œç¬Œé˜ç†¼â‚¬æ˜ç·«ç€¹å±½åæ¶“â‚¬é‘·è¾¾ç´š
 //                uint8_t i = TxHeader.Identifier - CAN1_M1_ID;
 // deal_with_data(&order, rx_data, i); //
     }
@@ -86,18 +95,18 @@ void FDCAN_MOTER_START(FDCAN_HandleTypeDef *hfdcan,
 	int16_t ecd, int16_t speed_rpm, int16_t given_current,int16_t temperate)
 {
 
-    // ×¼±¸ÏûÏ¢Êı¾İ
-// ´ó¶ËÄ£Ê½£¨¸ß8Î»ÔÚÇ°£©£¬Ê¹ÓÃÎ»ÑÚÂë·ÀÖ¹·ûºÅÀ©Õ¹ÎÊÌâ
-TxData[0] = (ecd >> 8);  // M1¸ß8Î»
-TxData[1] = ecd;        // M1µÍ8Î»
-TxData[2] = (speed_rpm >> 8);  // M2¸ß8Î»
-TxData[3] = speed_rpm;         // M2µÍ8Î»
-TxData[4] = (given_current >> 8);  // M3¸ß8Î»
-TxData[5] = given_current;         // M3µÍ8Î»
-TxData[6] = (temperate >> 8);  // M4¸ß8Î»
-TxData[7] = temperate;         // M4µÍ8Î»
+    // é‘å——ï¿½å›¨ç§·é­ï¿½éç‰ˆåµ
+// æ¾¶Ñ…ï¿½ï¿½å¦¯â€³ç´¡é”›å ¥ç®8æµ£å¶…æ¹ªé“å¶ç´šé”›å±¼å¨‡é¢ã„¤ç¶…éºâ•ƒçˆœé—ƒå‰ï¿½ãˆ¢ï¿½ï¹€å½¿éµâ•çé—‚ï¿½æ£°ï¿½
+TxData[0] = (ecd >> 8);  // M1æ¥‚ï¿½8æµ£ï¿½
+TxData[1] = ecd;        // M1æµ£ï¿½8æµ£ï¿½
+TxData[2] = (speed_rpm >> 8);  // M2æ¥‚ï¿½8æµ£ï¿½
+TxData[3] = speed_rpm;         // M2æµ£ï¿½8æµ£ï¿½
+TxData[4] = (given_current >> 8);  // M3æ¥‚ï¿½8æµ£ï¿½
+TxData[5] = given_current;         // M3æµ£ï¿½8æµ£ï¿½
+TxData[6] = (temperate >> 8);  // M4æ¥‚ï¿½8æµ£ï¿½
+TxData[7] = temperate;         // M4æµ£ï¿½8æµ£ï¿½
 
-    // ·¢ËÍÏûÏ¢
+    // é™æˆ¦â‚¬ä½¹ç§·é­ï¿½
     HAL_FDCAN_AddMessageToTxFifoQ(hfdcan, &TxHeader, TxData);
 }
 

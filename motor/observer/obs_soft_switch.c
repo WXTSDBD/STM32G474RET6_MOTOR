@@ -1,6 +1,11 @@
 /**
  * @file obs_soft_switch.c
- * @brief 软切状态机：门限武装 → α 融合 → 观测角；可选推迟切速。
+ * @date 2026-10-06
+ * @brief 编码器或 I-f 角到观测角的软切状态机。
+ *
+ * 角先进观测，速度可以稍后切。节拍限制见 obs_soft_switch.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "obs_soft_switch.h"
@@ -92,20 +97,35 @@
 #define OBS_SS_PI 3.14159265358979323846f
 #define OBS_SS_TWO_PI 6.28318530717958647692f
 
+/** 当前软切状态。 */
 static obs_ss_state_t s_state;
+/** 角融合系数 [0,1]。0 吃底角，1 吃观测角。 */
 static float s_alpha;
+/** 进门累计时间，单位 s。 */
 static float s_arm_s;
+/** 进门失败累计时间，单位 s。 */
 static float s_arm_fail_s;
+/** 融合已经过的时间，单位 s。 */
 static float s_blend_s;
+/** 掉速回退防抖时间，单位 s。 */
 static float s_rpm_trip_s;
+/** 1=观测角本拍有效。 */
 static uint8_t s_hat_valid;
+/** 1=速度反馈应走观测。 */
 static uint8_t s_spd_on_obs;
+/** 进入纯观测角之后过了多久，单位 s。 */
 static float s_obs_age_s;
+/** 切速门限连续满足时间，单位 s。 */
 static float s_spd_hold_s;
+/** 1=加速度估计已经有锚点。 */
 static uint8_t s_domega_inited;
+/** |Δω̂|/Δt，单位 rpm/s。 */
 static float s_domega_abs_rpm_s;
+/** 观测转速低通，单位 rpm。 */
 static float s_omega_obs_lp;
+/** 加速度窗的转速锚点，单位 rpm。 */
 static float s_omega_obs_lp_anchor;
+/** 加速度估计已经积了多久，单位 s。 */
 static float s_domega_win_s;
 
 static float obs_ss_wrap_pi(float x)
@@ -136,6 +156,9 @@ static void obs_ss_spd_reset(void)
     s_domega_win_s = 0.0f;
 }
 
+/**
+ * @brief 初始化软切，内部转到复位。
+ */
 void obs_soft_switch_init(void)
 {
     obs_soft_switch_reset();
@@ -153,6 +176,9 @@ void obs_soft_switch_reset(void)
     obs_ss_spd_reset();
 }
 
+/**
+ * @brief 读当前软切状态。
+ */
 obs_ss_state_t obs_soft_switch_get_state(void)
 {
     return s_state;
@@ -168,6 +194,9 @@ uint8_t obs_soft_switch_speed_on_obs(void)
     return (s_state == OBS_SS_OBS) ? 1u : 0u;
 }
 
+/**
+ * @brief 1=速度反馈应走观测侧。推迟打开时要等切速门限。
+ */
 uint8_t obs_soft_switch_speed_use_obs(void)
 {
 #if !M1_OBS_SS_SPEED_SWITCH_ENABLE
@@ -270,6 +299,19 @@ static void obs_ss_spd_defer_tick(float rpm_enc,
 }
 #endif /* SPD_DEFER */
 
+/**
+ * @brief 按门限推进状态，返回本拍 Park 电角。
+ * @param theta_enc 底角，单位 rad。
+ * @param theta_hat 观测角，单位 rad。
+ * @param theta_err 角误差，单位 rad。
+ * @param emag 反电势幅值。
+ * @param omega_enc_rpm 编码器机械转速，单位 rpm。
+ * @param omega_obs_rpm 观测机械转速，单位 rpm。
+ * @param omega_ref 速度指令，单位 rpm。
+ * @param iq Iq，单位 A。
+ * @param dt 节拍，单位 s。
+ * @return Park 用电角，单位 rad。
+ */
 float obs_soft_switch_apply(float theta_enc,
                             float theta_hat,
                             float theta_err,

@@ -1,7 +1,11 @@
 /**
  * @file ld_lq_ident.c
- * @brief (Id,Iq) 偏置 VASI：coarse+fine[+f2] 或 fine-only @1kHz；ψ 用 (U−U_bias) AC 分量。
- * OPEN_LOOP=1：SETTLE 闭环到偏置 → 注入段冻结 Ud/Uq + 叠 u_inj（论文 §2.3）。
+ * @date 2026-10-06
+ * @brief VASI Ld/Lq 辨识实现。
+
+ *
+ * 节拍限制见 ld_lq_ident.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "ld_lq_ident.h"

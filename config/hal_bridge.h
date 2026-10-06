@@ -1,8 +1,11 @@
 /**
  * @file hal_bridge.h
- * @brief CubeMX 生成的 HAL 句柄集中声明，供 config/、board/、platform/ 使用。
+ * @date 2026-10-06
+ * @brief CubeMX HAL 句柄集中声明。
+
  *
- * motor/ 不得 include 本文件。句柄定义仍由 Core/Inc 外设头与 CubeMX 生成。
+ * motor/ 不要 include 本头。句柄定义仍在 CubeMX 生成文件。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef HAL_BRIDGE_H

@@ -1,6 +1,11 @@
 /**
  * @file time_port_cortex_dwt.c
- * @brief Cortex-M DWT CYCCNT 时间 backend（非热路径）。
+ * @date 2026-10-06
+ * @brief 用 DWT 实现 time_port。
+
+ *
+ * 节拍限制见 time_port.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "time_port.h"
@@ -13,6 +18,9 @@ void time_port_init(uint32_t cpu_mhz)
     DWT_Init(cpu_mhz);
 }
 
+/**
+ * @brief 上电后的毫秒。
+ */
 uint32_t time_port_ms(void)
 {
     return (uint32_t)DWT_GetTimeline_ms();

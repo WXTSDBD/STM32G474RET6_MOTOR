@@ -1,6 +1,11 @@
 /**
  * @file speed_ident_flow.h
- * @brief 速度环 ident 编排：deadband OFF + VOFA open_seq。
+ * @date 2026-10-06
+ * @brief 速度环辨识编排。死区关掉，由外环推进 ω_ref。
+
+ *
+ * tick 随外环调用，仍在 ADC 注入完成中断的分频拍里。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef SPEED_IDENT_FLOW_H

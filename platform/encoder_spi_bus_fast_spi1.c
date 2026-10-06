@@ -1,7 +1,13 @@
 /**
- * SPI1 + DMA1 Ch2/Ch3 fast path (M1 @ 20kHz).
- * Hard-coded LL flags — no per-transfer channel switch.
+ * @file encoder_spi_bus_fast_spi1.c
+ * @date 2026-10-06
+ * @brief SPI1 快速 DMA 后端。M1 编码器用。
+
+ *
+ * dma_isr 只进 SPI1 对应 DMA 中断。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #include "encoder_spi_bus.h"
 
 #include <stddef.h>

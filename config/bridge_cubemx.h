@@ -1,8 +1,11 @@
 /**
  * @file bridge_cubemx.h
- * @brief CubeMX 生成 HAL 句柄 → bsp_axis 配置的唯一桥接头。
+ * @date 2026-10-06
+ * @brief CubeMX HAL 句柄到轴配置的唯一桥。
+
  *
- * 除本文件对应 .c 外，驱动层与 adc_sample 不得直接引用 hadc2/htim8 等符号。
+ * 驱动层不要直接引用 hadc2/htim8。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef BRIDGE_CUBEMX_H

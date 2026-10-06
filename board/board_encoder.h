@@ -1,3 +1,13 @@
+/**
+ * @file board_encoder.h
+ * @date 2026-10-06
+ * @brief 板级编码器实例。M1 已绑 DMA，M2 占位。
+
+ *
+ * dma_isr 只进 M1 编码器 DMA 中断。init 在上电调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #ifndef BOARD_ENCODER_H
 #define BOARD_ENCODER_H
 

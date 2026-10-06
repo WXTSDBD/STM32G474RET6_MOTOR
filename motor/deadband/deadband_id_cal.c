@@ -1,6 +1,11 @@
 /**
  * @file deadband_id_cal.c
- * @brief Id 锁轴扫表状态机（Pass0 capture / commit / Iq 探路）。
+ * @date 2026-10-06
+ * @brief Id 锁轴扫表编排实现。
+
+ *
+ * 节拍限制见 deadband_id_cal.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_id_cal.h"

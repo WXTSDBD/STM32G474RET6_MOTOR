@@ -1,3 +1,13 @@
+/**
+ * @file as5047_protocol.c
+ * @date 2026-10-06
+ * @brief AS5047 奇偶、读命令、阻塞读和 unwrap。
+
+ *
+ * 阻塞读只给初始化用。热路径走异步双帧。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "as5047.h"
 
 #include "gpio.h"
@@ -5,6 +15,9 @@
 #define AS5047_TWO_PI_F        AS5047_TWO_PI
 #define AS5047_ANGLE_SCALE_F   AS5047_ANGLE_SCALE
 
+/**
+ * @brief 偶校验位。
+ */
 uint16_t as5047_parity_bit_calculate(uint16_t data)
 {
     uint16_t parity = 0U;
@@ -16,6 +29,9 @@ uint16_t as5047_parity_bit_calculate(uint16_t data)
     return (uint16_t)(parity & 0x1U);
 }
 
+/**
+ * @brief 拼读命令并补校验。
+ */
 uint16_t as5047_build_read_cmd(uint16_t reg)
 {
     reg |= 0x4000u;
@@ -37,6 +53,9 @@ static uint16_t as5047_spi_xfer_word(AS5047_HandleTypeDef *dev, uint16_t tx)
     return rx;
 }
 
+/**
+ * @brief 双帧阻塞读寄存器。只给初始化。
+ */
 uint16_t as5047_blocking_read(AS5047_HandleTypeDef *dev, uint16_t reg)
 {
     uint16_t data;
@@ -46,6 +65,9 @@ uint16_t as5047_blocking_read(AS5047_HandleTypeDef *dev, uint16_t reg)
     return (uint16_t)(data & AS5047_RAW_MASK);
 }
 
+/**
+ * @brief 过零加减 2π，返回多圈机械角，单位 rad。
+ */
 float as5047_unwrap(as5047_ctx_t *ctx, uint16_t raw)
 {
     int32_t d;
@@ -68,6 +90,9 @@ float as5047_unwrap(as5047_ctx_t *ctx, uint16_t raw)
 AS5047_HandleTypeDef AS5047_spi1_PORT;
 AS5047_HandleTypeDef AS5047_spi3_PORT;
 
+/**
+ * @brief 绑 SPI 和片选，片选拉高。
+ */
 void AS5047_Init(AS5047_HandleTypeDef *dev, SPI_HandleTypeDef *hspi,
                  GPIO_TypeDef *cs_port, uint16_t cs_pin)
 {
@@ -79,6 +104,9 @@ void AS5047_Init(AS5047_HandleTypeDef *dev, SPI_HandleTypeDef *hspi,
     AS5047_CS_H(dev);
 }
 
+/**
+ * @brief 阻塞读。热路径不要用。
+ */
 uint16_t AS5047_read(AS5047_HandleTypeDef *dev, uint16_t reg)
 {
     return as5047_blocking_read(dev, reg);

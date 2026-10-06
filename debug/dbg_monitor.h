@@ -1,8 +1,12 @@
 /**
  * @file dbg_monitor.h
- * @brief VOFA / Watch 调试镜像（与 CubeMX main 解耦，Service 层可安全 include）。
+ * @date 2026-10-06
+ * @brief VOFA 和 Watch 用的调试镜像。
+
  *
- * 实例 `dbg` 定义在 debug/dbg_monitor.c；App 层通过 main.h 间接包含本头亦可。
+ * ISR 写，任务只读。不要从 dbg 回写控制。
+ * 成员旁已有单位的以成员为准。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DBG_MONITOR_H

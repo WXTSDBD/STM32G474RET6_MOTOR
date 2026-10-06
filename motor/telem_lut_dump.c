@@ -1,6 +1,11 @@
 /**
  * @file telem_lut_dump.c
- * @brief VOFA JustFloat LUT 表突发（M1_VOFA_LUT_DUMP_ENABLE 控制编译）。
+ * @date 2026-10-06
+ * @brief LUT 突发状态机。
+
+ *
+ * 节拍限制见 telem_lut_dump.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "telem_lut_dump.h"

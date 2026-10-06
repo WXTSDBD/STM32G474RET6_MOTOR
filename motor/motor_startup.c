@@ -1,6 +1,11 @@
 /**
  * @file motor_startup.c
- * @brief Uq 开环拖动 → bumpless + Iq 斜坡 → 编码器电流闭环。
+ * @date 2026-10-06
+ * @brief Uq 开环拖动，再无扰切到编码器电流闭环。
+ *
+ * 节拍限制见 motor_startup.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_startup.h"
@@ -15,14 +20,23 @@
 
 #if M1_STARTUP_ENABLE
 
+/** 当前启动状态。 */
 static m1_startup_state_t s_state;
+/** 状态内拍计数。 */
 static uint32_t s_tick;
+/** 开环电角，单位 rad。 */
 static float s_theta_open;
+/** 上一拍编码器电角，用来估转速。 */
 static float s_theta_enc_prev;
+/** 1=已经有上一拍编码器角。 */
 static uint8_t s_theta_enc_prev_valid;
+/** 对照机械转速低通，单位 rpm。 */
 static float s_rpm_filt;
+/** 进入闭环后的拍计数。 */
 static uint32_t s_closed_tick;
+/** 切环那一拍的 Iq，单位 A。 */
 static float s_iq_at_switch;
+/** 1=本拍应对 PI 做无扰。 */
 static uint8_t s_bumpless_arm;
 
 static uint32_t startup_ticks_from_s(float s)
@@ -130,6 +144,9 @@ static float startup_iq_ref_ramped(motor_context_t *ctx)
     }
 }
 
+/**
+ * @brief 清启动状态。
+ */
 void motor_startup_init(motor_context_t *ctx)
 {
     (void)ctx;
@@ -142,6 +159,9 @@ void motor_startup_arm(motor_context_t *ctx)
     startup_goto_run();
 }
 
+/**
+ * @brief 读当前启动状态。
+ */
 m1_startup_state_t motor_startup_get_state(void)
 {
     return s_state;
@@ -243,6 +263,10 @@ motor_startup_step_t motor_startup_tick(motor_context_t *ctx, float theta_enc_pa
     return out;
 }
 
+/**
+ * @brief Park 后：Iq 斜坡和切环无扰标志，必须同拍。
+ * @param iq_meas 测量 Iq，单位 A。
+ */
 void motor_startup_finish_tick(motor_context_t *ctx, float iq_meas,
                                motor_startup_step_t *step)
 {

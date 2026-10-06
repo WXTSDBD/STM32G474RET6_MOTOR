@@ -1,6 +1,11 @@
 /**
  * @file emf_veq.c
- * @brief Veq EMF observer — ISR: mul/add only; coeffs at init.
+ * @date 2026-10-06
+ * @brief 电压方程反电势。系数在 init 预计算。
+ *
+ * 默认不进 Park。节拍限制见 emf_veq.h 文件头。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "emf_veq.h"
@@ -74,6 +79,10 @@ static void emf_veq_coeff_init(void)
     s_coeff_ready = 1u;
 }
 
+/**
+ * @brief 预计算系数并复位。
+ * @param o 观测器。不可为 NULL。
+ */
 void emf_veq_init(emf_veq_t *o)
 {
     if (s_coeff_ready == 0u) {
@@ -82,6 +91,10 @@ void emf_veq_init(emf_veq_t *o)
     emf_veq_reset(o);
 }
 
+/**
+ * @brief 清上一拍电流和反电势。保留系数。
+ * @param o 观测器。不可为 NULL。
+ */
 void emf_veq_reset(emf_veq_t *o)
 {
     if (o == NULL) {
@@ -103,6 +116,16 @@ void emf_veq_reset(emf_veq_t *o)
     o->psi_inst = 0.0f;
 }
 
+/**
+ * @brief 用已反 Park 的 uαβ 和 iαβ 估计反电势。
+ * @param o 观测器。不可为 NULL。
+ * @param i_alpha α 电流，单位 A。
+ * @param i_beta β 电流，单位 A。
+ * @param u_alpha α 电压，单位 V。须与 FOC 同一组正余弦。
+ * @param u_beta β 电压，单位 V。
+ * @param theta_enc 对照电角，单位 rad。
+ * @param omega_mech_rpm 机械转速，单位 rpm。
+ */
 void emf_veq_update(emf_veq_t *o,
                     float i_alpha, float i_beta,
                     float u_alpha, float u_beta,

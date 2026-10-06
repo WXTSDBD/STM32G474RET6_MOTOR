@@ -1,41 +1,22 @@
 # 注释规范
 
+自研 C 的注释以 [docs/代码注释规范.md](../../docs/代码注释规范.md) 为准。本文只留执行时不能违反的几条。
+
 ## 适用范围
 
-`bringup/`、`config/`、`board/`、`drivers/`、`motor/`、`platform/` 的新增与较大改动。
+`bringup/`、`config/`、`board/`、`Drivers/`（自研）、`motor/`、`platform/` 的新增与补注释。
 
-**不适用**：CubeMX 生成的 `Core/Src/*.c`（勿手改）、第三方 Middleware。
+不适用：CubeMX 生成的 `Core/Src/*.c`、`Core/Inc/*.h`，第三方 Middleware。
 
-## 铁律
+## 执行要点
 
-1. **文件头 `@file` + `@brief`**。3-6 行说清这个文件干什么、不该干什么。架构约束写进注释——driver 不含板级 HAL 句柄、bridge 是唯一填 HAL 指针的地方。driver 和 bridge 的注释互相对上。
-
-2. **`.c` 里每个函数加 `@brief`**。一行说清做什么。`static` 函数也要。
-
-3. **多参数或有坑的函数加 `@param` + `@note`**。`@note` 写调用顺序限制、ISR 安全性、和 CubeMX Generate 的关系——这些比参数说明更重要。
-
-4. **不用废话注释。** 注释解释「为什么 / 边界 / 顺序」，不重复「是什么」——代码已经告诉了你做了什么。
-   ❌ "循环遍历 channels"
-   ✅ "前 discard 帧丢弃，避免 TIM 刚启动采样不稳定"
-
-5. **不用英文写注释。** 除 `@file/@brief/@param/@return/@note/@see` 标签和符号名。
-
-6. **映射关系用注释列表。** switch/结构体做硬件绑定的地方，在文件头或函数前写映射表。
-   ```
-   当前映射：
-     M1 — hadc2 JDR1/2/3，TIM8 CH4 触发，TIM8 PWM
-     M2 — 占位；TIM1，ADC 待定
-   ```
-
-7. **改 binding/bridge 映射时同步改注释。** 防文档漂移。
-
-## .h / .c 分工
-
-- **.h**：文件头 + 类型/枚举一行说明（调用方必须知道的语义）。不写函数 `@brief`（除非 inline 且实现在 .h）。
-- **.c**：所有函数 `@brief` / `@param` / `@return`。不重复 .h 已有的类型说明。
-
-## 金样参照
-
-- `bringup/adc_sample/adc_sample.c` — 函数注释密度 + `@note` 写法
-- `config/bridge_cubemx.c` — 映射表注释 + "CubeMX 句柄变化只需改本文件"
-- `config/bsp_axes.c` — init 顺序注释
+1. `.c` 和 `.h` 都要有文件头：`@file`、`@date`、`@brief`，以及职责边界。`@date` 是文件头写入日，后补旧文件要注明不是诞生日期。写入后不改 `@date`。
+2. 函数的 `/** */` 只写在 `.c` 的定义上（含 `static`）。`.h` 函数声明不写注释。唯一例外是实现就在 `.h` 里的 `static inline`。
+3. 同一约束只写一处。节拍、中断号、调错会打电机的限制只写在该 `.h` 的文件头。`.c` 的 `@note` 只写函数内部顺序、profile 关系和调用方看不见的状态，不复述节拍。
+4. 新文件和正在改的函数按规范 §5 给每个函数写 `@brief`。旧文件按 §12，先文件头、枚举和热路径约束，不要一次铺满所有 `static`。
+5. 宏第一刀只写仍被读到的。故障门、注入幅值、PLL 死区在 `hfi_sqwave.c`，不在 `motor_params_m1.h`。`motor_params_m1.h` 不要铺完整文件，只写其中仍被读到的（如发布门槛、速度反馈）。没有引用点的不写「改了会怎样」。头文件保护宏和纯别名不写。
+6. 文件级变量、结构体成员、以及要写的宏，说明用途和单位。
+7. 正文中文，源文件 UTF-8 无 BOM。块注释正文不得再出现 `/*`（armclang `-Wcomment`，Warning 加 1，0 Warning 验收失败）。电压写 ud/uq，不写 `*ud`。不用 `Get-Content`/`Set-Content` 整文件改写，不引入字节 `0x85`。
+8. 实验编号、录波文件名、施工计划不进注释。补 `hfi_sqwave` 的阶段名对着源码里的 `IDLE/MOVE/SETTLE/MEAS/LOG/DONE/CRAWL/RUN`，不照抄规范样例里的 HOLD/CAPTURE。
+9. 纯注释提交不改逻辑、不改宏数值、不动故障门和 `INIT_FROM_ENC`，不算解冻。Size 必须与动手前 `rebuild_log.txt` 的 `Program Size` 逐字相同；改过的翻译单元 `-E -dM` diff 为 0。不要用 `-E -dD` 当通过条件（行号标记会漂）。只有动到 `s_eps`、AUTH、ATAN2 或 12 通道映射才重录金样。
+10. 改硬件映射时，文件头里的映射表一起改。

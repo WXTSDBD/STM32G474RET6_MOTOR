@@ -1,6 +1,11 @@
 /**
  * @file ident_module.c
- * @brief 堵转辨识激励：Iq 阶跃 + Bode sin（Iq 或 Id 轴，deadband 档位由 ident_flow 切换）。
+ * @date 2026-10-06
+ * @brief 堵转辨识激励发生器。
+
+ *
+ * 节拍限制见 ident_module.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "ident_module.h"
@@ -211,6 +216,9 @@ static void ident_bode_advance_freq(void)
 }
 #endif
 
+/**
+ * @brief 从 HOLD 开始。
+ */
 void ident_module_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -249,6 +257,9 @@ uint8_t ident_module_get_phase_in_round(void)
     return s_phase_in_round;
 }
 
+/**
+ * @brief 写出本拍 Iq/Id 激励。
+ */
 void ident_module_tick(motor_context_t *ctx)
 {
 #if M1_IDENT_IQ_BODE_ENABLE

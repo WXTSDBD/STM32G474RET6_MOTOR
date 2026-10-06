@@ -1,9 +1,14 @@
 /**
  * @file obs_angle.h
- * @brief P6: 电流环角路径三入口（转发 HFI on_angle / park_theta / on_current）。
+ * @date 2026-10-06
+ * @brief 电流环角路径三入口：Park 前、取角、Park 后。
  *
- * theta_enc 只是今日相位 1 输入，不等于规划 §4.1。本头不是 F5。
+ * 转发到 HFI 的 on_angle / park_theta / on_current。发布覆盖不在本头。
+ * 三个函数只允许从电流环节拍调用。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef MOTOR_OBSERVER_OBS_ANGLE_H
 #define MOTOR_OBSERVER_OBS_ANGLE_H
 

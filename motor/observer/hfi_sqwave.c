@@ -1,6 +1,12 @@
 /**
  * @file hfi_sqwave.c
- * @brief HFI 旁路 / δ 扫描 / IPD 扫位（Ud 摆位+多轮脉冲，供离线分析。
+ * @date 2026-10-06
+ * @brief 脉振方波 HFI：解调、PLL、注入、起动阶段机。
+ *
+ * 本文件负责估计角和注入电压。发布角、电流环编排不在这里。
+ * 节拍限制见 hfi_sqwave.h 文件头，这里不重复。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 #include "hfi_sqwave.h"
 #include "observer/obs_cfg.h"
@@ -20,6 +26,7 @@
 #ifndef M1_ENC_OPTIONAL_ENABLE
 #define M1_ENC_OPTIONAL_ENABLE          0
 #endif
+/** 高频注入电压幅值，单位 V。复位时写入。默认 2.0；profile 可覆盖。 */
 #ifndef M1_HFI_VH_V
 #define M1_HFI_VH_V                     2.0f
 #endif
@@ -338,8 +345,11 @@
 #ifndef M1_HFI_PLL_INT_MAX
 #define M1_HFI_PLL_INT_MAX              M1_HFI_PLL_W_MAX
 #endif
+/**
+ * PLL 角误差死区，单位 rad。复位时写入。0 表示关闭。默认 0；profile 可覆盖。
+ */
 #ifndef M1_HFI_PLL_EPS_DEAD
-#define M1_HFI_PLL_EPS_DEAD             0.0f /* 0=关闭；启。profile 。~0.02 */
+#define M1_HFI_PLL_EPS_DEAD             0.0f
 #endif
 #ifndef M1_HFI_PLL_SKIP_X_BELOW_A
 #define M1_HFI_PLL_SKIP_X_BELOW_A       0
@@ -604,8 +614,14 @@
 #ifndef M1_HFI_QKICK_BRAKE_N
 #define M1_HFI_QKICK_BRAKE_N            400u /* 20 ms；AFTER_LOCK 切相可能仍读 */
 #endif
+/**
+ * 踢段结束后的位移门槛，单位电角 rad。默认 0.03，约 1.7°。
+ * |Δθ_enc| 低于此值视为没有转起来。
+ * 编码器可选编译打开时不拒判，按北锁；否则拒判并进入故障锁。
+ * 这是故障门。补注释不改这个数。
+ */
 #ifndef M1_HFI_QKICK_DTH_MIN_RAD
-#define M1_HFI_QKICK_DTH_MIN_RAD        0.03f /* ~1.7°el：无运动。*/
+#define M1_HFI_QKICK_DTH_MIN_RAD        0.03f
 #endif
 #ifndef M1_HFI_QKICK_SETTLE_MAX_N
 #define M1_HFI_QKICK_SETTLE_MAX_N       1000u
@@ -618,6 +634,10 @@
 #endif
 /* 脉冲电压表：一次实验扫多档，LOG 。ch5=该档 Ud [V] */
 
+/**
+ * IPD 子相位。ALIGN 摆位；SETTLE0 等电流；P0 第一脉冲；
+ * SETTLE1 再等；P1 第二脉冲。
+ */
 enum {
     HFI_IPD_ALIGN = 0,
     HFI_IPD_SETTLE0,
@@ -626,36 +646,67 @@ enum {
     HFI_IPD_P1
 };
 
+/** 当前起动阶段。 */
 static hfi_stage_t s_stage;
+/** 捕锁状态。未锁不用 θ̂ 做 Park。 */
 static hfi_lock_t s_lock;
+/** 连续满足锁条件的拍数。 */
 static uint16_t s_lock_cnt;
+/** 指令电角，单位 rad。 */
 static float s_theta_cmd;
+/** 估计电角 θ̂，单位 rad。 */
 static float s_theta_hat;
+/** wrap(θ̂ − θ_enc)，单位 rad。 */
 static float s_theta_err;
+/** 解调误差 ε。 */
 static float s_eps;
-static float s_e_pll; /* VESC V4 残差；未开宏时等于 s_eps */
+/** VESC 型残差。未开对应宏时等于 s_eps。 */
+static float s_e_pll;
+/** 半周差分 di_q。 */
 static float s_di_q;
-static float s_di_d;     /* 半周差分 di_d，未。prev_sign */
-static float s_x_raw;    /* XY_X_SIGN * prev_sign * di_d */
-static float s_y_raw;    /* XY_Y_SIGN * prev_sign * di_q */
+/** 半周差分 di_d。 */
+static float s_di_d;
+/** 未滤波 saliency x。 */
+static float s_x_raw;
+/** 未滤波 saliency y。 */
+static float s_y_raw;
+/** 注入符号，+1 或 -1。 */
 static float s_vh_sign;
-static float s_vh_v; /* 运行时注入幅值；扫腿时按表切。*/
-static float s_vh_scale = 1.0f; /* 交接。 全注入，0 关掉。不。Vh 标称。*/
-static uint8_t s_id_pi_release; /* 1：允。Id PI（交。Park 已到 SMO。*/
-static uint16_t s_id_pi_soft_n; /* 放行。Ud 软开计数（自动爬坡） */
-static float s_id_pi_soft_cmd;  /* >=0：交接外给定权重。0：走自动爬坡 */
-static uint8_t s_torque_ov;      /* 1：力矩角由交接写入，不是 θ̂ */
+/** 运行时注入幅值，单位 V。复位写入标称，扫腿时按表切。 */
+static float s_vh_v;
+/** 注入幅值系数。1 为全注入，0 关掉。不改标称 Vh。 */
+static float s_vh_scale = 1.0f;
+/** 1=允许恢复 Id PI。交接 Park 已到 SMO 且注入已灭后才置位。 */
+static uint8_t s_id_pi_release;
+/** 放行后 Ud 软开计数。自动爬坡用。 */
+static uint16_t s_id_pi_soft_n;
+/** 交接外给定权重。[0,1] 有效；负值走自动爬坡。 */
+static float s_id_pi_soft_cmd;
+/** 1=力矩角由交接写入，不是 θ̂。 */
+static uint8_t s_torque_ov;
+/** 交接写入的力矩电角，单位 rad。 */
 static float s_torque_theta;
-static uint8_t s_hat_hold;       /* 1：。不再写入 θ̂ */
-static float s_omega_coast;      /* 保持。θ̂ 按这个电角速度。[rad/s] */
+/** 1=ε 不再写入 θ̂，角度按保持速度积分。 */
+static uint8_t s_hat_hold;
+/** 保持期间用电角速度，单位 rad/s。 */
+static float s_omega_coast;
+/** 当前阶段已经过的时间，单位 s。 */
 static float s_stage_t;
+/** 本拍编码器电角，单位 rad。编码器可选打开时可能是浮空值。 */
 static float s_theta_enc;
+/** d 轴注入电压，单位 V。 */
 static float s_ud_inj;
+/** q 轴注入电压，单位 V。 */
 static float s_uq_inj;
+/** 上一拍注入轴 Id，用于半周差分。 */
 static float s_id_inj_prev;
+/** 上一拍注入轴 Iq，用于半周差分。 */
 static float s_iq_inj_prev;
+/** 1=已经有上一拍注入电流。 */
 static uint8_t s_inj_prev_valid;
+/** 慢环 Id，单位 A。 */
 static float s_id_inj_slow;
+/** 慢环 Iq，单位 A。 */
 static float s_iq_inj_slow;
 #if M1_HFI_DEMOD_INJ_AXIS
 static float s_ia_now;
@@ -671,49 +722,90 @@ static float s_pair_di_q;
 static uint8_t s_pair_ready;
 #endif
 /* θ̂ 自身转速的低通。118 用它做积分上限，119 的积分直接等于它。编码器不参与。 */
+/** θ̂ 自身转速的低通，单位 rad/s 电。编码器不参与。 */
 static float s_speed_est;
+/** 注入半周符号。 */
 static float s_sign;
+/** ε 低通。 */
 static float s_eps_lp;
-static float s_x_lp;     /* x_raw 向量 LPF；初。A_cmd，避。atan2(0,-A) */
-static float s_iq_auth_abs;   /* 当前 |Iq| 天花。*/
+/** x_raw 向量低通。初值用 A_cmd，避免 atan2(0, -A)。 */
+static float s_x_lp;
+/** 质量门给出的 |Iq| 天花板，单位 A。 */
+static float s_iq_auth_abs;
+/** 质量连续过线拍数。 */
 static uint16_t s_iq_auth_good_n;
+/** 质量连续掉线拍数。 */
 static uint16_t s_iq_auth_bad_n;
-static uint8_t s_iq_auth_ok;  /* 1=质量过线，目。HI */
-static uint8_t s_iq_auth_hold; /* 1：注入故意关掉，天花板留。HI */
+/** 1=质量过线。 */
+static uint8_t s_iq_auth_ok;
+/** 1=注入故意关掉时仍把天花板留在高档。 */
+static uint8_t s_iq_auth_hold;
+/** y_raw 向量低通。 */
 static float s_y_lp;
+/** PLL 积分项，单位 rad/s 电。 */
 static float s_pll_int;
-static float s_pll_eps_dead; /* 运行时死区；扫档时按表切。*/
+/** 运行时 ε 死区，单位 rad。扫档时按表切。 */
+static float s_pll_eps_dead;
+/** 极性确认累计拍数。 */
 static uint16_t s_polarity_cnt;
+/** 电角速度前馈，单位 rad/s。 */
 static float s_omega_ff_el;
+/** 合成电角速度，单位 rad/s。 */
 static float s_omega_el;
+/** PLL 修正量，不含编码器前馈，单位 rad/s 电。 */
 static float s_omega_trim_el;
-static float s_sh_int; /* 影子：无 ω_ff，跟主环 θ̂（凸极），不。Park */
+/** 影子 PLL 积分。无前馈，跟主环 θ̂，不进 Park。 */
+static float s_sh_int;
+/** 影子电角速度，单位 rad/s。 */
 static float s_sh_w;
+/** 影子电角，单位 rad。 */
 static float s_sh_th;
+/** 1=影子已经种过初值。 */
 static uint8_t s_sh_seed;
+/**
+ * 踢段子相位。SEED 种角；KICK 加 Iq；BRAKE 刹住。
+ */
 enum {
     HFI_QK_SEED = 0,
     HFI_QK_KICK = 1,
     HFI_QK_BRAKE = 2
 };
-static uint16_t s_qk_seed_i;    /* SWEEP:0/1；AFTER_LOCK:0正常/1强制π */
+/** 种子脚：0=θ_cmd，1=θ_cmd+π。 */
+static uint16_t s_qk_seed_i;
+/** 当前子相位已经过的拍数。 */
 static uint16_t s_qk_cnt;
+/** 当前踢段子相位。 */
 static uint8_t s_qk_phase;
+/** 1=本拍由踢段改写电压。 */
 static uint8_t s_qk_ov;
+/** 踢段 Ud，单位 V。 */
 static float s_qk_ud;
+/** 踢段 Uq，单位 V。 */
 static float s_qk_uq;
+/** 踢段 Iq 指令，单位 A。 */
 static float s_qk_iq_ref;
+/** 踢段 Id 指令，单位 A。 */
 static float s_qk_id_ref;
+/** 踢段 |I|，单位 A。 */
 static float s_qk_iabs;
+/** 踢段开始时的编码器电角，单位 rad。 */
 static float s_qk_enc0;
-static float s_qk_hat0;         /* AFTER_LOCK：踢。θ̂0（无感尺子） */
+/** 踢段开始时的 θ̂，单位 rad。 */
+static float s_qk_hat0;
+/** 踢段位移，单位电角 rad。 */
 static float s_qk_dth;
-static float s_qk_verdict;      /* +1 keep / -1 flipped / 0 nomotion */
+/** 判决：+1 符合，-1 不符，0 几乎无运动。 */
+static float s_qk_verdict;
+/** 1=上层应复位电流 PI。读一次清。 */
 static uint8_t s_qk_pi_reset;
+/** 上一拍编码器电角，用来算 Δθ。 */
 static float s_qk_enc_prev;
+/** 1=已经有上一拍编码器角。 */
 static uint8_t s_qk_enc_prev_valid;
-static uint8_t s_qk_done;       /* 本开机只踢一。*/
-static uint8_t s_qk_pol_done;   /* CRAWL 。ω̂ 极性已。*/
+/** 1=本开机已经踢过一次。 */
+static uint8_t s_qk_done;
+/** 1=CRAWL 里 ω̂ 极性已经处理。 */
+static uint8_t s_qk_pol_done;
 
 /**
  * @brief VESC HFI V4：q 轴 di / (Vh·(1/Lq−1/Ld))
@@ -1270,7 +1362,7 @@ static void hfi_qk_set_zero_u(void)
 
 /**
  * @brief 踢段结束：用 Δθ_enc 判南北，并把冻住期间的轴位移补回 θ̂。
- * @note MEAS 。PLL。正。θ̂+=dth；反。θ̂+=dth+π。246：只。π 会落。q 再掉回南）。
+ * @note 正转补位移不翻 π。反转补位移再加 π。位移太小且编码器可选打开时按北锁。
  */
 static void hfi_qk_decide_after_lock(void)
 {
@@ -1406,11 +1498,17 @@ static void hfi_qk_on_meas(void)
     }
 }
 
+/**
+ * @brief 初始化方波 HFI，内部转到复位。
+ */
 void hfi_sqwave_init(void)
 {
     hfi_sqwave_reset();
 }
 
+/**
+ * @brief 清阶段、估计角、注入和 PLL 积分。
+ */
 void hfi_sqwave_reset(void)
 {
     s_stage = HFI_STAGE_IDLE;
@@ -1474,11 +1572,20 @@ void hfi_sqwave_reset(void)
     (void)M1_HFI_FH_HZ;
 }
 
+/**
+ * @brief 写入电角速度前馈。
+ * @param omega_el_rad_s 电角速度，单位 rad/s。
+ */
 void hfi_sqwave_set_omega_ff_el(float omega_el_rad_s)
 {
     s_omega_ff_el = omega_el_rad_s;
 }
 
+/**
+ * @brief Park 前推进估计角和阶段机。
+ * @param theta_enc_el 编码器电角，单位 rad。编码器可选打开时不要当控制量。
+ * @param dt 节拍，单位 s。
+ */
 void hfi_sqwave_on_angle(float theta_enc_el, float dt)
 {
     const float run_total_s = hfi_run_total_s();
@@ -1539,6 +1646,13 @@ void hfi_sqwave_on_angle(float theta_enc_el, float dt)
     }
 }
 
+/**
+ * @brief Park 后解调。半周差分用注入轴电流。
+ * @param id Park 后 Id，单位 A。
+ * @param iq Park 后 Iq，单位 A。
+ * @param i_alpha α 电流，单位 A。
+ * @param i_beta β 电流，单位 A。
+ */
 void hfi_sqwave_on_current(float id, float iq, float i_alpha, float i_beta)
 {
 #if M1_HFI_DEMOD_INJ_AXIS
@@ -1576,6 +1690,11 @@ void hfi_sqwave_on_current(float id, float iq, float i_alpha, float i_beta)
     }
 }
 
+/**
+ * @brief 选出本拍 Park 电角。
+ * @param theta_enc_el 编码器电角，单位 rad。无感打开时不要改回吃它。
+ * @return Park 用电角，单位 rad。
+ */
 float hfi_sqwave_park_theta(float theta_enc_el)
 {
     if ((s_stage == HFI_STAGE_MEAS) || (s_stage == HFI_STAGE_LOG)) {
@@ -1590,6 +1709,12 @@ float hfi_sqwave_park_theta(float theta_enc_el)
     return theta_enc_el;
 }
 
+/**
+ * @brief 需要时改写 dq 电压。
+ * @param ud d 轴电压，单位 V。不可为 NULL。
+ * @param uq q 轴电压，单位 V。不可为 NULL。
+ * @return 1=本拍改写了。
+ */
 uint8_t hfi_sqwave_override_voltage(float *ud, float *uq)
 {
     if (ud == NULL || uq == NULL) {
@@ -1612,6 +1737,11 @@ uint8_t hfi_sqwave_override_voltage(float *ud, float *uq)
     return 1u;
 }
 
+/**
+ * @brief 读 dq 注入电压。
+ * @param ud_inj d 轴注入，单位 V。可为 NULL。
+ * @param uq_inj q 轴注入，单位 V。可为 NULL。
+ */
 void hfi_sqwave_get_inj(float *ud_inj, float *uq_inj)
 {
     /* INJECT_POST_LOOP：dq 注入口置 0，定子注入走 get_inj_ab */
@@ -1623,6 +1753,11 @@ void hfi_sqwave_get_inj(float *ud_inj, float *uq_inj)
     }
 }
 
+/**
+ * @brief 读 αβ 注入电压。
+ * @param u_alpha_inj α 注入，单位 V。可为 NULL。
+ * @param u_beta_inj β 注入，单位 V。可为 NULL。
+ */
 void hfi_sqwave_get_inj_ab(float *u_alpha_inj, float *u_beta_inj)
 {
     float ua = 0.0f;
@@ -1645,24 +1780,38 @@ void hfi_sqwave_get_inj_ab(float *u_alpha_inj, float *u_beta_inj)
     }
 }
 
+/**
+ * @brief 读 HFI 给出的 Iq 指令。
+ * @return Iq，单位 A。
+ */
 float hfi_sqwave_get_iq_ref(void)
 {
     /* 踢段：s_qk_iq_ref */
     return s_qk_iq_ref;
 }
 
+/**
+ * @brief 读 HFI 给出的 Id 指令。
+ * @return Id，单位 A。
+ */
 float hfi_sqwave_get_id_ref(void)
 {
     return s_qk_id_ref;
 }
 
 
+/**
+ * @brief 1=应开速度环。δ 扫描恒为 0。
+ */
 uint8_t hfi_sqwave_speed_run_active(void)
 {
     /* C4r：THEN_HFI 踢完再开速度环；勿开 QKICK_SPEED（与 THEN_HFI 互斥。*/
     return ((s_stage == HFI_STAGE_RUN) && (s_qk_done != 0u)) ? 1u : 0u;
 }
 
+/**
+ * @brief RUN 内速度指令，单位 rpm。CRAWL 短 I-f 时为 ω_cmd。
+ */
 float hfi_sqwave_get_speed_ref_rpm(void)
 {
     if (s_stage == HFI_STAGE_RUN) {
@@ -1671,106 +1820,170 @@ float hfi_sqwave_get_speed_ref_rpm(void)
     return 0.0f;
 }
 
+/**
+ * @brief 1=CRAWL 内短 I-f 离零进行中。
+ */
 uint8_t hfi_sqwave_if_leave_active(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 读当前起动阶段。
+ */
 hfi_stage_t hfi_sqwave_get_stage(void)
 {
     return s_stage;
 }
 
+/**
+ * @brief 读捕锁状态。
+ */
 hfi_lock_t hfi_sqwave_get_lock(void)
 {
     return s_lock;
 }
 
+/**
+ * @brief 读指令电角，单位 rad。δ 扫描时为当前 δ。
+ */
 float hfi_sqwave_get_theta_cmd(void)
 {
     return s_theta_cmd;
 }
 
+/**
+ * @brief 读 θ̂，单位 rad。
+ */
 float hfi_sqwave_get_theta_hat(void)
 {
     return hfi_theta_hat_out();
 }
 
+/**
+ * @brief 读 wrap(θ̂ − θ_enc)，单位 rad。
+ */
 float hfi_sqwave_get_theta_err(void)
 {
     return s_theta_err;
 }
 
+/**
+ * @brief 读解调误差 ε。
+ */
 float hfi_sqwave_get_eps(void)
 {
     return s_eps;
 }
 
+/**
+ * @brief 读 VESC 型误差，单位 rad。
+ */
 float hfi_sqwave_get_pll_vesc_err(void)
 {
     return s_e_pll;
 }
 
+/**
+ * @brief 读半周差分 di_q。
+ */
 float hfi_sqwave_get_di_q(void)
 {
     return s_di_q;
 }
 
+/**
+ * @brief 读半周差分 di_d。
+ */
 float hfi_sqwave_get_di_d(void)
 {
     return s_di_d;
 }
 
+/**
+ * @brief 读未滤波 saliency x。
+ */
 float hfi_sqwave_get_x_raw(void)
 {
     return s_x_raw;
 }
 
+/**
+ * @brief 读未滤波 saliency y。
+ */
 float hfi_sqwave_get_y_raw(void)
 {
     return s_y_raw;
 }
 
+/**
+ * @brief 读滤波后 saliency x。
+ */
 float hfi_sqwave_get_x_lp(void)
 {
     return s_x_lp;
 }
 
+/**
+ * @brief 读滤波后 saliency y。
+ */
 float hfi_sqwave_get_y_lp(void)
 {
     return s_y_lp;
 }
 
+/**
+ * @brief 1=本拍冻 θ̂。未开探查恒为 0。
+ */
 uint8_t hfi_sqwave_demod_probe_freeze(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 1=FEED 中段滑行窗。未开恒为 0。
+ */
 uint8_t hfi_sqwave_feed_coast_active(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 读注入符号。
+ */
 float hfi_sqwave_get_vh_sign(void)
 {
     return s_vh_sign;
 }
 
+/**
+ * @brief 读合成电角速度，单位 rad/s。
+ */
 float hfi_sqwave_get_omega_el(void)
 {
     return s_omega_el;
 }
 
+/**
+ * @brief 读 PLL 修正量，不含编码器前馈，单位 rad/s 电。
+ */
 float hfi_sqwave_get_omega_trim_el(void)
 {
     return s_omega_trim_el;
 }
 
+/**
+ * @brief 速度环开头极性反了时翻过一次 π。读一次后清掉。未开这路恒为 0。
+ */
 uint8_t hfi_sqwave_take_polarity_flip(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 注入幅值乘上系数。1 为标称，0 关掉。交接用。
+ * @param scale [0,1]。
+ */
 void hfi_sqwave_set_inj_scale(float scale)
 {
     if (scale < 0.0f) {
@@ -1781,6 +1994,10 @@ void hfi_sqwave_set_inj_scale(float scale)
     s_vh_scale = scale;
 }
 
+/**
+ * @brief 允许恢复 Id PI。上升沿启动 Ud 软开。
+ * @param enable 1=放行。未放行时即使注入为 0 仍旁路 Id PI。
+ */
 void hfi_sqwave_set_id_pi_release(uint8_t enable)
 {
     uint8_t on;
@@ -1797,6 +2014,10 @@ void hfi_sqwave_set_id_pi_release(uint8_t enable)
     s_id_pi_release = on;
 }
 
+/**
+ * @brief 交接外给定 Id 到 Ud 权重。负数回到自动爬坡。
+ * @param scale [0,1] 或负数。
+ */
 void hfi_sqwave_set_id_pi_soft_cmd(float scale)
 {
     if (scale < 0.0f) {
@@ -1813,22 +2034,36 @@ void hfi_sqwave_set_id_pi_soft_cmd(float scale)
  * @brief Id→Ud 权重。外给定优先；否则放行后自动 0。。
  * @note 外给定模式不自增，由交接状态机每拍。set_id_pi_soft_cmd。
  */
+/**
+ * @brief 只读当前软开权重，不推进自动斜坡。遥测用。
+ */
 float hfi_sqwave_get_id_pi_soft(void)
 {
     return 1.0f;
 }
 
+/**
+ * @brief 放行后 Id 到 Ud 权重。[0,1]。有外给定用外给定，否则自动爬坡。
+ */
 float hfi_sqwave_id_pi_soft_scale(void)
 {
     return 1.0f;
 }
 
+/**
+ * @brief 力矩角不是 θ̂ 时，注入和解调按这个角旋回 θ̂。
+ * @param theta 力矩电角，单位 rad。
+ * @param enable 1=启用；0=恢复 Park 就是 θ̂。
+ */
 void hfi_sqwave_set_torque_theta(float theta, uint8_t enable)
 {
     s_torque_ov = (enable != 0u) ? 1u : 0u;
     s_torque_theta = theta;
 }
 
+/**
+ * @brief 1：ε 不再写入 θ̂，角度按保持速度每拍积分。
+ */
 void hfi_sqwave_set_hat_hold(uint8_t hold)
 {
     uint8_t on;
@@ -1841,6 +2076,10 @@ void hfi_sqwave_set_hat_hold(uint8_t hold)
     s_hat_hold = on;
 }
 
+/**
+ * @brief 保持期间改用电角速度。注入收完、开始交角度时跟上 SMO。
+ * @param omega_el 电角速度，单位 rad/s。
+ */
 void hfi_sqwave_set_hat_coast_el(float omega_el)
 {
     if (s_hat_hold != 0u) {
@@ -1848,6 +2087,11 @@ void hfi_sqwave_set_hat_coast_el(float omega_el)
     }
 }
 
+/**
+ * @brief 用观测角和电角速度重播 θ̂ 与 PLL 积分，并解除 hat_hold。
+ * @param theta_el 电角，单位 rad。
+ * @param omega_el 电角速度，单位 rad/s。
+ */
 void hfi_sqwave_seed_hat(float theta_el, float omega_el)
 {
     s_theta_hat = motor_wrap_pi(theta_el);
@@ -1860,11 +2104,17 @@ void hfi_sqwave_seed_hat(float theta_el, float omega_el)
     s_speed_est = omega_el;
 }
 
+/**
+ * @brief 1=质量门不再因为 x 掉下去把 |Iq| 天花板收到 0。
+ */
 void hfi_sqwave_set_iq_auth_hold(uint8_t hold)
 {
     s_iq_auth_hold = (hold != 0u) ? 1u : 0u;
 }
 
+/**
+ * @brief 只翻 HFI 的 θ̂ 并清其积分。不通知 SMO。
+ */
 void hfi_sqwave_flip_hat_pi(void)
 {
     s_theta_hat = motor_wrap_pi(s_theta_hat + (float)M_PI);
@@ -1873,56 +2123,89 @@ void hfi_sqwave_flip_hat_pi(void)
     s_sh_seed = 0u;
 }
 
+/**
+ * @brief 读 PLL 积分项，单位 rad/s 电。
+ */
 float hfi_sqwave_get_pll_int_el(void)
 {
     return s_pll_int;
 }
 
+/**
+ * @brief 读影子 PLL 转速，单位 rad/s 电。跟主环 θ̂、无编码器前馈，不进 Park。
+ */
 float hfi_sqwave_get_omega_shadow_el(void)
 {
     return s_sh_w;
 }
 
+/**
+ * @brief 读正交 di_d 解调。未开选轴为 0。
+ */
 float hfi_sqwave_get_eps_d(void)
 {
     return 0.0f;
 }
 
+/**
+ * @brief 选轴翻 ±90° 累计次数，浮点便于遥测。
+ */
 float hfi_sqwave_get_axis_flip_n(void)
 {
     return 0.0f;
 }
 
+/**
+ * @brief Lq 井一次加 π/2 的次数。未开为 0。
+ */
 float hfi_sqwave_get_lq_well_flip_n(void)
 {
     return 0.0f;
 }
 
+/**
+ * @brief 1=已确认真 d。未开选轴恒为 1。
+ */
 uint8_t hfi_sqwave_axis_ok(void)
 {
     return 1u;
 }
 
+/**
+ * @brief 质量门给出的 |Iq| 天花板，单位 A。未开为全速环上限。
+ */
 float hfi_sqwave_get_iq_auth_abs(void)
 {
     return s_iq_auth_abs;
 }
 
+/**
+ * @brief 1=质量过线。未开恒为 1。
+ */
 uint8_t hfi_sqwave_iq_auth_ok(void)
 {
     return s_iq_auth_ok;
 }
 
+/**
+ * @brief 1=准踢门禁过。未开恒为 1。
+ */
 uint8_t hfi_sqwave_qk_pre_ok(void)
 {
     return 1u;
 }
 
+/**
+ * @brief PRE 逃逸翻 +π/2 次数。
+ */
 float hfi_sqwave_get_qk_pre_flip_n(void)
 {
     return 0.0f;
 }
 
+/**
+ * @brief 当前 ε 死区，单位 rad。
+ */
 float hfi_sqwave_get_eps_dead(void)
 {
     {
@@ -1932,36 +2215,57 @@ float hfi_sqwave_get_eps_dead(void)
     }
 }
 
+/**
+ * @brief IPD 子相位。扫位 MOVE 时为 0。
+ */
 uint8_t hfi_sqwave_get_ipd_phase(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 本格脉冲电压指令，单位 V。非 IPD 为 0。
+ */
 float hfi_sqwave_get_ipd_pulse_ud(void)
 {
     return s_qk_iq_ref;
 }
 
+/**
+ * @brief 踢段子相位。非 MEAS 为 0。
+ */
 uint8_t hfi_sqwave_get_qkick_phase(void)
 {
     return s_qk_phase;
 }
 
+/**
+ * @brief 本格种子：0=θ_cmd，1=θ_cmd+π。
+ */
 float hfi_sqwave_get_qkick_seed(void)
 {
     return (float)s_qk_seed_i;
 }
 
+/**
+ * @brief 踢段 Δθ_enc，单位电角 rad。LOG 段保持。
+ */
 float hfi_sqwave_get_qkick_dth(void)
 {
     return s_qk_dth;
 }
 
+/**
+ * @brief 踢段判决：+1 符合，-1 不符，0 几乎无运动。
+ */
 float hfi_sqwave_get_qkick_verdict(void)
 {
     return s_qk_verdict;
 }
 
+/**
+ * @brief 进入 KICK 时置 1。上层读一次后清零，用来复位电流 PI。
+ */
 uint8_t hfi_sqwave_consume_pi_reset(void)
 {
     if (s_qk_pi_reset != 0u) {
@@ -1971,11 +2275,17 @@ uint8_t hfi_sqwave_consume_pi_reset(void)
     return 0u;
 }
 
+/**
+ * @brief 1=旁路 Id PI，只留注入。q 环仍开。未开对应宏恒为 0。
+ */
 uint8_t hfi_sqwave_id_pi_bypass(void)
 {
     return 0u;
 }
 
+/**
+ * @brief 有感标定圈号，从 0 起。非标定恒 0。
+ */
 uint8_t hfi_sqwave_get_sensed_cal_loop(void)
 {
     return 0u;
@@ -2023,6 +2333,10 @@ static void hfi_telem_fill(hfi_telem_snap_t *s)
  * - publish 只提交 s_harvest（seqlock 拷贝），不再二次取数。
  * - s_harvest_ok==0 时 publish 内重填是漏 harvest 的错误路径，勿当正常用法。
  */
+/**
+ * @brief ISR 拍内先收一份快照。随后 publish 只提交，不再二次 getter。
+ * @param out 快照。不可为 NULL。
+ */
 void hfi_sqwave_telem_harvest(hfi_telem_snap_t *out)
 {
     hfi_telem_fill(&s_harvest);
@@ -2032,6 +2346,9 @@ void hfi_sqwave_telem_harvest(hfi_telem_snap_t *out)
     }
 }
 
+/**
+ * @brief 把拍内收获提交给任务侧。
+ */
 void hfi_sqwave_telem_publish(void)
 {
     uint32_t seq = s_telem_seq;
@@ -2048,6 +2365,10 @@ void hfi_sqwave_telem_publish(void)
     s_harvest_ok = 0u;
 }
 
+/**
+ * @brief 任务侧读快照。拷到一半被 ISR 改写则重试。
+ * @param out 快照。不可为 NULL。
+ */
 void hfi_sqwave_telem_read(hfi_telem_snap_t *out)
 {
     uint32_t s1;

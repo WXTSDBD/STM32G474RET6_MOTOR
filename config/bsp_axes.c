@@ -1,10 +1,11 @@
 /**
  * @file bsp_axes.c
- * @brief M1/M2 轴表：语义 binding（JDR、scale、topo）+ 调用 bridge 填 HAL 指针。
+ * @date 2026-10-06
+ * @brief 填写轴使能和默认采样配置。
+
  *
- * init 顺序：bind_defaults → bridge_cubemx_apply_axis → adc_sample_init（仅 enabled 轴）
- *           → board_encoder_m1_init。
- * M2 当前 enabled=false，仅占位；启用时在 bind_defaults 与 bridge 中补全即可。
+ * HAL 句柄由 bridge 填。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "bsp_axes.h"

@@ -1,6 +1,8 @@
 /**
  * @file encoder_cal.c
+ * @date 2026-10-06
  * @brief 编码器零偏锁转子标定实现。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "encoder_cal.h"
@@ -12,6 +14,7 @@
 #define ENCODER_CAL_TWO_PI 6.28318530718f
 #define ENCODER_CAL_DMA_WAIT_MS 2u
 
+/** 1=锁转子标定中，JEOC 走 encoder_cal_jeoc_tick。 */
 volatile uint8_t g_encoder_cal_active;
 
 static float s_uq_lock = ENCODER_CAL_UQ_LOCK;
@@ -28,11 +31,21 @@ static float encoder_cal_wrap_2pi_local(float angle)
     return angle;
 }
 
+/**
+ * @brief 把电角折进 [0, 2π)。
+ * @param angle 电角，单位 rad。
+ * @return 折回后的电角，单位 rad。
+ */
 float encoder_cal_wrap_2pi(float angle)
 {
     return encoder_cal_wrap_2pi_local(angle);
 }
 
+/**
+ * @brief 按宏决定是否从零偏里再减 π。
+ * @param add_raw 原始附加偏置，单位 rad。
+ * @return 处理后的偏置，单位 rad。
+ */
 float encoder_cal_apply_pi_offset(float add_raw)
 {
 #if ENCODER_CAL_APPLY_PI_OFFSET
@@ -50,6 +63,10 @@ static as5047_ctx_t *encoder_cal_as5047_ctx(const encoder_t *enc)
     return (as5047_ctx_t *)enc->chip_ctx;
 }
 
+/**
+ * @brief 标定期间每拍用固定 θ_ref 和 Uq 吸转子。
+ * @param axis 轴实例。不可为 NULL。
+ */
 void encoder_cal_jeoc_tick(bsp_axis_t *axis)
 {
     if (axis == NULL) {
@@ -58,6 +75,18 @@ void encoder_cal_jeoc_tick(bsp_axis_t *axis)
     foc_svpwm_apply(axis, s_uq_lock, 0.0f, s_theta_ref);
 }
 
+/**
+ * @brief 锁转子后阻塞读角，写出电角零偏。
+ * @param axis 轴实例，不可为 NULL。
+ * @param enc AS5047 编码器，不可为 NULL。
+ * @param pole_pairs 极对数，不可为 0。
+ * @param uq_lock 锁转子 Uq，单位 V。
+ * @param settle_ms 等待稳定的毫秒数。
+ * @param sample_count 平均采样次数，不可为 0。
+ * @param add_out 写出电角附加偏置，单位 rad。不可为 NULL。
+ * @return 成功为 true。
+ * @note 本函数会空转等待，只能在任务里调用。
+ */
 bool encoder_cal_run_lock(bsp_axis_t *axis,
                           encoder_t *enc,
                           uint8_t pole_pairs,

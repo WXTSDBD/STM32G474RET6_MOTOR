@@ -1,6 +1,11 @@
 /**
  * @file motor_open_sweep.h
- * @brief 开环 Uq/Ud 可插拔：V0/V1/V2 扫参、AB 死区对比、固定 Uq 定时、Id cal 前阶梯。
+ * @date 2026-10-06
+ * @brief 开环 Ud/Uq 扫参和标定前阶梯。
+
+ *
+ * tick 只允许从电流环节拍、开环或观察模式调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef MOTOR_OPEN_SWEEP_H

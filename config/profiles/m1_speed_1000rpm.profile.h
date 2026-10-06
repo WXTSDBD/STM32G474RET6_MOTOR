@@ -1,18 +1,13 @@
 /**
  * @file m1_speed_1000rpm.profile.h
- * @brief 直达 1000 rpm：有感爬升 → 软切角+速到 SMO（θ̂ + θ̂→motor_pll@2kHz）
+ * @date 2026-10-06
+ * @brief 有感速度环交付 profile。
+
  *
- * 时序：
- *   HOLD 6 s：100→1000；速度=编码器 PLL
- *   STEP：1000 软切 OBS 后，每 10 s −50 rpm 降至 400（下限探底）
- *   编码器仅监督：角差超限不回切（soak）
- *
- * VOFA×12：
- *   ch0 speed_fb  ch1 omega_ref  ch2 iq_ref  ch3 err_pll
- *   ch4 theta_park  ch5 obs_spd_pll  ch6 emag  ch7 theta_hat
- *   ch8 isr  ch9 foc  ch10 obs
- *   ch11 = ss_state + 0.1*alpha（3=OBS 角+速无感）
+ * 只铺宏。切实验改 bringup_active.h。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef CONFIG_PROFILES_M1_SPEED_1000RPM_PROFILE_H
 #define CONFIG_PROFILES_M1_SPEED_1000RPM_PROFILE_H
 

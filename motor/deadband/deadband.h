@@ -1,12 +1,12 @@
 /**
  * @file deadband.h
- * @brief 逆变器死区补偿：FIXED 符号法 + LUT 查表。
- * @note 模块目录：motor/deadband/（与 deadband_cal、deadband_module 同目录）
+ * @date 2026-10-06
+ * @brief 逆变器死区补偿：固定符号法或查表。
+
  *
- * FIXED：SVPWM 后 abc duty。
- * LUT + runtime_apply_ud=0：单相 abc duty；RUNTIME_GEO=1 时 d 表+θ 反 Park，否则 f(|i_phase|)×SCALE。
- * LUT + runtime_apply_ud=1：d 轴 Ud 注入（Pass1 锁轴）；apply_duty 不注入。
- * M1_DEADBAND_LUT_APPLY_UD 为编译期能力开关；路径由 deadband_set_runtime_apply_ud 控制。
+ * apply_duty 只允许从电流环节拍、写出 PWM 之前调用。
+ * 任务只改 mode 和 LUT，不要在任务里改占空比。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef DEADBAND_H

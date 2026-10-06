@@ -1,6 +1,13 @@
 /**
- * Generic G4 DMA bus: per-channel switch dispatch (SPI3 / future instances).
+ * @file encoder_spi_bus_generic_g4.c
+ * @date 2026-10-06
+ * @brief G4 通用 DMA 后端。给还没绑快速通道的轴。
+
+ *
+ * dma_isr 只进该总线对应 DMA 中断。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #include "encoder_spi_bus.h"
 
 #include <stddef.h>

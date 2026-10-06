@@ -1,6 +1,11 @@
 /**
  * @file adc_foc_port.h
- * @brief FOC 20 kHz ADC JEOC Port 契约（无 HAL）。P3 在 main ISR 接入 backend。
+ * @date 2026-10-06
+ * @brief 电流环 ADC 注入完成口。不含 HAL。
+
+ *
+ * on_jeoc 只允许从 ADC 注入转换完成中断调用。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef ADC_FOC_PORT_H

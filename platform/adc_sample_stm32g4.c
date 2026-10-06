@@ -1,8 +1,11 @@
 /**
  * @file adc_sample_stm32g4.c
- * @brief STM32G4 三相电流 ADC 采样：JDR 寄存器读、零偏标定、FOC 热路径。
+ * @date 2026-10-06
+ * @brief 注入电流采样、零偏和安培换算。
+
  *
- * 热路径 adc_sample_jeoc_foc：直读 ADC->JDR1/2/3，无 LL API。
+ * 节拍限制见 adc_sample.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "adc_sample.h"
@@ -85,6 +88,11 @@ static void adc_sample_cal_on_frame(adc_sample_t *s)
     }
 }
 
+/**
+ * @brief 绑定配置并清零偏、电流。
+ * @param s 采样实例。不可为 NULL。
+ * @param cfg 通道配置。不可为 NULL。
+ */
 void adc_sample_init(adc_sample_t *s, adc_sample_config_t *cfg)
 {
     uint8_t i;
@@ -104,6 +112,15 @@ void adc_sample_init(adc_sample_t *s, adc_sample_config_t *cfg)
     }
 }
 
+/**
+ * @brief 阻塞采零偏：先丢掉 discard 点，再平均 samples 点。
+ * @param s 采样实例。不可为 NULL。
+ * @param discard 开头丢掉的点数。
+ * @param samples 参与平均的点数，不可为 0。
+ * @param timeout_ms 超时毫秒。
+ * @return 采满为 true。
+ * @note 本函数会空转等待，只能在任务里调用。
+ */
 bool adc_sample_calibrate_offset(adc_sample_t *s,
                                  uint16_t discard,
                                  uint16_t samples,
@@ -168,6 +185,11 @@ bool adc_sample_calibrate_offset(adc_sample_t *s,
     return true;
 }
 
+/**
+ * @brief 注入完成：按拓扑读 raw；标定中同时累加零偏。
+ * @param s 采样实例。不可为 NULL。
+ * @param hadc 实际是 ADC_HandleTypeDef*。不可为 NULL。
+ */
 void adc_sample_on_injected(adc_sample_t *s, void *hadc)
 {
     const adc_sample_config_t *cfg;
@@ -196,6 +218,11 @@ void adc_sample_on_injected(adc_sample_t *s, void *hadc)
     }
 }
 
+/**
+ * @brief 电流环热路径：一次读 JDR1..3 并换成安培。
+ * @param s 采样实例。
+ * @param hadc 实际是 ADC_HandleTypeDef*。
+ */
 void adc_sample_jeoc_foc(adc_sample_t *s, void *hadc)
 {
     ADC_HandleTypeDef *hadc_hal = (ADC_HandleTypeDef *)hadc;
@@ -204,6 +231,10 @@ void adc_sample_jeoc_foc(adc_sample_t *s, void *hadc)
     adc_sample_apply_scale(s);
 }
 
+/**
+ * @brief 用已有 raw 再换一次安培。任务侧读数用。
+ * @param s 采样实例。不可为 NULL。
+ */
 void adc_sample_update(adc_sample_t *s)
 {
     if (s == NULL || s->cfg == NULL) {
@@ -213,6 +244,13 @@ void adc_sample_update(adc_sample_t *s)
     adc_sample_apply_scale(s);
 }
 
+/**
+ * @brief 取出本拍三相电流。
+ * @param s 采样实例。不可为 NULL。
+ * @param ia A 相，单位 A，可为 NULL。
+ * @param ib B 相，单位 A，可为 NULL。
+ * @param ic C 相，单位 A，可为 NULL。
+ */
 void adc_sample_get_abc(const adc_sample_t *s, float *ia, float *ib, float *ic)
 {
     if (s == NULL) {

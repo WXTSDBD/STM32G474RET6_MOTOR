@@ -1,9 +1,13 @@
 /**
  * @file obs_inj.h
- * @brief P7: 电流环电压相三入口（转发 override_voltage / get_inj / get_inj_ab）。
+ * @date 2026-10-06
+ * @brief 电流环电压相三入口：改写 ud/uq、读 dq 注入、读 αβ 注入。
  *
- * 不进 obs_angle。给定相（id/iq/ω ref）本步不收。
+ * 不进 obs_angle。只允许从电流环节拍、在电压环之后调用。
+ *
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
+
 #ifndef MOTOR_OBSERVER_OBS_INJ_H
 #define MOTOR_OBSERVER_OBS_INJ_H
 

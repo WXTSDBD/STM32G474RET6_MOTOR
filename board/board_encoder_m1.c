@@ -1,3 +1,13 @@
+/**
+ * @file board_encoder_m1.c
+ * @date 2026-10-06
+ * @brief M1：SPI1、PA4 片选、DMA 收 AS5047。
+
+ *
+ * 映射改了要同时改本文件。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "board_encoder.h"
 
 #include "hal_bridge.h"
@@ -10,6 +20,9 @@ encoder_t enc_m1;
 
 encoder_t enc_m2;
 
+/**
+ * @brief DMA 收完转到编码器。
+ */
 static void enc_m1_bus_rx_complete(encoder_spi_bus_t *bus)
 {
     (void)bus;
@@ -22,6 +35,9 @@ static void enc_m1_bus_error(encoder_spi_bus_t *bus)
     encoder_on_spi_error(&enc_m1);
 }
 
+/**
+ * @brief 绑 SPI1/PA4/DMA，并异步初始化 AS5047。
+ */
 void board_encoder_m1_init(void)
 {
     enc_m1_bus.ops = &encoder_spi_bus_ops_spi1_fast;
@@ -44,6 +60,9 @@ void board_encoder_m1_init(void)
     encoder_spi_bus_cs_high(&enc_m1_bus);
 }
 
+/**
+ * @brief M1 编码器 DMA 中断入口。
+ */
 void board_encoder_m1_dma_isr(void)
 {
     encoder_spi_bus_dma_isr(&enc_m1_bus);

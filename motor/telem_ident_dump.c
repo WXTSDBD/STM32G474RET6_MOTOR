@@ -1,6 +1,11 @@
 /**
  * @file telem_ident_dump.c
- * @brief VOFA JustFloat Rs/Ld-Lq 辨识结果突发。
+ * @date 2026-10-06
+ * @brief 辨识结果突发状态机。
+
+ *
+ * 节拍限制见 telem_ident_dump.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "telem_ident_dump.h"

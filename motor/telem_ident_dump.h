@@ -1,8 +1,11 @@
 /**
  * @file telem_ident_dump.h
- * @brief Rs / Ld-Lq 辨识结果经 VOFA JustFloat 突发（头帧 + 格点 + 尾帧）。
+ * @date 2026-10-06
+ * @brief 辨识结果经串口突发发送。
+
  *
- * 需 M1_VOFA_IDENT_DUMP_ENABLE=1 且 (M1_RS_IDENT_ENABLE || M1_LD_LQ_IDENT_ENABLE)。
+ * next 由遥测任务调用。arm 在辨识结束后调用一次。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef TELEM_IDENT_DUMP_H

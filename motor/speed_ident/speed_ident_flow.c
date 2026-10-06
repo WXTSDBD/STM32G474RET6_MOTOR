@@ -1,6 +1,11 @@
 /**
  * @file speed_ident_flow.c
- * @brief 速度环 ident：deadband OFF + dbg.open_seq。
+ * @date 2026-10-06
+ * @brief 速度环辨识编排实现。
+
+ *
+ * 节拍限制见 speed_ident_flow.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "speed_ident_flow.h"
@@ -67,6 +72,9 @@ static void speed_ident_flow_sync(uint8_t force)
     speed_ident_flow_sync_dbg();
 }
 
+/**
+ * @brief 初始化速度辨识编排。
+ */
 void speed_ident_flow_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -93,6 +101,9 @@ void speed_ident_flow_init(motor_context_t *ctx)
     speed_ident_flow_sync(1u);
 }
 
+/**
+ * @brief 推进速度辨识。
+ */
 void speed_ident_flow_tick(motor_context_t *ctx)
 {
     if (ctx == NULL) {

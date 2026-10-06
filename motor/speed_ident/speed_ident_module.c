@@ -1,6 +1,11 @@
 /**
  * @file speed_ident_module.c
- * @brief 速度环辨识：ω_ref 阶跃 + Bode sin（deadband OFF，编码器 θ Park）。
+ * @date 2026-10-06
+ * @brief 速度环辨识激励发生器。
+
+ *
+ * 节拍限制见 speed_ident_module.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "speed_ident_module.h"
@@ -153,6 +158,9 @@ static void speed_ident_bode_advance_freq(void)
 }
 #endif
 
+/**
+ * @brief 从 HOLD 开始。
+ */
 void speed_ident_module_init(motor_context_t *ctx)
 {
     if (ctx == NULL) {
@@ -193,6 +201,9 @@ uint8_t speed_ident_module_get_phase_in_round(void)
     return s_phase_in_round;
 }
 
+/**
+ * @brief 写出本拍 ω_ref。
+ */
 void speed_ident_module_tick(motor_context_t *ctx)
 {
 #if M1_SPEED_IDENT_BODE_ENABLE

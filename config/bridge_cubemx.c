@@ -1,14 +1,15 @@
-/**
- * @file bridge_cubemx.c
- * @brief 将 CubeMX HAL 句柄填入 bsp_axis 配置与 board Port 实例。
- *
- * CubeMX Regenerate 后若句柄名变化，通常只需改本文件与 board_axis_ports。
- *
- * 当前映射：
- *   M1 — hadc2 JDR1/2/3，TIM8 CH4 触发注入，TIM8 作 PWM
- *   M2 — 占位：TIM1；ADC hadc 待定义（enabled=false）
- */
-
+/**
+ * @file bridge_cubemx.c
+ * @date 2026-10-06
+ * @brief 把 CubeMX 句柄填进轴配置和 board Port。
+
+ *
+ * 当前映射：
+ *   M1 — hadc2 的 JDR1/2/3，TIM8 CH4 触发注入，TIM8 作 PWM
+ *   M2 — 占位：TIM1；ADC 尚未绑定
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ */
+
 #include "bridge_cubemx.h"
 
 #include "board_axis_ports.h"

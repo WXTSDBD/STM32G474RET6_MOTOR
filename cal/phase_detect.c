@@ -1,6 +1,8 @@
 /**
  * @file phase_detect.c
+ * @date 2026-10-06
  * @brief 单相脉冲 rank/sign/gain 诊断：三档 Δ(400/600/800)，zeroed LSB 累加。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "phase_detect.h"
@@ -349,6 +351,9 @@ static void phase_advance_after_tier(void)
     phase_update_vofa_dbg();
 }
 
+/**
+ * @brief 把标定失败原因和通道结果填进 VOFA。
+ */
 void phase_detect_fill_dbg(void)
 {
     uint8_t i;
@@ -364,6 +369,12 @@ void phase_detect_fill_dbg(void)
     phase_update_vofa_dbg();
 }
 
+/**
+ * @brief 标定期间每拍采样并推进单相脉冲状态机。
+ * @param adc 采样实例。不可为 NULL。
+ * @param hadc 注入完成的 ADC。不可为 NULL。
+ * @param htim PWM 定时器。不可为 NULL。
+ */
 void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim)
 {
     float z[3];
@@ -437,6 +448,12 @@ void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_Hand
     }
 }
 
+/**
+ * @brief 标定结束后保持中性 PWM，只刷新采样给 VOFA。
+ * @param adc 采样实例。不可为 NULL。
+ * @param hadc 注入完成的 ADC。不可为 NULL。
+ * @param htim PWM 定时器。不可为 NULL。
+ */
 void phase_detect_hold_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim)
 {
     if (adc == NULL || hadc == NULL || htim == NULL || !g_cal_hold) {
@@ -448,6 +465,15 @@ void phase_detect_hold_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM
     dbg.phase_cal_st = 4u;
 }
 
+/**
+ * @brief 阻塞跑完单相脉冲诊断，可选写入 Flash。
+ * @param adc 采样实例。不可为 NULL。
+ * @param htim PWM 定时器。不可为 NULL。
+ * @param out 写出 binding。不可为 NULL。
+ * @param write_flash true 则成功后写 NVM。
+ * @return 诊断成功为 true。
+ * @note 本函数会空转等待，只能在任务里调用。
+ */
 bool phase_detect_run(adc_sample_t *adc,
                       TIM_HandleTypeDef *htim,
                       motor_phase_binding_t *out,

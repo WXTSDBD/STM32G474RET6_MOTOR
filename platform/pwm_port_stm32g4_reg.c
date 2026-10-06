@@ -1,6 +1,11 @@
 /**
  * @file pwm_port_stm32g4_reg.c
- * @brief STM32G4 PWM Port：热路径直写 TIM CCR1/2/3（无 LL API）。
+ * @date 2026-10-06
+ * @brief 把三相 CCR 写进 STM32G4 定时器。
+
+ *
+ * 节拍限制见 pwm_port.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "pwm_port.h"
@@ -44,6 +49,9 @@ const pwm_port_ops_t pwm_port_ops_stm32g4_reg = {
     .disable = pwm_port_stm32g4_disable,
 };
 
+/**
+ * @brief 写三相比较值。
+ */
 void pwm_port_set_duty3(pwm_port_t *port, uint32_t ccr1, uint32_t ccr2, uint32_t ccr3)
 {
     if (port == NULL || port->ops == NULL || port->ops->set_duty3 == NULL) {
@@ -52,6 +60,9 @@ void pwm_port_set_duty3(pwm_port_t *port, uint32_t ccr1, uint32_t ccr2, uint32_t
     port->ops->set_duty3(port, ccr1, ccr2, ccr3);
 }
 
+/**
+ * @brief 开 PWM 输出。
+ */
 void pwm_port_enable(pwm_port_t *port)
 {
     if (port == NULL || port->ops == NULL || port->ops->enable == NULL) {

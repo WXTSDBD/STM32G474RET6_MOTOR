@@ -1,6 +1,11 @@
 /**
  * @file motor_open_sweep.c
- * @brief 开环 Uq/Ud 扫参 / 固定 Uq 定时（从 motor_current 外提，R3）。
+ * @date 2026-10-06
+ * @brief 开环电压扫参实现。
+
+ *
+ * 节拍限制见 motor_open_sweep.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "motor_open_sweep.h"
@@ -137,6 +142,9 @@ static void motor_open_sweep_begin_pre_id_ladder_common(motor_context_t *ctx)
 }
 #endif /* pre-id ladder */
 
+/**
+ * @brief 清开环扫参状态。
+ */
 void motor_open_sweep_init(motor_context_t *ctx)
 {
     if (ctx != NULL) {
@@ -254,6 +262,9 @@ uint8_t motor_open_sweep_in_pre_id_ud_ladder(void)
 
 #endif
 
+/**
+ * @brief 1=扫参进行中。
+ */
 uint8_t motor_open_sweep_active(void)
 {
     return (s_armed != 0u && s_kind != SWEEP_KIND_NONE) ? 1u : 0u;
@@ -264,6 +275,9 @@ uint8_t motor_open_sweep_done(void)
     return (s_armed == 0u && s_kind == SWEEP_KIND_NONE) ? 1u : 0u;
 }
 
+/**
+ * @brief 更新开环 Ud/Uq。
+ */
 void motor_open_sweep_tick(motor_context_t *ctx)
 {
     if (ctx == NULL || !s_armed || s_kind == SWEEP_KIND_NONE) {

@@ -1,6 +1,11 @@
 /**
  * @file deadband_geo.c
- * @brief 论文 §4.4 电压域反 Park/Clarke 与 phase LUT 几何建表。
+ * @date 2026-10-06
+ * @brief 把 d 轴残压变成三相死区表。
+
+ *
+ * 节拍限制见 deadband_geo.h 文件头。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "deadband_geo.h"

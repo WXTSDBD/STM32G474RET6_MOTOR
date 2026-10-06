@@ -1,6 +1,11 @@
 /**
  * @file ld_lq_ident.h
- * @brief Pass0+Rs 后 VASI：MCU 存 coarse(500Hz)+fine(1kHz)[+f2] 或 fine-only；曲面 RLS 可离线。
+ * @date 2026-10-06
+ * @brief VASI 法辨识 Ld/Lq 网格。
+
+ *
+ * tick 只允许从电流环节拍调用。结果给遥测突发，不进控制。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef LD_LQ_IDENT_H

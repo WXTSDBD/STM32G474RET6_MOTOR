@@ -1,6 +1,11 @@
 /**
  * @file board_axis_ports.c
- * @brief M1/M2 pwm_port / adc_foc_port 静态实例与 HAL 绑定。
+ * @date 2026-10-06
+ * @brief 把 CubeMX 句柄填进轴级 Port。
+
+ *
+ * 句柄名变了通常改 bridge 和本文件。
+ * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "board_axis_ports.h"
