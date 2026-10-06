@@ -758,8 +758,8 @@
 #define M1_IF_TO_OBS_ENABLE             0
 #endif
 /**
- * 1=编码器可选：控制。I/F→SMO，编码器只供 VOFA 监督。
- * 插着可看 ch0/θ_err；拔掉不挡启动与巡航（须 IF_TO_OBS）。
+ * 1=编码器可选：控制不吃 SPI。插着只给 VOFA 金样；拔掉仍走无感。
+ * 141 与 I/F→SMO 都用这开关。
  */
 #ifndef M1_ENC_OPTIONAL_ENABLE
 #define M1_ENC_OPTIONAL_ENABLE          0

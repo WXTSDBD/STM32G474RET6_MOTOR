@@ -53,7 +53,7 @@
 #define M1_IF_TO_OBS_ENABLE             0
 
 #undef M1_ENC_OPTIONAL_ENABLE
-#define M1_ENC_OPTIONAL_ENABLE          0
+#define M1_ENC_OPTIONAL_ENABLE          1
 
 #undef M1_IQ_REF_A
 #define M1_IQ_REF_A                     0.0f
@@ -97,7 +97,7 @@
 #undef M1_HFI_POLARITY_IPD_ENABLE
 #define M1_HFI_POLARITY_IPD_ENABLE      0
 #undef M1_HFI_INIT_FROM_ENC
-#define M1_HFI_INIT_FROM_ENC            1
+#define M1_HFI_INIT_FROM_ENC            0
 #undef M1_HFI_PLL_INIT_OFF_RAD
 #define M1_HFI_PLL_INIT_OFF_RAD         0.0f
 

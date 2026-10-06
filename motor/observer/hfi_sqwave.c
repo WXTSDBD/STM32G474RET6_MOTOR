@@ -17,6 +17,9 @@
 #ifndef M1_HFI_MOTION_BYPASS_ENABLE
 #define M1_HFI_MOTION_BYPASS_ENABLE     0
 #endif
+#ifndef M1_ENC_OPTIONAL_ENABLE
+#define M1_ENC_OPTIONAL_ENABLE          0
+#endif
 #ifndef M1_HFI_VH_V
 #define M1_HFI_VH_V                     2.0f
 #endif
@@ -747,7 +750,12 @@ static uint8_t hfi_park_uses_hat(void)
         (s_stage == HFI_STAGE_CRAWL) || (s_stage == HFI_STAGE_RUN)) {
         return 1u;
     }
+#if M1_ENC_OPTIONAL_ENABLE
+    /* IDLE/DONE 也不吃浮空 SPI */
+    return 1u;
+#else
     return 0u;
+#endif
 }
 
 /**
@@ -1201,7 +1209,11 @@ static void hfi_enter_run(void)
     s_lock_cnt = 0u;
     /* IDLE/DONE 强制 0V 。PI 会顶满；。RUN 必须卸掉，否则首。Ud~十数 V 。HFI */
     s_qk_pi_reset = 1u;
+#if M1_HFI_INIT_FROM_ENC && !M1_ENC_OPTIONAL_ENABLE
     s_theta_hat = motor_wrap_pi(s_theta_enc + M1_HFI_PLL_INIT_OFF_RAD);
+#else
+    s_theta_hat = motor_wrap_pi(M1_HFI_PLL_INIT_OFF_RAD);
+#endif
     s_pll_int = 0.0f;
     s_omega_el = 0.0f; /* 禁止把上层残留的 enc ω 种进 PLL */
     s_omega_trim_el = 0.0f;
@@ -1269,8 +1281,14 @@ static void hfi_qk_decide_after_lock(void)
     }
     /* +Iq 期望正转。反。= 锁在 d+π。不。= 拒判。*/
     if (ae < M1_HFI_QKICK_DTH_MIN_RAD) {
+#if M1_ENC_OPTIONAL_ENABLE
+        /* 拔线 SPI 钉死：不拒判，默认北。插着仍走 Δθ_enc。 */
+        s_qk_verdict = 1.0f;
+        s_lock = HFI_LOCK_LOCKED;
+#else
         s_qk_verdict = 0.0f;
         s_lock = HFI_LOCK_FAULT;
+#endif
     } else if (s_qk_dth > 0.0f) {
         /* 北：补踢段位移，不翻 π */
         s_qk_verdict = 1.0f;
@@ -1550,7 +1568,7 @@ void hfi_sqwave_on_current(float id, float iq, float i_alpha, float i_beta)
             hfi_demod_step(id, iq, upd);
         }
     } else if (s_stage == HFI_STAGE_MEAS) {
-        hfi_demod_step(id, iq, 0u); /* 踢段。θ̂，避。Iq 泄漏 */
+        hfi_demod_step(id, iq, 0u); /* 踢段冻 θ̂，避 Iq 泄漏 */
     } else if (s_stage == HFI_STAGE_LOG) {
         hfi_demod_step(id, iq, 1u); /* 踢后静置再锁。205 冻角差） */
     } else if (s_stage == HFI_STAGE_CRAWL) {
