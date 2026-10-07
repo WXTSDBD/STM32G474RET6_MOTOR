@@ -17,6 +17,9 @@
 
 static bsp_axis_t s_axes[BSP_AXIS_COUNT];
 
+/** 分流 ADC 诊断快照（ADC1/3/5）；M1 不写这里。 */
+int16_t adc_read[3];
+
 /**
  * @brief 填写与 CubeMX 无关的语义配置（JDR rank、scale、topo、enc 指针）。
  *        hadc/trig_tim/pwm_tim 指针与 Port 实例由 bridge 填写。

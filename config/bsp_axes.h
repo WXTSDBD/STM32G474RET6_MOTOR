@@ -49,6 +49,12 @@ typedef struct {
     void *motor_ctx;
 } bsp_axis_t;
 
+/**
+ * 诊断用分流 ADC 快照（3 路：ADC1/3/5）。
+ * 仅 main 诊断回调写入；M1 三相 raw 走 `bsp_axis()->adc` / dbg，不再镜像到本缓冲。
+ */
+extern int16_t adc_read[3];
+
 void bsp_init(void);
 
 bsp_axis_t *bsp_axis(bsp_axis_id_t id);

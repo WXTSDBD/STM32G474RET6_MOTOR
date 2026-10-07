@@ -22,7 +22,10 @@ extern as5047_ctx_t enc_m1_as5047;
 void board_encoder_m1_init(void);
 void board_encoder_m1_dma_isr(void);
 
-/* M2 placeholder: SPI3 + blocking HAL until DMA bus is wired */
+/*
+ * M2 占位：硬件为 SPI3 + PA15（第二颗 AS5047），双路 FOC 时再接 DMA 总线。
+ * 单轴阶段不 init；main 只把 SPI3_CS 拉高。
+ */
 extern encoder_t enc_m2;
 
 #endif

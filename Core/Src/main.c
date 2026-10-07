@@ -33,17 +33,19 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "COMMUNICATION_FDCAN.h"
+#include "app_axis_jeoc.h"
 #include "board_encoder.h"
 #include "encoder.h"
 #include "app_uart_dma_debug.h"
 #include "bsp_axes.h"
 #include "encoder_cal.h"
-#include "adc_foc_port.h"
 #include "factory_nvm.h"
+#include "irq_priority.h"
 #include "motor_current.h"
 #include "motor_params_m1.h"
 #include "motor_phase_binding.h"
 #include "phase_detect.h"
+#include "time_port.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,12 +78,12 @@ void MX_FREERTOS_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-/* M1 20kHz 控制节拍�?? ADC2 JEOC；TIM8 �?? PWM+CH4 触发，无 Update IT */
+/* M1 20kHz 控制节拍�??? ADC2 JEOC；TIM8 �??? PWM+CH4 触发，无 Update IT */
 #define BRINGUP_ADC_TEST 1
 
 uint16_t A,B;
 volatile uint8_t cnt=0;
-int16_t adc_read[6];
+/* adc_read[3]: shunt diag buffer in config/bsp_axes.c */
 
 static void dbg_snapshot_opamp_ch(uint8_t idx, OPAMP_TypeDef *opamp)
 {
@@ -118,7 +120,7 @@ static void dbg_snapshot_phase_binding(void)
   }
 }
 
-/** 2325 Test3 sign；rank 排列�? M1_ADC_RANK_SWAP_IAIC �? adc.c 注入顺序�?�? */
+/** 2325 Test3 sign；rank 排列�?? M1_ADC_RANK_SWAP_IAIC �?? adc.c 注入顺序�??�?? */
 static void m1_apply_binding_2325(void)
 {
   motor_phase_binding_t b;
@@ -151,9 +153,8 @@ static void dbg_snapshot_all(void)
   dbg.opamp[2].hal_state = hopamp4.State;
   dbg.adc_shunt[0] = adc_read[0];
   dbg.adc_shunt[1] = adc_read[1];
-  dbg.adc_shunt[2] = adc_read[2]; 
-  dbg.adc_reg[1] = adc_read[4];
-  dbg.adc_reg[2] = adc_read[5];
+  dbg.adc_shunt[2] = adc_read[2];
+  /* M1 adc_reg[] ? app_axis_jeoc_snapshot_m1_adc ???????? */
 }
 /* USER CODE END 0 */
 
@@ -206,6 +207,9 @@ int main(void)
   MX_TIM15_Init();
   MX_CORDIC_Init();
   /* USER CODE BEGIN 2 */
+  irq_priority_apply();
+  /* DWT 毫秒口：标定超时先于 telem_bringup_init 也可用�?? */
+  time_port_init(SystemCoreClock / 1000000u);
   if (HAL_OPAMP_Start(&hopamp1) != HAL_OK) { Error_Handler(); }
   if (HAL_OPAMP_Start(&hopamp3) != HAL_OK) { Error_Handler(); }
   if (HAL_OPAMP_Start(&hopamp4) != HAL_OK) { Error_Handler(); }
@@ -231,11 +235,16 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 	dbg_snapshot_all();
 
  FDCAN1_Config();
-  AS5047_Init(&AS5047_spi3_PORT, &hspi3, GPIOA, GPIO_PIN_15);
+  /*
+   * M2 AS5047?SPI3 / PA15????????????? FOC ???
+   * ?????? M1?SPI1/PA4?? board_encoder_m1_init??
+   * CS ????????????MX_SPI3_Init ???????? M2?
+   */
+  HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_SET);
   telem_bringup_init();
   telem_encoder_profile_bind(&enc_m1);
 
-  /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+�?? PWM 运行后进�?? */
+  /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+�??? PWM 运行后进�??? */
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_2);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_3);
@@ -275,7 +284,7 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
     motor_phase_binding_t binding;
     bsp_axis_t *m1 = bsp_axis(BSP_AXIS_M1);
 
-    if (phase_detect_run(&m1->adc, &htim8, &binding, false)) {
+    if (phase_detect_run(&m1->adc, m1->pwm, &binding, false)) {
       dbg.phase_cal_ok = 1U;
       dbg.phase_cal_fail = 0U;
       dbg.phase_cal_fail_reason = PHASE_CAL_FAIL_NONE;
@@ -421,28 +430,7 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
          dbg_snapshot_all();
     }
 	if (hadc == &hadc2) {
-		bsp_axis_t *m1 = bsp_axis(BSP_AXIS_M1);
-
-		if (m1->adc.cal_active) {
-			adc_sample_on_injected(&m1->adc, hadc);
-		} else if (g_phase_cal_active) {
-			phase_detect_jeoc_tick(&m1->adc, hadc, &htim8);
-		} else if (g_cal_hold) {
-			phase_detect_hold_jeoc_tick(&m1->adc, hadc, &htim8);
-		} else if (g_encoder_cal_active) {
-			encoder_cal_jeoc_tick(m1);
-		} else {
-			adc_foc_port_on_jeoc(m1->adc_foc, &m1->adc, hadc);
-			motor_current_tick(m1);
-		}
-		adc_read[3] = m1->adc.raw[0];
-		adc_read[4] = m1->adc.raw[1];
-		adc_read[5] = m1->adc.raw[2];
-		dbg_snapshot_m1_adc(m1);
-		if (g_phase_cal_active || g_cal_hold) {
-			telem_bringup_tick();
-			telem_bringup_try_send();
-		}
+		app_axis_jeoc_on_injected(hadc);
 	}
 	if (hadc == &hadc3) {
 		adc_read[1] = (int16_t)hadc3.Instance->JDR1;
@@ -477,7 +465,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     HAL_IncTick();
   }
   /* USER CODE BEGIN Callback 1 */
-  /* M1 控制已迁�?? ADC2 JEOC；TIM8 �?? Update IT */
+  /* M1 控制已迁�??? ADC2 JEOC；TIM8 �??? Update IT */
   /* USER CODE END Callback 1 */
 }
 

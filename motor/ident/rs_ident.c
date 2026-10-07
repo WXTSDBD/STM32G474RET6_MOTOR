@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include "dbg_monitor.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 
 typedef enum {
@@ -78,7 +79,7 @@ static void rs_ident_compute(void)
     float den;
 
     s_result.n = s_m;
-    s_result.rs_nominal = M1_RS_OHM;
+    s_result.rs_nominal = g_m1_motor_cfg.rs_ohm;
     s_result.repeat_n = (uint8_t)M1_RS_IDENT_REPEAT_N;
     s_result.rs_ohm = 0.0f;
     s_result.intercept_v = 0.0f;

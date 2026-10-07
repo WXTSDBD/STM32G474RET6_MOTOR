@@ -1346,11 +1346,6 @@
               <FilePath>..\Drivers\foc\motor_trig.c</FilePath>
             </File>
             <File>
-              <FileName>motor_trig_cordic.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Drivers\foc\motor_trig_cordic.c</FilePath>
-            </File>
-            <File>
               <FileName>motor_trig_lut.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Drivers\foc\motor_trig_lut.c</FilePath>
@@ -1366,9 +1361,19 @@
               <FilePath>..\debug\app_uart_dma_debug.c</FilePath>
             </File>
             <File>
+              <FileName>telem_table.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\debug\telem_table.c</FilePath>
+            </File>
+            <File>
               <FileName>bsp_dwt.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\bringup\bsp_dwt.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_axis_jeoc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\bringup\app_axis_jeoc.c</FilePath>
             </File>
             <File>
               <FileName>adc_sample_stm32g4.c</FileName>
@@ -1461,6 +1466,16 @@
               <FilePath>..\motor\motor_outer_loop.c</FilePath>
             </File>
             <File>
+              <FileName>exp_runner.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\experiment\exp_runner.c</FilePath>
+            </File>
+            <File>
+              <FileName>exp_signoff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\experiment\exp_signoff.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_current.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_current.c</FilePath>
@@ -1544,6 +1559,16 @@
               <FileName>bridge_cubemx.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\config\bridge_cubemx.c</FilePath>
+            </File>
+            <File>
+              <FileName>irq_priority.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\irq_priority.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_cfg_m1.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\motor_cfg_m1.c</FilePath>
             </File>
           </Files>
         </Group>

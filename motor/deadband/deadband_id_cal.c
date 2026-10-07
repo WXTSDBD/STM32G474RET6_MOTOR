@@ -14,6 +14,7 @@
 #include "deadband_service.h"
 #include "foc_pi.h"
 #include "dbg_monitor.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 #include "rs_ident.h"
 #include "ld_lq_ident.h"
@@ -713,7 +714,7 @@ static void deadband_id_cal_cache_rs_for_ld_lq(void)
 {
     rs_ident_result_t rs;
 
-    s_ld_lq_rs_cached = M1_RS_OHM;
+    s_ld_lq_rs_cached = g_m1_motor_cfg.rs_ohm;
     rs_ident_get_result(&rs);
     if (rs.ok != 0u && rs.rs_ohm > 0.0f) {
         s_ld_lq_rs_cached = rs.rs_ohm;
@@ -763,7 +764,7 @@ static void deadband_id_cal_begin_ld_lq_with_fixed_rs(motor_context_t *ctx)
 {
     deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
     deadband_id_cal_sync_lut_round_dbg();
-    s_ld_lq_rs_cached = M1_RS_OHM;
+    s_ld_lq_rs_cached = g_m1_motor_cfg.rs_ohm;
 #if M1_LD_LQ_MULTI_ANGLE_ENABLE
     s_ld_lq_angle_leg = 0u;
 #endif
@@ -1210,7 +1211,7 @@ void deadband_id_cal_tick(motor_context_t *ctx)
     case M1_ID_CAL_RS_IDENT:
         ctx->iq_ref = 0.0f;
         ctx->id_ref = deadband_id_cal_clamp_id_ref(
-            rs_ident_tick(dbg.foc_id, ctx->ud_pi));
+            rs_ident_tick(ctx->id, ctx->ud_pi));
         if (rs_ident_is_done()) {
 #if M1_LD_LQ_IDENT_ENABLE
             deadband_id_cal_begin_ld_lq_after_rs(ctx);
@@ -1252,7 +1253,7 @@ void deadband_id_cal_tick(motor_context_t *ctx)
         float id_ref = 0.0f;
         float iq_ref = 0.0f;
 
-        ld_lq_ident_tick(dbg.foc_id, dbg.foc_iq, ctx->ud_pi, ctx->uq_pi,
+        ld_lq_ident_tick(ctx->id, ctx->iq, ctx->ud_pi, ctx->uq_pi,
                          &id_ref, &iq_ref);
         ctx->id_ref = deadband_id_cal_clamp_id_ref(id_ref);
         ctx->iq_ref = deadband_id_cal_clamp_iq_ref(iq_ref);

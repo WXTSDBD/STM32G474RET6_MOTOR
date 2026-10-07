@@ -13,10 +13,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "adc.h"
 #include "adc_sample.h"
 #include "motor_phase_binding.h"
-#include "tim.h"
+#include "pwm_port.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -29,13 +28,13 @@ extern volatile uint8_t g_phase_cal_active;
 extern volatile uint8_t g_cal_hold;
 
 bool phase_detect_run(adc_sample_t *adc,
-                      TIM_HandleTypeDef *htim,
+                      pwm_port_t *pwm,
                       motor_phase_binding_t *out,
                       bool write_flash);
 
-void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim);
+void phase_detect_jeoc_tick(adc_sample_t *adc, void *hadc, pwm_port_t *pwm);
 
-void phase_detect_hold_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim);
+void phase_detect_hold_jeoc_tick(adc_sample_t *adc, void *hadc, pwm_port_t *pwm);
 
 void phase_detect_fill_dbg(void);
 

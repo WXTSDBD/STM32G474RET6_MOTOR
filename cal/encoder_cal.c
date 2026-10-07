@@ -10,6 +10,7 @@
 #include "as5047.h"
 #include "foc_svpwm.h"
 #include "hal_bridge.h"
+#include "time_port.h"
 
 #define ENCODER_CAL_TWO_PI 6.28318530718f
 #define ENCODER_CAL_DMA_WAIT_MS 2u
@@ -116,8 +117,8 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
     s_theta_ref = 0.0f;
 
     g_encoder_cal_active = 1U;
-    t0 = HAL_GetTick();
-    while ((HAL_GetTick() - t0) < settle_ms) {
+    t0 = time_port_ms();
+    while ((time_port_ms() - t0) < settle_ms) {
         /* JEOC 内 encoder_cal_jeoc_tick 刷新 SVPWM */
     }
     g_encoder_cal_active = 0U;
@@ -133,9 +134,9 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
 
     encoder_kick(enc);
 
-    t0 = HAL_GetTick();
+    t0 = time_port_ms();
     while (ctx->phase != (uint8_t)AS5047_PHASE_IDLE) {
-        if ((HAL_GetTick() - t0) >= ENCODER_CAL_DMA_WAIT_MS) {
+        if ((time_port_ms() - t0) >= ENCODER_CAL_DMA_WAIT_MS) {
             break;
         }
     }

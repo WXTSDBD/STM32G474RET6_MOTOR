@@ -11,6 +11,7 @@
 #include "app_uart_dma_debug.h"
 #include "cmsis_os.h"
 #include "motor_context.h"
+#include "motor_current.h"
 #include "hal_bridge.h"
 #include "time_port.h"
 #include "as5047.h"
@@ -18,6 +19,8 @@
 #include "foc_svpwm.h"
 #include "encoder_spi_bus.h"
 #include "phase_detect.h"
+#include "bringup_bench.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 #if M1_ID_LOCK_CAL_SWEEP
 #include "deadband_id_cal.h"
@@ -30,6 +33,8 @@
 #endif
 #include "telem_ident_dump.h"
 #include "telem_lut_dump.h"
+#include "telem_table.h"
+#include "bsp_axes.h"
 #ifndef M1_HFI_ENABLE
 #define M1_HFI_ENABLE                   0
 #endif
@@ -60,18 +65,24 @@
 #define TELEM_BRINGUP_DECIMATION     M1_TELEM_BRINGUP_DECIMATION
 #endif
 
-#if TELEM_BRINGUP_INCLUDE_SEQ
-#define TELEM_SMALL_FRAME_BYTES   (4u + TELEM_BRINGUP_K * 4u + 4u)
+#if TELEM_FRAME_LAYOUT_ID
+#define TELEM_LAYOUT_ID_BYTES     4u
 #else
-#define TELEM_SMALL_FRAME_BYTES   (TELEM_BRINGUP_K * 4u + 4u)
+#define TELEM_LAYOUT_ID_BYTES     0u
 #endif
 
 #if TELEM_BRINGUP_INCLUDE_SEQ
-#define TELEM_CH1_BYTE_OFF        8u
-#define TELEM_CH2_BYTE_OFF        12u
+#define TELEM_SMALL_FRAME_BYTES   (4u + TELEM_LAYOUT_ID_BYTES + TELEM_BRINGUP_K * 4u + 4u)
 #else
-#define TELEM_CH1_BYTE_OFF        4u
-#define TELEM_CH2_BYTE_OFF        8u
+#define TELEM_SMALL_FRAME_BYTES   (TELEM_LAYOUT_ID_BYTES + TELEM_BRINGUP_K * 4u + 4u)
+#endif
+
+#if TELEM_BRINGUP_INCLUDE_SEQ
+#define TELEM_CH1_BYTE_OFF        (8u + TELEM_LAYOUT_ID_BYTES)
+#define TELEM_CH2_BYTE_OFF        (12u + TELEM_LAYOUT_ID_BYTES)
+#else
+#define TELEM_CH1_BYTE_OFF        (4u + TELEM_LAYOUT_ID_BYTES)
+#define TELEM_CH2_BYTE_OFF        (8u + TELEM_LAYOUT_ID_BYTES)
 #endif
 
 static const uint8_t s_justfloat_tail[4] = {0x00u, 0x00u, 0x80u, 0x7fu};
@@ -238,6 +249,15 @@ static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset, const floa
     }
 #endif
 
+#if TELEM_FRAME_LAYOUT_ID
+    {
+        float layout_id = (float)telem_get_layout();
+
+        memcpy(p, &layout_id, sizeof(layout_id));
+        p += sizeof(layout_id);
+    }
+#endif
+
     memcpy(p, vals, sizeof(float) * TELEM_BRINGUP_K);
     p += sizeof(float) * TELEM_BRINGUP_K;
     memcpy(p, s_justfloat_tail, sizeof(s_justfloat_tail));
@@ -249,11 +269,59 @@ static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset, const floa
 /** bringup 统一 12 通道（Id cal / ident / 开环阶梯共用） */
 static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
 {
-    vals[0] = dbg.foc_ia;
-    vals[1] = dbg.foc_ib;
-    vals[2] = dbg.foc_ic;
-    vals[3] = dbg.foc_id;
-    vals[4] = dbg.foc_iq;
+    {
+        const motor_context_t *ctx = NULL;
+        bsp_axis_t *ax = bsp_axis(BSP_AXIS_M1);
+
+        if ((ax != NULL) && (ax->motor_ctx != NULL)) {
+            ctx = (const motor_context_t *)ax->motor_ctx;
+        }
+        /* T-1：表驱动优先；LEGACY 才落下面旧 #elif */
+        if (telem_table_fill(vals, ctx) != 0u) {
+            return;
+        }
+    }
+
+#if M1_VOFA_SIGNOFF_CH
+    /*
+     * 位置/MIT 签收档 12ch（LEGACY 回落；默认已走 TELEM_LAYOUT_SIGNOFF 表）。
+     * T-2：与表驱动同源（ctx / motor_current），不再读已删的 dbg 镜像。
+     */
+    {
+        const motor_context_t *c = NULL;
+        bsp_axis_t *ax2 = bsp_axis(BSP_AXIS_M1);
+
+        if ((ax2 != NULL) && (ax2->motor_ctx != NULL)) {
+            c = (const motor_context_t *)ax2->motor_ctx;
+        }
+        vals[0] = (c != NULL) ? c->ia : 0.0f;
+        vals[1] = (c != NULL) ? c->ib : 0.0f;
+        vals[2] = (c != NULL) ? c->ic : 0.0f;
+        vals[3] = (c != NULL) ? c->iq : 0.0f;
+        vals[4] = motor_current_get_theta_fb_rad();
+        vals[5] = motor_current_get_theta_mech_rad();
+        vals[6] = (c != NULL) ? c->theta_ref_rad : 0.0f;
+        vals[7] = vals[6] - vals[4];
+        vals[8] = motor_current_get_enc_pll_omega_mech_rpm();
+        vals[9] = (c != NULL) ? c->omega_ref : 0.0f;
+        vals[10] = (c != NULL) ? c->iq_ref : 0.0f;
+        vals[11] = (float)dbg.open_seq_phase;
+    }
+    return;
+#endif
+    {
+        const motor_context_t *c = NULL;
+        bsp_axis_t *ax2 = bsp_axis(BSP_AXIS_M1);
+
+        if ((ax2 != NULL) && (ax2->motor_ctx != NULL)) {
+            c = (const motor_context_t *)ax2->motor_ctx;
+        }
+        vals[0] = (c != NULL) ? c->ia : 0.0f;
+        vals[1] = (c != NULL) ? c->ib : 0.0f;
+        vals[2] = (c != NULL) ? c->ic : 0.0f;
+        vals[3] = (c != NULL) ? c->id : 0.0f;
+        vals[4] = (c != NULL) ? c->iq : 0.0f;
+    }
     vals[5] = dbg.foc_theta_el;
 #if M1_VOFA_IDENT_DUTY_12CH && !M1_SPEED_LOOP_ENABLE
     vals[6] = dbg.foc_vd_est;
@@ -306,7 +374,8 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
     }
     vals[11] = (float)dbg.open_seq_phase;
 #elif M1_SPEED_LOOP_ENABLE && M1_VOFA_SPEED_CH8_11 && M1_PLL_ENABLE
-    if (dbg.outer_mode == (uint8_t)M1_OUTER_POSITION) {
+    if (dbg.outer_mode == (uint8_t)M1_OUTER_POSITION ||
+        dbg.outer_mode == (uint8_t)M1_OUTER_MIT) {
         vals[8] = dbg.outer_theta_err_rad;
         vals[9] = dbg.outer_theta_mech_rad;
         vals[10] = dbg.outer_theta_ref_rad;
@@ -462,7 +531,8 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
      * ch8 θ_smo−θ_hfi [deg]  ch9 ω_smo_ma−ω_hfi  ch10 stage  ch11 pub ss
      */
     {
-        const float rpm_scale = 60.0f / (2.0f * 3.14159265f * (float)M1_POLE_PAIRS);
+        const float rpm_scale =
+            60.0f / (2.0f * 3.14159265f * (float)g_m1_motor_cfg.pole_pairs);
 
         vals[0] = dbg.hfi_theta_err;
         vals[1] = hfi_tm.pll_vesc_err;
@@ -869,6 +939,7 @@ void telem_bringup_init(void)
     uint32_t i;
 
     time_port_init(TELEM_CPU_MHZ);
+    telem_table_init();
 
     for (i = 0u; i < 2u; i++) {
         s_bufs[i].used_bytes = 0u;

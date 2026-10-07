@@ -144,6 +144,12 @@ typedef struct {
     float outer_theta_mech_rad;
     float outer_theta_err_rad;
     float outer_iq_ref;
+    /** 外环本拍实际用的位置反馈角 [rad]，与编码器解包角区分，用于无感对照 */
+    float outer_theta_fb_rad;
+    /** 外环签收档：当前段号（0xFF=结束），供脚本按段切分 */
+    uint8_t outer_sign_seg;
+    /** 外环签收档：当前段内档位/频点号 */
+    uint8_t outer_sign_sub;
     /** 速度阶梯 profile 当前档 0..4（100/300/500/700/900 rpm） */
     uint8_t outer_profile_step;
     /** Veq 旁路观测（不进 Park）；VOFA OBS_VEQ×12 */

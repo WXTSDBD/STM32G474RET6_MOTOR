@@ -11,9 +11,10 @@
 #define MOTOR_PHASE_BINDING_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
-#include "tim.h"
+#include "pwm_port.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,7 +44,7 @@ const motor_phase_binding_t *motor_phase_binding_get(void);
 
 void motor_phase_binding_map_abc(const float i_phys[3], float *ia, float *ib, float *ic);
 
-void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
+void motor_phase_binding_write_ccr(pwm_port_t *port,
                                    float ta, float tb, float tc,
                                    uint16_t pwm_period);
 

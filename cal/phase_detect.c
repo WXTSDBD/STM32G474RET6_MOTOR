@@ -10,10 +10,14 @@
 #include <stddef.h>
 #include <string.h>
 
+#include "dbg_monitor.h"
 #include "factory_nvm.h"
-#include "hal_bridge.h"
+#include "motor_params_m1.h"
+#include "pwm_port.h"
+#include "time_port.h"
+#include "stm32g474xx.h"
 
-#define PHASE_PWM_PERIOD      3999u
+#define PHASE_PWM_PERIOD      M1_PWM_ARR_COUNTS
 #define PHASE_PWM_CENTER      2000u
 #define PHASE_NEUTRAL_TICKS   4000u   /* 0.2 s @ 20 kHz */
 #define PHASE_HALF_TICKS      6000u   /* 0.3 s 半周期 */
@@ -21,6 +25,14 @@
 #define PHASE_DELTA_COUNT     3u
 #define PHASE_S_MIN_LSB       8.0f
 #define PHASE_RUN_TIMEOUT_MS  120000u
+
+/* 与 Core/Inc/main.h USER CODE 中同名宏保持一致（本模块不再经 adc.h 间接包含）。 */
+#define PHASE_CAL_FAIL_NONE     0u
+#define PHASE_CAL_FAIL_OC       1u
+#define PHASE_CAL_FAIL_SNR      2u
+#define PHASE_CAL_FAIL_PERM     3u
+#define PHASE_CAL_FAIL_FLASH    4u
+#define PHASE_CAL_FAIL_TIMEOUT  5u
 
 static const uint16_t s_delta_table[PHASE_DELTA_COUNT] = { 400u, 600u, 800u };
 
@@ -64,28 +76,29 @@ static void phase_set_fail_reason(uint8_t reason)
     }
 }
 
-static void phase_pwm_neutral(TIM_HandleTypeDef *htim)
+static void phase_pwm_neutral(pwm_port_t *pwm)
 {
-    if (htim == NULL) {
+    if ((pwm == NULL) || (pwm->hw == NULL)) {
         return;
     }
-    htim->Instance->CCR1 = PHASE_PWM_CENTER;
-    htim->Instance->CCR2 = PHASE_PWM_CENTER;
-    htim->Instance->CCR3 = PHASE_PWM_CENTER;
+    pwm_port_set_duty3(pwm,
+                       (uint32_t)PHASE_PWM_CENTER,
+                       (uint32_t)PHASE_PWM_CENTER,
+                       (uint32_t)PHASE_PWM_CENTER);
 }
 
-static void phase_pwm_pulse(TIM_HandleTypeDef *htim, uint8_t pwm_ch, int16_t sign, uint16_t delta)
+static void phase_pwm_pulse(pwm_port_t *pwm, uint8_t pwm_ch, int16_t sign, uint16_t delta)
 {
-    uint16_t ccr[3];
+    uint32_t ccr[3];
     uint32_t pulse;
 
-    if (htim == NULL) {
+    if ((pwm == NULL) || (pwm->hw == NULL)) {
         return;
     }
 
-    ccr[0] = PHASE_PWM_CENTER;
-    ccr[1] = PHASE_PWM_CENTER;
-    ccr[2] = PHASE_PWM_CENTER;
+    ccr[0] = (uint32_t)PHASE_PWM_CENTER;
+    ccr[1] = (uint32_t)PHASE_PWM_CENTER;
+    ccr[2] = (uint32_t)PHASE_PWM_CENTER;
 
     if (sign >= 0) {
         pulse = (uint32_t)PHASE_PWM_CENTER + (uint32_t)delta;
@@ -95,17 +108,15 @@ static void phase_pwm_pulse(TIM_HandleTypeDef *htim, uint8_t pwm_ch, int16_t sig
         pulse = 0u;
     }
 
-    if (pulse > PHASE_PWM_PERIOD) {
-        pulse = PHASE_PWM_PERIOD;
+    if (pulse > (uint32_t)PHASE_PWM_PERIOD) {
+        pulse = (uint32_t)PHASE_PWM_PERIOD;
     }
 
     if (pwm_ch < 3u) {
-        ccr[pwm_ch] = (uint16_t)pulse;
+        ccr[pwm_ch] = pulse;
     }
 
-    htim->Instance->CCR1 = ccr[0];
-    htim->Instance->CCR2 = ccr[1];
-    htim->Instance->CCR3 = ccr[2];
+    pwm_port_set_duty3(pwm, ccr[0], ccr[1], ccr[2]);
 }
 
 static void phase_read_zeroed_lsb(const adc_sample_t *adc, float z[3])
@@ -372,14 +383,14 @@ void phase_detect_fill_dbg(void)
 /**
  * @brief 标定期间每拍采样并推进单相脉冲状态机。
  * @param adc 采样实例。不可为 NULL。
- * @param hadc 注入完成的 ADC。不可为 NULL。
- * @param htim PWM 定时器。不可为 NULL。
+ * @param hadc 注入完成的 ADC 句柄（void*，由 adc_sample 解释）。不可为 NULL。
+ * @param pwm PWM 口。不可为 NULL。
  */
-void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim)
+void phase_detect_jeoc_tick(adc_sample_t *adc, void *hadc, pwm_port_t *pwm)
 {
     float z[3];
 
-    if (adc == NULL || hadc == NULL || htim == NULL || !g_phase_cal_active) {
+    if (adc == NULL || hadc == NULL || pwm == NULL || !g_phase_cal_active) {
         return;
     }
 
@@ -400,7 +411,7 @@ void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_Hand
 
     switch (s_st) {
     case PHASE_ST_NEUTRAL:
-        phase_pwm_neutral(htim);
+        phase_pwm_neutral(pwm);
         if (s_tick == 0u) {
             phase_reset_neutral_accum();
         }
@@ -412,30 +423,30 @@ void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_Hand
         if (s_tick >= PHASE_NEUTRAL_TICKS) {
             phase_reset_bipolar_accum();
             phase_begin_half(1);
-            phase_pwm_pulse(htim, s_pwm_idx, 1, s_delta_cur);
+            phase_pwm_pulse(pwm, s_pwm_idx, 1, s_delta_cur);
         }
         break;
 
     case PHASE_ST_PULSE_POS:
-        phase_pwm_pulse(htim, s_pwm_idx, 1, s_delta_cur);
+        phase_pwm_pulse(pwm, s_pwm_idx, 1, s_delta_cur);
         s_tick++;
         if (s_tick >= PHASE_HALF_TICKS) {
             phase_begin_half(-1);
-            phase_pwm_pulse(htim, s_pwm_idx, -1, s_delta_cur);
+            phase_pwm_pulse(pwm, s_pwm_idx, -1, s_delta_cur);
         }
         break;
 
     case PHASE_ST_PULSE_NEG:
-        phase_pwm_pulse(htim, s_pwm_idx, -1, s_delta_cur);
+        phase_pwm_pulse(pwm, s_pwm_idx, -1, s_delta_cur);
         s_tick++;
         if (s_tick >= PHASE_HALF_TICKS) {
             s_cycle_idx++;
             if (s_cycle_idx < PHASE_CYCLES) {
                 phase_begin_half(1);
-                phase_pwm_pulse(htim, s_pwm_idx, 1, s_delta_cur);
+                phase_pwm_pulse(pwm, s_pwm_idx, 1, s_delta_cur);
             } else {
                 phase_advance_after_tier();
-                phase_pwm_neutral(htim);
+                phase_pwm_neutral(pwm);
             }
         }
         break;
@@ -443,7 +454,7 @@ void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_Hand
     case PHASE_ST_DONE:
     case PHASE_ST_FAIL:
     default:
-        phase_pwm_neutral(htim);
+        phase_pwm_neutral(pwm);
         break;
     }
 }
@@ -451,16 +462,16 @@ void phase_detect_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_Hand
 /**
  * @brief 标定结束后保持中性 PWM，只刷新采样给 VOFA。
  * @param adc 采样实例。不可为 NULL。
- * @param hadc 注入完成的 ADC。不可为 NULL。
- * @param htim PWM 定时器。不可为 NULL。
+ * @param hadc 注入完成的 ADC 句柄（void*）。不可为 NULL。
+ * @param pwm PWM 口。不可为 NULL。
  */
-void phase_detect_hold_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM_HandleTypeDef *htim)
+void phase_detect_hold_jeoc_tick(adc_sample_t *adc, void *hadc, pwm_port_t *pwm)
 {
-    if (adc == NULL || hadc == NULL || htim == NULL || !g_cal_hold) {
+    if (adc == NULL || hadc == NULL || pwm == NULL || !g_cal_hold) {
         return;
     }
 
-    phase_pwm_neutral(htim);
+    phase_pwm_neutral(pwm);
     adc_sample_jeoc_foc(adc, hadc);
     dbg.phase_cal_st = 4u;
 }
@@ -468,31 +479,31 @@ void phase_detect_hold_jeoc_tick(adc_sample_t *adc, ADC_HandleTypeDef *hadc, TIM
 /**
  * @brief 阻塞跑完单相脉冲诊断，可选写入 Flash。
  * @param adc 采样实例。不可为 NULL。
- * @param htim PWM 定时器。不可为 NULL。
+ * @param pwm PWM 口。不可为 NULL。
  * @param out 写出 binding。不可为 NULL。
  * @param write_flash true 则成功后写 NVM。
  * @return 诊断成功为 true。
  * @note 本函数会空转等待，只能在任务里调用。
  */
 bool phase_detect_run(adc_sample_t *adc,
-                      TIM_HandleTypeDef *htim,
+                      pwm_port_t *pwm,
                       motor_phase_binding_t *out,
                       bool write_flash)
 {
     bool ok;
     bool detected;
 
-    if (adc == NULL || htim == NULL || out == NULL) {
+    if (adc == NULL || pwm == NULL || out == NULL) {
         return false;
     }
 
     g_cal_hold = 0u;
     phase_reset_run();
     g_phase_cal_active = 1u;
-    s_t0_ms = HAL_GetTick();
+    s_t0_ms = time_port_ms();
 
     for (;;) {
-        if ((HAL_GetTick() - s_t0_ms) > PHASE_RUN_TIMEOUT_MS) {
+        if ((time_port_ms() - s_t0_ms) > PHASE_RUN_TIMEOUT_MS) {
             phase_set_fail_reason(PHASE_CAL_FAIL_TIMEOUT);
             s_st = PHASE_ST_FAIL;
             break;
@@ -504,7 +515,7 @@ bool phase_detect_run(adc_sample_t *adc,
     }
 
     g_phase_cal_active = 0u;
-    phase_pwm_neutral(htim);
+    phase_pwm_neutral(pwm);
     detected = (s_st == PHASE_ST_DONE && phase_binding_permutation_ok(&s_result));
     ok = detected;
 

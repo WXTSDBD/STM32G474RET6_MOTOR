@@ -17,6 +17,7 @@
 #include "foc_pi.h"
 #include "ld_lq_ident.h"
 #include "motor_current.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 #include "speed_ident_flow.h"
 
@@ -34,15 +35,39 @@ static float motor_foc_loop_clamp_ref(float ref)
     return ref;
 }
 
+#if !M1_PI_USE_FIXED_GAIN
+/**
+ * @brief 用铭牌表算 Id/Iq PI 增益并装入（与宏 M1_PI_KP_* / M1_PI_KI 同式）。
+ */
+static void motor_foc_loop_pi_load(motor_context_t *ctx,
+                                  float v_min, float v_max,
+                                  float i_min, float i_max)
+{
+    const float kp_id = g_m1_motor_cfg.ld_h * M1_PI_WC_RADS;
+    const float kp_iq = g_m1_motor_cfg.lq_h * M1_PI_WC_RADS;
+    const float ki = g_m1_motor_cfg.rs_ohm * M1_PI_WC_RADS * M1_CTRL_TS_S
+                     * M1_PI_KI_SCALE;
+
+    foc_pi_init(&ctx->pi_id, kp_id, ki, v_min, v_max, i_min, i_max);
+    foc_pi_init(&ctx->pi_iq, kp_iq, ki, v_min, v_max, i_min, i_max);
+}
+#endif
+
 #if M1_IDENT_ENABLE
 static void motor_foc_loop_pi_apply_ident_limits(motor_context_t *ctx)
 {
+#if M1_PI_USE_FIXED_GAIN
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
                 M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                 M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
     foc_pi_init(&ctx->pi_iq, M1_PI_KP_IQ, M1_PI_KI,
                 M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                 M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
+#else
+    motor_foc_loop_pi_load(ctx,
+                           M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
+                           M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
+#endif
 }
 #endif
 
@@ -57,20 +82,33 @@ void motor_foc_loop_pi_init(motor_context_t *ctx)
     }
 
 #if M1_IDENT_ENABLE && M1_IDENT_ID_CAL_BEFORE_STEP
+#if M1_PI_USE_FIXED_GAIN
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
                 M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                 M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
     foc_pi_init(&ctx->pi_iq, M1_PI_KP_IQ, M1_PI_KI,
                 M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                 M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+#else
+    motor_foc_loop_pi_load(ctx,
+                           M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
+                           M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+#endif
 #elif M1_ID_LOCK_CAL_SWEEP
+#if M1_PI_USE_FIXED_GAIN
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
                 M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                 M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
     foc_pi_init(&ctx->pi_iq, M1_PI_KP_IQ, M1_PI_KI,
                 M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                 M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+#else
+    motor_foc_loop_pi_load(ctx,
+                           M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
+                           M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+#endif
 #elif M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS
+#if M1_PI_USE_FIXED_GAIN
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
                 M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                 M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
@@ -78,12 +116,23 @@ void motor_foc_loop_pi_init(motor_context_t *ctx)
                 M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                 M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
 #else
+    motor_foc_loop_pi_load(ctx,
+                           M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
+                           M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
+#endif
+#else
+#if M1_PI_USE_FIXED_GAIN
     foc_pi_init(&ctx->pi_id, M1_PI_KP_ID, M1_PI_KI,
                 M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
                 M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
     foc_pi_init(&ctx->pi_iq, M1_PI_KP_IQ, M1_PI_KI,
                 M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
                 M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
+#else
+    motor_foc_loop_pi_load(ctx,
+                           M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
+                           M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
+#endif
 #endif
 }
 
@@ -171,7 +220,7 @@ void motor_foc_loop_tick(motor_context_t *ctx,
 
 #if M1_ID_LOCK_CAL_SWEEP
     if (deadband_id_cal_bumpless_arm()) {
-        const float ud_ff = M1_RS_OHM * deadband_id_cal_bumpless_id_ref();
+        const float ud_ff = g_m1_motor_cfg.rs_ohm * deadband_id_cal_bumpless_id_ref();
 
         foc_pi_bumpless(&ctx->pi_id, ud_ff, deadband_id_cal_bumpless_id_ref(), id);
         ctx->ud_pi = ud_ff;
@@ -337,7 +386,8 @@ void motor_foc_loop_tick(motor_context_t *ctx,
 #endif
 
 #if M1_FOC_ROTATION_FF_ENABLE && M1_SPEED_LOOP_ENABLE
-    if ((ctx->outer_mode == M1_OUTER_SPEED ||
+    if (((ctx->atrb & M1_ATRB_DECOUP_FF) != 0u) &&
+        (ctx->outer_mode == M1_OUTER_SPEED ||
          ctx->outer_mode == M1_OUTER_POSITION) &&
         ctx->mode == M1_CTRL_CURRENT_LOOP &&
         !startup->use_fixed_uq) {
@@ -354,9 +404,11 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             omega_mech_rpm = 0.0f;
 #endif
             /* ω_e [rad/s] = ω_mech [rpm] × 2π/60 × pole_pairs */
-            omega_e = omega_mech_rpm * (0.10471975512f * (float)M1_POLE_PAIRS);
-            ctx->ud_pi += M1_RS_OHM * ctx->id_ref - omega_e * M1_LD_H * ctx->iq_ref;
-            ctx->uq_pi += M1_RS_OHM * ctx->iq_ref + omega_e * M1_LQ_H * ctx->id_ref;
+            omega_e = omega_mech_rpm * (0.10471975512f * (float)g_m1_motor_cfg.pole_pairs);
+            ctx->ud_pi += g_m1_motor_cfg.rs_ohm * ctx->id_ref
+                        - omega_e * g_m1_motor_cfg.ld_h * ctx->iq_ref;
+            ctx->uq_pi += g_m1_motor_cfg.rs_ohm * ctx->iq_ref
+                        + omega_e * g_m1_motor_cfg.lq_h * ctx->id_ref;
         }
     }
 #endif

@@ -14,6 +14,7 @@
 #include <stddef.h>
 
 #include "deadband_geo.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 
 #ifndef M1_ID_CAL_D_TO_PHASE_COS
@@ -207,9 +208,9 @@ static void deadband_apply_duty_geo(float theta_el, float id_dq, float iq_dq,
     sign_b = deadband_phase_sign(ib, s_cfg.i_zero_a);
     sign_c = deadband_phase_sign(ic, s_cfg.i_zero_a);
 
-    da = (sign_a == 0.0f) ? 0.0f : (sign_a * fabsf(ua) / M1_VBUS_V);
-    db = (sign_b == 0.0f) ? 0.0f : (sign_b * fabsf(ub) / M1_VBUS_V);
-    dc = (sign_c == 0.0f) ? 0.0f : (sign_c * fabsf(uc) / M1_VBUS_V);
+    da = (sign_a == 0.0f) ? 0.0f : (sign_a * fabsf(ua) / g_m1_motor_cfg.vbus_v);
+    db = (sign_b == 0.0f) ? 0.0f : (sign_b * fabsf(ub) / g_m1_motor_cfg.vbus_v);
+    dc = (sign_c == 0.0f) ? 0.0f : (sign_c * fabsf(uc) / g_m1_motor_cfg.vbus_v);
 
 #if M1_DEADBAND_LUT_ZERO_SEQ_ENABLE
     {
@@ -564,9 +565,9 @@ void deadband_apply_duty(float ia, float ib, float ic,
         db = duty_comp * deadband_phase_sign(ib, s_cfg.i_zero_a);
         dc = duty_comp * deadband_phase_sign(ic, s_cfg.i_zero_a);
     } else {
-        da = deadband_comp_v_ph(0u, ia) / M1_VBUS_V;
-        db = deadband_comp_v_ph(1u, ib) / M1_VBUS_V;
-        dc = deadband_comp_v_ph(2u, ic) / M1_VBUS_V;
+        da = deadband_comp_v_ph(0u, ia) / g_m1_motor_cfg.vbus_v;
+        db = deadband_comp_v_ph(1u, ib) / g_m1_motor_cfg.vbus_v;
+        dc = deadband_comp_v_ph(2u, ic) / g_m1_motor_cfg.vbus_v;
     }
 
 #if M1_DEADBAND_LUT_ZERO_SEQ_ENABLE

@@ -62,7 +62,7 @@ typedef struct {
 #if M1_LD_LQ_IDENT_ENABLE
 
 void ld_lq_ident_init(void);
-/** @param rs_ohm Rs 辨识结果；<=0 时用 M1_RS_OHM */
+/** @param rs_ohm Rs 辨识结果；<=0 时用 g_m1_motor_cfg.rs_ohm */
 void ld_lq_ident_arm(float rs_ohm);
 /** 首格点偏置（G0 Id=0.5 Iq=0），供 bumpless 切入 */
 void ld_lq_ident_first_grid_bias(float *id0, float *iq0);

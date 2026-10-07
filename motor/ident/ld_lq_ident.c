@@ -16,6 +16,7 @@
 #include <string.h>
 
 #include "dbg_monitor.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 #if M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
 #include "deadband_service.h"
@@ -150,7 +151,7 @@ static float ld_lq_theta_drift_mech_deg(float theta_el)
 {
     const float d_el = ld_lq_wrap_pi(theta_el - s_theta_ref_el);
 
-    return (d_el * 180.0f / LD_LQ_PI) / (float)M1_POLE_PAIRS;
+    return (d_el * 180.0f / LD_LQ_PI) / (float)g_m1_motor_cfg.pole_pairs;
 }
 
 static float ld_lq_f_hz_from_tier(ld_lq_inj_tier_t tier)
@@ -914,7 +915,7 @@ void ld_lq_ident_init(void)
     s_ok = 0u;
     s_grid_idx = 0u;
     s_theta_drift_max_el = M1_LD_LQ_IDENT_THETA_DRIFT_MECH_DEG * LD_LQ_PI / 180.0f *
-                           (float)M1_POLE_PAIRS;
+                           (float)g_m1_motor_cfg.pole_pairs;
     s_f_hz = M1_LD_LQ_IDENT_FINE_ONLY ? M1_LD_LQ_IDENT_F_FINE_HZ : M1_LD_LQ_IDENT_F_COARSE_HZ;
     ld_lq_update_half_period();
     memset(&s_result, 0, sizeof(s_result));
@@ -937,9 +938,9 @@ void ld_lq_ident_arm(float rs_ohm)
     s_done = 0u;
     s_ok = 0u;
     s_grid_idx = 0u;
-    s_rs_ohm = (rs_ohm > 0.0f) ? rs_ohm : M1_RS_OHM;
+    s_rs_ohm = (rs_ohm > 0.0f) ? rs_ohm : g_m1_motor_cfg.rs_ohm;
     s_theta_drift_max_el = M1_LD_LQ_IDENT_THETA_DRIFT_MECH_DEG * LD_LQ_PI / 180.0f *
-                           (float)M1_POLE_PAIRS;
+                           (float)g_m1_motor_cfg.pole_pairs;
     s_f_hz = M1_LD_LQ_IDENT_FINE_ONLY ? M1_LD_LQ_IDENT_F_FINE_HZ : M1_LD_LQ_IDENT_F_COARSE_HZ;
     ld_lq_update_half_period();
     memset(&s_result, 0, sizeof(s_result));

@@ -1,11 +1,12 @@
 /**
  * @file obs_cfg.h
- * @date 2026-10-06
+ * @date 2026-10-07
  * @brief 观测器算法配置入口。不含函数原型。
  *
  * 算法 .c 应走 OBS_* 契约名，不要再直接 include motor_params_m1.h。
- * 电机差（电阻、电感、极对数、节拍）从这里进来。发布门槛默认写在本头；
- * profile 与默认同值时不必再复写。
+ * 铭牌运行时真相源是 `g_m1_motor_cfg`（init / 慢路径优先读表）。
+ * OBS_* 宏仍等于 M1_*，供编译期常量与未迁热路径；节拍仍走宏。
+ * 发布门槛默认写在本头；profile 与默认同值时不必再复写。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -14,9 +15,11 @@
 #define MOTOR_OBSERVER_OBS_CFG_H
 
 #include <stdint.h>
+
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 
-/** 定子电阻，单位 ohm。默认等于电机参数。 */
+/** 定子电阻，单位 ohm。编译期默认；运行时优先 g_m1_motor_cfg.rs_ohm。 */
 #ifndef OBS_RS_OHM
 #define OBS_RS_OHM              M1_RS_OHM
 #endif

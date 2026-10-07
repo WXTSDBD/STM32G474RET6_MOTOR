@@ -26,7 +26,10 @@ typedef struct encoder_spi_bus_ops {
     void (*hw_init)(struct encoder_spi_bus *bus);
     /** 停 DMA，释放总线。 */
     void (*hw_stop)(struct encoder_spi_bus *bus);
-    /** 启动一帧 16 位收发。忙则返回非 0。 */
+    /**
+     * 启动一帧收发。忙则返回非 0。
+     * 形参按 16-bit 字（本编码器帧宽）；换非 16-bit 编码器时契约要改。
+     */
     int (*start_word)(struct encoder_spi_bus *bus, const uint16_t *tx, uint16_t *rx);
     /** 不停 DMA 再发下一帧。 */
     int (*restart_word)(struct encoder_spi_bus *bus, const uint16_t *tx, uint16_t *rx);
@@ -39,11 +42,19 @@ typedef struct encoder_spi_bus {
     const encoder_spi_bus_ops_t *ops;
     /** SPI 外设。 */
     void *spi;
-    /** RX DMA 通道。 */
+    /**
+     * RX DMA 通道号（当前为 STM32 LL 通道枚举，芯片泄漏）。
+     * 等第二块板再中立化为板级 desc 字段；本刀只标注。
+     */
     uint32_t dma_ll_rx_ch;
-    /** TX DMA 通道。 */
+    /**
+     * TX DMA 通道号（同上，芯片泄漏）。
+     */
     uint32_t dma_ll_tx_ch;
-    /** 片选 GPIO 口。 */
+    /**
+     * 片选 GPIO 口指针（当前为 GPIO_TypeDef*，芯片泄漏）。
+     * 换厂商时契约要改；第二块板再抽。
+     */
     void *cs_port;
     /** 片选引脚。 */
     uint16_t cs_pin;

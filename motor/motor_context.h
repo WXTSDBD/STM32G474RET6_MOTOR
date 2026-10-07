@@ -49,11 +49,23 @@ typedef enum {
     M1_OUTER_SPEED,
     /** 位置 P → ω_ref → 速度 PI → iq_ref。θ 是多圈机械角。 */
     M1_OUTER_POSITION,
+    /** 与 POSITION 同一套 P→速度环，速度积分冻结。 */
+    M1_OUTER_MIT,
 } m1_outer_mode_t;
+
+/** 实验开关位（atrb）：bit0 解耦前馈 / bit1 摩擦前馈 / bit2 ESO 预留。 */
+#define M1_ATRB_DECOUP_FF  (1u << 0)
+#define M1_ATRB_FRIC_FF    (1u << 1)
+#define M1_ATRB_ESO        (1u << 2)
 
 typedef struct {
     /** 极对数。 */
     uint8_t pole_pairs;
+    /**
+     * 实验开关位（运行时副本）。初值对齐编译期能力宏，供同次上电 A/B。
+     * bit0=解耦前馈 bit1=摩擦前馈 bit2=ESO（预留）。
+     */
+    uint8_t atrb;
     /** 开环 Uq，单位 V。 */
     float uq_open;
     /** 开环 Ud，单位 V。 */
@@ -73,6 +85,17 @@ typedef struct {
     /** Iq PI 输出 Uq，单位 V。 */
     float uq_pi;
 
+    /** 相电流 Ia，单位 A。本拍采样/重构结果；遥测 getter 直读。 */
+    float ia;
+    /** 相电流 Ib，单位 A。 */
+    float ib;
+    /** 相电流 Ic，单位 A。 */
+    float ic;
+    /** d 轴电流实测，单位 A。Park 后写入。 */
+    float id;
+    /** q 轴电流实测，单位 A。Park 后写入。 */
+    float iq;
+
     /** 外环模式。 */
     m1_outer_mode_t outer_mode;
     /** 速度指令，单位机械 rpm。 */
@@ -81,6 +104,12 @@ typedef struct {
     float theta_ref_rad;
     /** 力矩模式的 Iq 指令，单位 A。 */
     float iq_cmd;
+    /** q 轴电流前馈，单位 A。MIT/签收档直接叠加到 iq_ref，当"已知砝码"用。 */
+    float iq_ff;
+    /** 库仑摩擦方向前馈，单位 A。与实验注入的 iq_ff 分开，出口一并叠加。 */
+    float iq_fric_ff;
+    /** 轨迹速度前馈，单位机械 rpm。0=该档不做速度前馈。 */
+    float traj_vel_rpm;
     /** 速度 PI。输出为 iq_ref。 */
     foc_pi_t pi_speed;
 } motor_context_t;

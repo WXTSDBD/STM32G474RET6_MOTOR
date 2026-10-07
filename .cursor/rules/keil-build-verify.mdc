@@ -5,11 +5,13 @@ alwaysApply: true
 
 # 交付前编译（硬约束）
 
-**凡改了会进 MDK 的代码/配置，交给人类（说「做完了」「可烧录」「下一步」）之前，Agent 必须自己跑一遍 Keil 编译，且结果为 `0 Error(s)`。**
+**凡改了会进 MDK 的代码/配置，交给人类（说「做完了」「可烧录」「下一步」）之前，Agent 必须自己跑一遍 Keil 编译，结果为 `0 Error(s)` 且 `0 Warning(s)`。**
 
-- **禁止**：只改代码不编译就交付；假设「应该能过」；让用户去编译找错。
-- **必须**：本机执行下方命令（或等价 `-b`），读 `rebuild_log.txt` **末尾**汇总；有 Error 则自己修到通过再回复。
-- **Warning**：本回合新引入的 Warning 应修掉（尤其 `-Wcomment` / `#error`）；历史 Warning 可保留，但交付时仍须写明 Error/Warning 计数。
+- **禁止**：只改代码不编译就交付；假设「应该能过」；让用户去编译找错；把 Warning 留给用户。
+- **必须**：本机执行下方命令（或等价 `-b`），读 `rebuild_log.txt` **末尾**汇总；有 Error/Warning 则自己修到 `0/0` 再回复。
+- **固定工作流**：改代码（按 `.cursor/skills/comment-style.md`）→ 自己编到 0/0 → **先交付可烧录包**（`MDK-ARM/_pkg/<日期>_<实验名>/`：hex + rebuild_log + size + sha256 + bringup/profile 快照）→ 用户上台架跑 → 回 CSV 后才写分析脚本。
+
+**顺序硬约束**：先给 Keil 可烧录产物，再写分析脚本；不许先堆脚本。**不要催结果、不要假设立刻有 CSV**（台架实验有等待期）。
 
 仅改 `tools/*.py`、`docs/`、`.cursor/` 且未动固件时，可跳过 Keil。
 
@@ -31,7 +33,7 @@ Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 
 ## 判定与固件范围
 
-- 末尾须含 `0 Error(s)`（以末尾汇总为准，勿被中间 ArmClang stderr 误导）。
+- 末尾须含 `0 Error(s)` **且** `0 Warning(s)`（以末尾汇总为准，勿被中间 ArmClang stderr 误导）。
 - 固件变更：`Core/`、`motor/`、`config/`、`debug/`、`Drivers/`（业务侧）、`MDK-ARM/`，以及会触发 `#error` 的宏。
 
 ## 回复格式

@@ -59,6 +59,22 @@ void motor_speed_reversal_arm(motor_context_t *ctx);
 void motor_pos_step_test_arm(motor_context_t *ctx);
 #endif
 
+#if M1_OUTER_NEST_ENABLE && \
+    ((M1_OUTER_EXPT == M1_OUTER_EXPT_POS_STEP) || \
+     (M1_OUTER_EXPT == M1_OUTER_EXPT_POS_REV) || \
+     (M1_OUTER_EXPT == M1_OUTER_EXPT_MIT_HOLD) || \
+     (M1_OUTER_EXPT == M1_OUTER_EXPT_MIT_REV))
+void motor_outer_pos_mini_arm(motor_context_t *ctx);
+#endif
+
+#if M1_OUTER_NEST_ENABLE && (M1_OUTER_EXPT == M1_OUTER_EXPT_SIGNOFF)
+void motor_outer_signoff_arm(motor_context_t *ctx);
+uint8_t motor_outer_signoff_is_armed(void);
+void motor_outer_signoff_tick(motor_context_t *ctx,
+                              float theta_fb_rad,
+                              float omega_rpm);
+#endif
+
 #if M1_SPEED_PROFILE_ENABLE
 void motor_speed_profile_arm(motor_context_t *ctx);
 void motor_speed_profile_arm_ex(motor_context_t *ctx, uint8_t repeat_en);

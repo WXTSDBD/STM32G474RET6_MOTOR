@@ -1,0 +1,34 @@
+---
+description: 仓库卫生：产物落盘位置、清理流程、git 禁止自动操作
+alwaysApply: true
+---
+
+# 仓库卫生（硬约束）
+
+## git：禁止自动操作
+
+- **不许自动执行 `git add` / `commit` / `mv` / `rm` / `restore` / `checkout` / `stash` / `clean` / `push` / `reset`。**
+- 需要提交/回滚/清理时，先把命令和理由讲清楚，**等用户明确同意再动**。
+- 只读查询（`git status` / `diff` / `log` / `ls-files`）不受限。
+
+## 产物落盘
+
+| 产物 | 放哪 |
+|------|------|
+| 录波 CSV | `VOFA+CSV/<YYYYMMDD>/vofa+<YYYYMMDDHHMM>.csv` |
+| 分析脚本 | 与该 CSV **同一日期目录**：`VOFA+CSV/<YYYYMMDD>/_analyze_*.py` |
+| 脚本产出的 json/txt/图 | 与脚本同目录同前缀 |
+| 跨实验复用的工具 | `tools/` |
+| 日期定不下来的脚本 | `VOFA+CSV/_mdk_arm_misc/`（不许猜日期） |
+
+**禁止堆放**：仓库根（只留 `.gitignore`/`.ioc`/`.mxproject`/正式文档）、`MDK-ARM/` 根（只留 Keil 工程自身文件与日志）。
+
+## 清理
+
+1. 先空跑，报「源 → 目标」与数量，再动手。
+2. 不覆盖同名目标，跳过并报告。
+3. 只移动**未跟踪**文件；被跟踪的先报告等用户定。
+4. **删除必须问过用户。**
+5. 收尾报告：移动数、去向、剩余、冲突。
+
+细则见 `.cursor/skills/repo-hygiene/SKILL.md`。

@@ -1,10 +1,9 @@
 /**
  * @file board_encoder_m1.c
  * @date 2026-10-06
- * @brief M1：SPI1、PA4 片选、DMA 收 AS5047。
-
+ * @brief M1：SPI1、PA4 片选、DMA 收 AS5047（单轴现行路径）。
  *
- * 映射改了要同时改本文件。
+ * M2（SPI3/PA15）单轴阶段不在此 init。映射改了要同时改本文件。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 

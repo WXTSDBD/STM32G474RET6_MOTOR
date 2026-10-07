@@ -11,9 +11,11 @@ MDK-ARM/**/*_sct.Bak
 MDK-ARM/**/ExtDll.iex
 MDK-ARM/**/EventRecorderStub.scvd
 MDK-ARM/JLinkLog.txt
+MDK-ARM/rebuild_log.txt
 MDK-ARM/build*.log
 MDK-ARM/build_*.log
 MDK-ARM/build_log.txt
+MDK-ARM/_abin_cmp/
 
 # Keil per-user UI (keep uvprojx / uvoptx if team shares debug presets)
 MDK-ARM/**/*.uvguix*

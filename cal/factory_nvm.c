@@ -1,7 +1,11 @@
 /**
  * @file factory_nvm.c
  * @date 2026-10-06
- * @brief 片内 Flash 尾区 0x0807F000（4 KB，scatter 预留）。
+ * @brief 片内 Flash 尾区出厂数据（基址见 memory_map.h）。
+ *
+ * HAL_FLASH_* / Bank2 页算是**厂商必然绑定**（换 MCU 必改），
+ * 分层上不算破口；归位目标是将来 `platform/flash_port_*`，本刀只标注。
+ *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
@@ -11,12 +15,14 @@
 #include <string.h>
 
 #include "deadband_cal.h"
+#include "memory_map.h"
+#include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_flash.h"
 #include "stm32g4xx_hal_flash_ex.h"
 
-#define FACTORY_NVM_BASE_ADDR  0x0807F000u
-#define FACTORY_NVM_PAGE_SIZE  0x800u
-#define FACTORY_NVM_PAGE_COUNT 2u
+#define FACTORY_NVM_BASE_ADDR  MEM_FACTORY_NVM_BASE
+#define FACTORY_NVM_PAGE_SIZE  MEM_FLASH_PAGE_SIZE
+#define FACTORY_NVM_PAGE_COUNT (MEM_FACTORY_NVM_SIZE / MEM_FLASH_PAGE_SIZE)
 
 typedef struct {
     uint32_t magic;

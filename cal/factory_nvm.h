@@ -3,6 +3,7 @@
  * @date 2026-10-06
  * @brief 片内 Flash 尾区出厂数据（相序 binding + deadband phase LUT v2）。
  *
+ * 地址真相源：`config/memory_map.h`。实现里的 `HAL_FLASH_*` 为厂商必然绑定。
  * load/write 在任务里调用。不要在电流环里擦写 Flash。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */

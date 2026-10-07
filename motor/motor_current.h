@@ -33,7 +33,11 @@ motor_context_t *motor_current_ctx(const bsp_axis_t *axis);
 
 float motor_current_get_pll_omega_mech_rpm(void);
 
+float motor_current_get_enc_pll_omega_mech_rpm(void);
+
 float motor_current_get_theta_mech_rad(void);
+
+float motor_current_get_theta_fb_rad(void);
 
 void motor_current_pll_reset_now(void);
 

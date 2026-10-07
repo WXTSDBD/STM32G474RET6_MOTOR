@@ -29,6 +29,13 @@ struct pwm_port {
     const pwm_port_ops_t *ops;
     void *hw;
     void *user_ctx;
+    /**
+     * 逻辑相 A/B/C → TIM 通道索引（0=CCR1, 1=CCR2, 2=CCR3）。
+     * 恒等 {0,1,2} 即现状接线；换板改这里，不改 motor/。
+     */
+    uint8_t ch_map[3];
+    /** PWM ARR 计数（与时间域 M1_PWM_PERIOD_S 不同量纲）。 */
+    uint16_t arr_counts;
 };
 
 extern const pwm_port_ops_t pwm_port_ops_stm32g4_reg;

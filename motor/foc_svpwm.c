@@ -10,25 +10,24 @@
 
 #include "foc_svpwm.h"
 
-#include "tim.h"
+#include <stddef.h>
 
 #include "dbg_monitor.h"
 #include "deadband.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 #include "motor_phase_binding.h"
 #include "motor_trig.h"
+#include "pwm_port.h"
 
 #include <math.h>
 
-#define voltage_power_supply 24
-#define PWM_Period 3999
 #define _PI 3.14159265359f
 #define _PI_2 1.57079632679f
 #define _PI_3 1.0471975512f
 #define _2PI 6.28318530718f
 #define _SQRT3 1.73205080757f
 #define INV_SQRT3 (1.0f / _SQRT3)
-#define INV_VBUS   (1.0f / (float)voltage_power_supply)
 #define INV_PI3    (1.0f / _PI_3)
 #define HALF_F     0.5f
 #define SIN_PI3    0.86602540378f
@@ -52,19 +51,6 @@ static void svpwm_t1_t2_from_theta(float theta, float Uref, float *T1, float *T2
     scale = _SQRT3 * Uref;
     *T1 = scale * sin_pi3_m_theta;
     *T2 = scale * s;
-}
-
-/**
- * @brief αβ 到 dq。Id/Iq 指针不可为 NULL。
- */
-void Park_Transform(float Ialpha, float Ibeta, float theta, float *Id, float *Iq)
-{
-    float sin_val;
-    float cos_val;
-
-    motor_trig_sincos(theta, &cos_val, &sin_val);
-    *Id = Ialpha * cos_val + Ibeta * sin_val;
-    *Iq = -Ialpha * sin_val + Ibeta * cos_val;
 }
 
 /**
@@ -111,22 +97,13 @@ void Clarke_Transform(float Ia, float Ib, float Ic, float *Ialpha, float *Ibeta)
     *Ibeta = (Ib - Ic) * INV_SQRT3;
 }
 
-float _normalizeAngle(float angle)
+static void svpwm_write_ccr(pwm_port_t *port, float Ta, float Tb, float Tc)
 {
-    const uint32_t el_counts_per_rev = 16384u * 7u;
-    const float rad_per_count = _2PI / (float)el_counts_per_rev;
-    int32_t el = (int32_t)(angle / rad_per_count);
-
-    el %= (int32_t)el_counts_per_rev;
-    if (el < 0) {
-        el += (int32_t)el_counts_per_rev;
+    /* 唯一来源：板级 port->arr_counts；忘填不得静默回落宏。 */
+    if ((port == NULL) || (port->arr_counts == 0u)) {
+        return;
     }
-    return (float)el * rad_per_count;
-}
-
-static void svpwm_write_ccr(TIM_HandleTypeDef *htim, float Ta, float Tb, float Tc)
-{
-    motor_phase_binding_write_ccr(htim, Ta, Tb, Tc, PWM_Period);
+    motor_phase_binding_write_ccr(port, Ta, Tb, Tc, port->arr_counts);
 }
 
 static float svpwm_duty_dev(float ta, float tb, float tc)
@@ -195,7 +172,7 @@ int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el)
     return sector;
 }
 
-static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
+static void setPhaseVoltage_core(pwm_port_t *port,
                                  float Uq, float Ud, float angle_el,
                                  float ia, float ib, float ic,
                                  float id_dq, float iq_dq,
@@ -208,11 +185,13 @@ static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
     int sector;
     float angle_ref;
     float theta;
+    const float vbus = g_m1_motor_cfg.vbus_v;
+    const float inv_vbus = 1.0f / vbus;
 
     if (Ud == 0.0f) {
         float uq_abs = (Uq >= 0.0f) ? Uq : -Uq;
 
-        Uref = uq_abs * INV_VBUS;
+        Uref = uq_abs * inv_vbus;
         if (Uref > 0.577f) {
             Uref = 0.577f;
         }
@@ -238,7 +217,7 @@ static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
         U_alpha = Ud * cos_val - Uq * sin_val;
         U_beta = Ud * sin_val + Uq * cos_val;
 
-        Uref = sqrtf(U_alpha * U_alpha + U_beta * U_beta) * INV_VBUS;
+        Uref = sqrtf(U_alpha * U_alpha + U_beta * U_beta) * inv_vbus;
         if (Uref > 1.0f) {
             Uref = 1.0f;
         } else if (Uref > 0.577f) {
@@ -345,16 +324,16 @@ static void setPhaseVoltage_core(TIM_HandleTypeDef *htim,
         float vbeta;
 
         motor_trig_sincos(angle_el, &cos_el, &sin_el);
-        va = (Ta - HALF_F) * M1_VBUS_V;
-        vb = (Tb - HALF_F) * M1_VBUS_V;
-        vc = (Tc - HALF_F) * M1_VBUS_V;
+        va = (Ta - HALF_F) * vbus;
+        vb = (Tb - HALF_F) * vbus;
+        vc = (Tc - HALF_F) * vbus;
         valpha = va;
         vbeta = (vb - vc) * INV_SQRT3;
         dbg.foc_vd_est = valpha * cos_el + vbeta * sin_el;
         dbg.foc_vq_est = -valpha * sin_el + vbeta * cos_el;
     }
 
-    svpwm_write_ccr(htim, Ta, Tb, Tc);
+    svpwm_write_ccr(port, Ta, Tb, Tc);
 }
 
 /**
@@ -369,7 +348,7 @@ void foc_svpwm_apply(bsp_axis_t *axis, float Uq, float Ud, float angle_el)
     if (axis == NULL || axis->pwm == NULL || axis->pwm->hw == NULL) {
         return;
     }
-    setPhaseVoltage_core((TIM_HandleTypeDef *)axis->pwm->hw,
+    setPhaseVoltage_core(axis->pwm,
                          Uq, Ud, angle_el,
                          0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0);
 }
@@ -385,6 +364,8 @@ void foc_svpwm_apply_abc(bsp_axis_t *axis,
     if (axis == NULL || axis->pwm == NULL || axis->pwm->hw == NULL) {
         return;
     }
-    setPhaseVoltage_core((TIM_HandleTypeDef *)axis->pwm->hw,
-                         Uq, Ud, angle_el, ia, ib, ic, id_dq, iq_dq, 1);
+    /* 编译期关死区时恒为 0，热路径不进 deadband_apply_duty。 */
+    setPhaseVoltage_core(axis->pwm,
+                         Uq, Ud, angle_el, ia, ib, ic, id_dq, iq_dq,
+                         M1_DEADBAND_ENABLE);
 }

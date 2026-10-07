@@ -153,22 +153,17 @@ void motor_phase_binding_map_abc(const float i_phys[3], float *ia, float *ib, fl
 }
 
 /**
- * @brief 逻辑占空写成 TIM CCR，启用时按 pwm_ch_to_phase 换通道。
- * @param htim PWM 定时器。不可为 NULL。
+ * @brief 逻辑占空写成 PWM CCR，启用时按 pwm_ch_to_phase 换通道。
+ * @param port PWM 口。不可为 NULL，且 hw 已绑定。
  * @param ta 逻辑 A 相归一化占空。
  * @param tb 逻辑 B 相归一化占空。
  * @param tc 逻辑 C 相归一化占空。
- * @param pwm_period 定时器周期计数。
+ * @param pwm_period 定时器周期计数（ARR）。
  */
-void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
+void motor_phase_binding_write_ccr(pwm_port_t *port,
                                    float ta, float tb, float tc,
                                    uint16_t pwm_period)
 {
-    pwm_port_t port = {
-        .ops = &pwm_port_ops_stm32g4_reg,
-        .hw = htim,
-        .user_ctx = NULL,
-    };
     float duty_logical[3];
     float duty_phys[3];
     uint8_t i;
@@ -177,7 +172,7 @@ void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
     uint32_t ccr2;
     uint32_t ccr3;
 
-    if (htim == NULL) {
+    if ((port == NULL) || (port->hw == NULL)) {
         return;
     }
 
@@ -201,5 +196,5 @@ void motor_phase_binding_write_ccr(TIM_HandleTypeDef *htim,
     dbg.foc_pwm_ccr1 = (float)ccr1;
     dbg.foc_pwm_ccr2 = (float)ccr2;
     dbg.foc_pwm_ccr3 = (float)ccr3;
-    pwm_port_set_duty3(&port, ccr1, ccr2, ccr3);
+    pwm_port_set_duty3(port, ccr1, ccr2, ccr3);
 }

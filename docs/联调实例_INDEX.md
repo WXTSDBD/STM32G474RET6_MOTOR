@@ -67,6 +67,8 @@
 | 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
 |---------|-----|------|------------------|---------|------|--------|
 | `pos_step_v1` | POSITION | RUNTIME_ARM* | `NORMAL` + `M1_DB_BRINGUP_SPEED_OFF` + `M1_POS_STEP_TEST_ENABLE` | 🚧 | ⚠️ | 7/5 三环日报 |
+| `pos_mit_signoff_v1` | POSITION/MIT | BOOT_ONCE | `M1_USE_SENSED_POS_MIT_PROFILE=1` + `M1_OUTER_EXPT = M1_OUTER_EXPT_SIGNOFF` | [规划 §13](规划_位置与MIT实验签收_2026-10-06.md) / [签收_P3](签收_位置环与MIT_P3_2026-10-06.md) | ⚠️ **有条件签收**（P3；P-C 单帧 Iq 毛刺不改增益） | 金样 `VOFA+CSV/20261006/vofa+202610062336.csv`；hex `MDK-ARM/_pkg/20261006_P3_sat_signoff/` |
+| `sensorless_pos_mit_smoke` | POSITION/MIT | BOOT_ONCE | `M1_USE_SENSORLESS_POS_MIT_PROFILE=1`（`bringup_active.h`） | [总结 §无感位控冒烟](总结_代码现状与问题分析_2026-10-07.md) | 🔧 **冒烟**（关超速守卫档，非产品签收） | 过程包见 `_pkg/20261006_*sensorless*`；日常回归用有感 `regress_sensed_short` |
 
 \* 现状上电自动 arm；目标改为独立 profile `M1_INSTANCE_POS_STEP`（见架构设计 §10）。
 
@@ -130,4 +132,4 @@ SMO 三包后 **改 EMF-PLL**：[总结_OBS_SMO旁路与换PLL决策_2026-09-10]
 
 ---
 
-**最后更新**：2026-09-27（S3c0/S3c1/S3c2/S3d 编号；下一枪 S3c1）
+**最后更新**：2026-10-07（补无感位控冒烟一行；架构接缝包 2–4 / 台架开关迁 `bringup_bench.h`）

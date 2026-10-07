@@ -13,6 +13,7 @@
 #include <stddef.h>
 
 #include "deadband_cal.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 
 #if defined(M1_VOFA_LUT_DUMP_ENABLE) && (M1_VOFA_LUT_DUMP_ENABLE != 0) && \
@@ -117,7 +118,7 @@ int telem_lut_dump_next(float vals[], uint8_t lut_dump_ch)
     case TELEM_LUT_DUMP_HDR:
         vals[0] = M1_VOFA_LUT_MAGIC_HDR;
         vals[1] = (float)len;
-        vals[2] = M1_RS_OHM;
+        vals[2] = g_m1_motor_cfg.rs_ohm;
         vals[3] = deadband_cal_outlier_seen() ? 1.0f : 0.0f;
 #if M1_DEADBAND_LUT_APPLY_MIN_ENABLE
         vals[4] = 3.3f;

@@ -1,0 +1,116 @@
+﻿undef_line,name,force_line,force_val,read_file_n,reads_n,hot_path,profile_override,had_ifndef_somewhere,n_define_sites,guess,why,priority
+1322,M1_OPEN_UD_PRE_ID_CAL_ENABLE,1323,1,14,49,1,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1288,M1_VOFA_IDENT_DUMP_ENABLE,1289,1,12,16,0,0,1,5,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1544,M1_VOFA_IDENT_DUMP_ENABLE,1545,1,12,16,0,0,1,5,重复强写,与先前定义同值（先前行 1289）→ 可改 #ifndef,1
+1636,M1_VOFA_UNIFIED_12CH,1637,0,10,18,0,1,1,2,必留,覆盖先前不同值（先前 758=1）,1
+743,M1_TELEM_BRINGUP_DECIMATION,744,4u    /* MIT。kHz。0kHz/4。*/,9,19,0,1,1,3,必留,覆盖先前不同值（先前 740=2u）,1
+1638,M1_TELEM_BRINGUP_K,1639,6u,9,22,0,1,1,2,必留,覆盖先前不同值（先前 737=12u）,1
+1640,M1_TELEM_BRINGUP_DECIMATION,1641,1u,9,19,0,1,1,3,必留,覆盖先前不同值（先前 744=4u    /* MIT。kHz。0kHz/4。*/）,1
+1332,M1_PLL_ENABLE,1333,0,8,34,1,1,1,5,必留,覆盖先前不同值（先前 68=1）,1
+1546,M1_PLL_ENABLE,1547,0,8,34,1,1,1,5,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1576,M1_PLL_ENABLE,1577,0,8,34,1,1,1,5,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1644,M1_CLOSURE_BRINGUP,1645,0,8,20,0,1,0,3,必留,覆盖先前不同值（先前 804=1）,1
+1874,M1_PLL_ENABLE,1875,0,8,34,1,1,1,5,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1548,M1_VOFA_PLL_CH8_11,1549,0,7,15,0,1,1,4,必留,覆盖先前不同值（先前 96=M1_PLL_ENABLE）,1
+1708,M1_VOFA_PLL_CH8_11,1709,0,7,15,0,1,1,4,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1876,M1_VOFA_PLL_CH8_11,1877,0,7,15,0,1,1,4,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1302,M1_VOFA_LUT_DUMP_ENABLE,0,,5,12,0,1,1,5,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1642,M1_VOFA_LUT_DUMP_ENABLE,1643,0,5,12,0,1,1,5,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1271,M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE,1272,1,4,14,1,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1290,M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD,1291,1,4,14,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1308,M1_DEADBAND_I_ZERO_DISABLE,1309,1,4,6,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1380,M1_IDENT_BODE_BANDS,1381,2u,4,11,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1445,M1_DEADBAND_I_ZERO_DISABLE,1446,1,4,6,0,0,1,3,重复强写,与先前定义同值（先前行 1309）→ 可改 #ifndef,1
+1551,M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE,1552,1,4,14,1,0,1,3,重复强写,与先前定义同值（先前行 1272）→ 可改 #ifndef,1
+1612,M1_IDENT_BODE_LUT_ENABLE,1613,0,4,7,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1614,M1_IDENT_BODE_BANDS,1615,2u,4,11,0,1,1,3,重复强写,与先前定义同值（先前行 1381）→ 可改 #ifndef,1
+604,M1_POS_KP_RPM_PER_RAD,605,M1_POS_STEP_KP_RPM_PER_RAD,3,8,1,1,1,2,必留,覆盖先前不同值（先前 511=80.0f）,1
+606,M1_POS_OMEGA_MAX_RPM,607,M1_POS_STEP_OMEGA_MAX_RPM,3,9,1,1,1,2,必留,覆盖先前不同值（先前 514=400.0f）,1
+1223,M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE,1224,0,3,14,0,0,1,7,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1313,M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE,1314,0,3,14,0,0,1,7,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1319,M1_DEADBAND_LUT_APPLY_UD,1320,0,3,4,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1324,M1_OPEN_UD_AFTER_ID_CAL,1325,1,3,8,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1326,M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME,1327,1,3,5,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1328,M1_OPEN_PRE_ID_LADDER_AB_ENABLE,1329,1,3,10,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1364,M1_IDENT_STEP_BANDS,1365,2u,3,9,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1366,M1_IDENT_STEP_ROUNDS_PER_PROFILE,1367,2u,3,4,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1368,M1_IDENT_STEP_ROUNDS,1369,(M1_IDENT_STEP_BANDS * 2u * M1_IDENT_STEP_ROUNDS_PER_PROFILE),3,10,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1370,M1_IDENT_STEP_OFF_ROUNDS,1371,M1_IDENT_STEP_ROUNDS_PER_PROFILE,3,12,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1372,M1_IDENT_STEP_FIXED_ROUNDS,1373,0u,3,8,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1382,M1_IDENT_BODE_ROUNDS,1383,(M1_IDENT_BODE_BANDS * 2u),3,10,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1384,M1_IDENT_BODE_FIXED_ROUNDS,1385,0u,3,6,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1412,M1_DEADBAND_LUT_APPLY_UD,1413,0,3,4,0,0,1,3,重复强写,与先前定义同值（先前行 1320）→ 可改 #ifndef,1
+1453,M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE,1454,0,3,14,0,0,1,7,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1572,M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME,1573,1,3,5,0,0,1,3,重复强写,与先前定义同值（先前行 1327）→ 可改 #ifndef,1
+1603,M1_IDENT_STEP_ROUNDS,1604,0u,3,10,0,1,1,3,必留,覆盖先前不同值（先前 1369=(M1_IDENT_STEP_BANDS * 2u * M1_IDENT_STEP_ROUNDS_PER_PROFILE)）,1
+1605,M1_IDENT_STEP_OFF_ROUNDS,1606,0u,3,12,0,1,1,3,必留,覆盖先前不同值（先前 1371=M1_IDENT_STEP_ROUNDS_PER_PROFILE）,1
+1607,M1_IDENT_STEP_FIXED_ROUNDS,1608,0u,3,8,0,1,1,3,重复强写,与先前定义同值（先前行 1373）→ 可改 #ifndef,1
+1616,M1_IDENT_BODE_ROUNDS,1617,2u,3,10,0,1,1,3,必留,覆盖先前不同值（先前 1383=(M1_IDENT_BODE_BANDS * 2u)）,1
+1618,M1_IDENT_BODE_OFF_ROUNDS,1619,2u,3,6,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1620,M1_IDENT_BODE_FIXED_ROUNDS,1621,0u,3,6,0,1,1,3,重复强写,与先前定义同值（先前行 1385）→ 可改 #ifndef,1
+652,M1_SPEED_OMEGA_RAMP_RPM_S,653,200.0f,2,3,1,1,1,3,必留,覆盖先前不同值（先前 483=500.0f）,1
+1266,M1_RS_IDENT_USE_FIXED_NOMINAL,1267,1,2,10,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1273,M1_LD_LQ_IDENT_FINE_GRID_ENABLE,1274,1,2,4,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1276,M1_LD_LQ_IDENT_F_COARSE_HZ,1277,500.0f,2,4,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1278,M1_LD_LQ_IDENT_F_FINE_HZ,1279,1000.0f,2,6,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1280,M1_LD_LQ_IDENT_INJECT_LUT_ENABLE,1281,1,2,11,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1292,M1_ID_CAL_AMP_TABLE_LEN,1293,30u,2,13,0,0,1,4,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1296,M1_ID_CAL_ID_DWELL_S,1297,0.5f,2,3,0,0,1,5,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1298,M1_ID_CAL_ID_DWELL_LOW_S,1299,0.5f,2,2,0,0,1,5,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1317,M1_DEADBAND_LUT_COMMIT_NORMALIZE,1318,0,2,8,0,0,1,4,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1330,M1_VOFA_IDENT_DUTY_12CH,1331,1,2,5,0,0,0,3,必留,有外部读取，默认先留（未证伪前不改）,1
+1352,M1_ID_CAL_AMP_TABLE_LEN,1353,30u,2,13,0,0,1,4,重复强写,与先前定义同值（先前行 1293）→ 可改 #ifndef,1
+1357,M1_ID_CAL_ID_DWELL_S,1358,0.5f,2,3,0,0,1,5,重复强写,与先前定义同值（先前行 1297）→ 可改 #ifndef,1
+1359,M1_ID_CAL_ID_DWELL_LOW_S,1360,0.5f,2,2,0,0,1,5,重复强写,与先前定义同值（先前行 1299）→ 可改 #ifndef,1
+1386,M1_IDENT_BODE_I_BIAS_HI_A,1387,1.25f  /* 。I 。Bode（不。1.0 A。*/,2,3,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1392,M1_IDENT_BODE_F_SPLIT_HZ,1393,200.0f,2,3,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1397,M1_IDENT_FIX_THETA_ENABLE,1398,1,2,3,1,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1399,M1_IDENT_THETA_EL_RAD,1400,M1_ID_CAL_THETA_EL_RAD,2,3,1,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1421,M1_ID_CAL_PASS0_ANGLE_COUNT,1422,3,2,8,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1435,M1_ID_CAL_ID_DWELL_S,1436,0.5f,2,3,0,0,1,5,重复强写,与先前定义同值（先前行 1358）→ 可改 #ifndef,1
+1437,M1_ID_CAL_ID_DWELL_LOW_S,1438,0.5f,2,2,0,0,1,5,重复强写,与先前定义同值（先前行 1360）→ 可改 #ifndef,1
+1439,M1_ID_CAL_VERIFY_ID_DWELL_S,1440,0.5f,2,3,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1456,M1_DEADBAND_LUT_COMMIT_NORMALIZE,1457,0,2,8,0,0,1,4,必留,分支内曾出现不同值，本处用 #undef 钉死当前分支,1
+1513,M1_ID_CAL_AMP_TABLE_LEN,1514,30u,2,13,0,0,1,4,重复强写,与先前定义同值（先前行 1353）→ 可改 #ifndef,1
+1517,M1_ID_CAL_ID_DWELL_S,1518,0.5f,2,3,0,0,1,5,重复强写,与先前定义同值（先前行 1436）→ 可改 #ifndef,1
+1519,M1_ID_CAL_ID_DWELL_LOW_S,1520,0.5f,2,2,0,0,1,5,重复强写,与先前定义同值（先前行 1438）→ 可改 #ifndef,1
+1534,M1_RS_IDENT_USE_FIXED_NOMINAL,1535,1,2,10,0,0,1,3,重复强写,与先前定义同值（先前行 1267）→ 可改 #ifndef,1
+1554,M1_LD_LQ_IDENT_FINE_GRID_ENABLE,1555,1,2,4,0,0,1,3,重复强写,与先前定义同值（先前行 1274）→ 可改 #ifndef,1
+1557,M1_LD_LQ_IDENT_F_COARSE_HZ,1558,500.0f,2,4,0,0,1,3,重复强写,与先前定义同值（先前行 1277）→ 可改 #ifndef,1
+1559,M1_LD_LQ_IDENT_F_FINE_HZ,1560,1000.0f,2,6,0,0,1,3,重复强写,与先前定义同值（先前行 1279）→ 可改 #ifndef,1
+1562,M1_LD_LQ_IDENT_INJECT_LUT_ENABLE,1563,1,2,11,0,0,1,3,重复强写,与先前定义同值（先前行 1281）→ 可改 #ifndef,1
+1622,M1_IDENT_BODE_I_BIAS_HI_A,1623,1.25f,2,3,0,1,1,3,必留,覆盖先前不同值（先前 1387=1.25f  /* 。I 。Bode（不。1.0 A。*/）,1
+1624,M1_IDENT_BODE_CYCLES_HI,1625,50.0f  /* T_OBS_HI 优先；此。fallback */,2,3,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1628,M1_IDENT_BODE_T_OBS_HI_S,1629,0.1f,2,3,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1630,M1_IDENT_FIX_THETA_ENABLE,1631,1,2,3,1,1,1,3,重复强写,与先前定义同值（先前行 1398）→ 可改 #ifndef,1
+1632,M1_IDENT_THETA_EL_RAD,1633,M1_ID_CAL_THETA_EL_RAD,2,3,1,1,1,3,重复强写,与先前定义同值（先前行 1400）→ 可改 #ifndef,1
+2238,M1_LD_LQ_ID_BIAS_N,2239,1u,2,4,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+2240,M1_LD_LQ_IQ_BIAS_N,2241,2u,2,6,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+2243,M1_LD_LQ_IQ_BIAS_N,2244,5u,2,6,0,0,1,3,必留,覆盖先前不同值（先前 2241=2u）,1
+3252,M1_IF_OBS_SPEED_IQ_BOOT_A,3253,(M1_IF_IQ_A),2,2,1,0,0,1,必留,有外部读取，默认先留（未证伪前不改）,1
+1269,M1_LD_LQ_PRE_DECAY_S,1270,1.0f,1,1,0,0,1,4,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1282,M1_LD_LQ_IDENT_L_NOM_H,1283,85e-6f,1,2,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1284,M1_LD_LQ_IDENT_SETTLE_S,1285,1.0f,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1286,M1_LD_LQ_IDENT_CYCLES_PER_AMP,1287,15u,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1300,M1_ID_CAL_I_REF_ABS_MAX,1301,3.5f,1,8,0,0,1,4,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1311,M1_DEADBAND_GEO_MERGE_VAL30_ONLY,1312,1,1,3,0,0,1,3,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1375,M1_IDENT_STEP_DWELL_S,1376,1.0f,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1377,M1_IDENT_STEP_ZERO_DWELL_S,1378,1.0f,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1388,M1_IDENT_BODE_F1_HZ,1389,1500.0f,1,2,0,1,1,3,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1390,M1_IDENT_BODE_F_RATIO,1391,1.15f   /* 10 ~ F_SPLIT 以下 */,1,2,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1394,M1_IDENT_BODE_F_RATIO_HI,1395,1.06f   /* F_SPLIT ~ F1，方。D 密扫 crossover 。*/,1,2,0,1,1,2,必留,亦被 profile #undef（本文件内强制与 profile 链交织，先留）,1
+1429,M1_ID_CAL_PASS1_USE_APPLY_DUTY,1430,1,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1450,M1_DEADBAND_GEO_MERGE_VAL30_ONLY,1451,1,1,3,0,0,1,3,重复强写,与先前定义同值（先前行 1312）→ 可改 #ifndef,1
+1502,M1_LD_LQ_IDENT_ABORT_ON_THETA_DRIFT,0,,1,1,0,0,1,2,必留,有外部读取，默认先留（未证伪前不改）,1
+1505,M1_LD_LQ_ALIGN_S,1506,1.0f,1,1,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+1507,M1_LD_LQ_PRE_DECAY_S,1508,1.0f,1,1,0,0,1,4,重复强写,与先前定义同值（先前行 1270）→ 可改 #ifndef,1
+1521,M1_ID_CAL_I_REF_ABS_MAX,1522,3.5f,1,8,0,0,1,4,重复强写,与先前定义同值（先前行 1301）→ 可改 #ifndef,1
+1538,M1_LD_LQ_PRE_DECAY_S,1539,1.0f,1,1,0,0,1,4,重复强写,与先前定义同值（先前行 1508）→ 可改 #ifndef,1
+1626,M1_IDENT_BODE_F1_HZ,1627,2500.0f,1,2,0,1,1,3,必留,覆盖先前不同值（先前 1389=1500.0f）,1
+2552,M1_DEADBAND_GEO_SAMPLE_MAX,2553,\,1,2,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,1
+3254,M1_IF_OBS_HANDOFF_IQ_BOOT_A,3255,(M1_IF_HANDOFF_IQ_A),1,1,1,0,0,1,必留,有外部读取，默认先留（未证伪前不改）,1
+1294,M1_ID_CAL_I_MAX_A,1295,1.5f,0,0,0,0,1,4,必留,后面 #ifndef 默认值不同，本处为分支强制,2
+1354,M1_ID_CAL_I_MAX_A,1355,1.5f,0,0,0,0,1,4,重复强写,与先前定义同值（先前行 1295）→ 可改 #ifndef,2
+1442,M1_ID_CAL_PASS0_B_DWELL_S,1443,1.0f,0,0,0,0,1,2,必留,后面 #ifndef 默认值不同，本处为分支强制,2
+1515,M1_ID_CAL_I_MAX_A,1516,1.5f,0,0,0,0,1,4,重复强写,与先前定义同值（先前行 1355）→ 可改 #ifndef,2
+3250,M1_IF_OBS_SPEED_IQ_SIGN,3251,(1.0f),0,0,0,0,0,1,可删,无外部读取且几乎无后续守卫（须人工复核后再删）,2

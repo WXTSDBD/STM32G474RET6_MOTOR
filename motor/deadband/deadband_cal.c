@@ -16,6 +16,7 @@
 #include "deadband.h"
 #include "deadband_geo.h"
 #include "factory_nvm.h"
+#include "motor_cfg.h"
 #include "motor_params_m1.h"
 
 #include <string.h>
@@ -579,7 +580,7 @@ bool deadband_cal_capture_at(float id_a, float ud_pi_v, float id_ref_a,
         return false;
     }
 
-    ud_res = ud_pi_v - id_a * M1_RS_OHM;
+    ud_res = ud_pi_v - id_a * g_m1_motor_cfg.rs_ohm;
     ud_val = fabsf(ud_res);
 
     if (ud_val > M1_ID_CAL_OUTLIER_V) {

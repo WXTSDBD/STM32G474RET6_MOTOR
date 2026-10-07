@@ -36,52 +36,13 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-/* DbgMon_t �? debug/dbg_monitor.h */
+/* DbgMon_t �?? debug/dbg_monitor.h */
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-
-/** 1=上电锁转子标 encoder add�??0=�?? M1_ENCODER_OFFSET_RAD */
-#define M1_RUN_ENCODER_CAL 0
-
-/** 1=上电跑三档脉冲诊断（不写 Flash，标�?? hold）；0=�?? Flash binding */
-#define M1_RUN_PHASE_CAL 0
-
-/** 1=�?? Flash 加载 phase binding（M1_RUN_PHASE_CAL=0 时生效） */
-#define M1_APPLY_PHASE_BINDING 1
-
-/** 1=强制 2325 Test3 binding，忽�?? Flash（开环验收）�??0=仅用 Flash */
-#ifndef M1_BINDING_OVERRIDE_2325
-#define M1_BINDING_OVERRIDE_2325  1
-#endif
-
-#ifndef M1_ENCODER_OFFSET_RAD
-#define M1_ENCODER_OFFSET_RAD 2.10f
-#endif
-
-/** 1=�?? Park/VOFA �?? -θ（测�?? B）；SVPWM �?? +θ。闭环前须改�?? 0 或统�?? encoder 约定 */
-#ifndef M1_THETA_NEGATE
-#define M1_THETA_NEGATE  0
-#endif
-
-/** 1=VOFA ch4 输出 SVPWM 扇区 1..6（替�?? Id）；验证扇区 vs Iq 后改�?? 0 */
-#ifndef M1_VOFA_SECTOR_DIAG
-#define M1_VOFA_SECTOR_DIAG  0
-#endif
-
-/** 1=VOFA ch0�?2 输出 foc_ia/b/c(A)，与 Park 同拍�?0=adc_zeroed LSB */
-#ifndef M1_VOFA_FOC_ABC
-#define M1_VOFA_FOC_ABC  1
-#endif
-
-#define PHASE_CAL_FAIL_NONE     0u
-#define PHASE_CAL_FAIL_OC       1u
-#define PHASE_CAL_FAIL_SNR      2u
-#define PHASE_CAL_FAIL_PERM     3u
-#define PHASE_CAL_FAIL_FLASH    4u
-#define PHASE_CAL_FAIL_TIMEOUT  5u
-
+/* 台架�?关真相源：config/bringup_bench.h（BINDING_OVERRIDE 默认 0）�?? */
+#include "bringup_bench.h"
 /* USER CODE END EC */
 
 /* Exported macro ------------------------------------------------------------*/
@@ -93,7 +54,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-/* extern dbg �? debug/dbg_monitor.h */
+/* extern dbg �?? debug/dbg_monitor.h */
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
