@@ -22,7 +22,8 @@ extern "C" {
 #endif
 
 #ifndef ENCODER_CAL_UQ_LOCK
-#define ENCODER_CAL_UQ_LOCK 2.5f
+/** 锁转子电压幅值 [V]；jeoc 里作 Ud（Uq=0），勿再当 Uq 用。 */
+#define ENCODER_CAL_UQ_LOCK 1.0f
 #endif
 
 #ifndef ENCODER_CAL_SETTLE_MS

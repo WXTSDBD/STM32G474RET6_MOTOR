@@ -210,6 +210,40 @@ static float as5047_chip_unwrap(encoder_t *e, uint16_t raw)
     return as5047_unwrap(as5047_ctx(e), raw);
 }
 
+/**
+ * @brief 14bit raw 换电角。
+ */
+static float as5047_chip_raw_to_theta_el(uint16_t raw, uint8_t pole_pairs, float offset_rad)
+{
+    return as5047_raw_to_theta_el(raw, pole_pairs, offset_rad);
+}
+
+/**
+ * @brief 阻塞读 ANGLEUNC。
+ */
+static uint16_t as5047_chip_blocking_read_angle(encoder_t *e)
+{
+    as5047_ctx_t *ctx = as5047_ctx(e);
+
+    if (ctx == NULL || ctx->hal == NULL) {
+        return 0U;
+    }
+    return as5047_blocking_read(ctx->hal, AS5047_ANGLEUNC);
+}
+
+/**
+ * @brief 1=双帧未结束。
+ */
+static uint8_t as5047_chip_xfer_busy(const encoder_t *e)
+{
+    const as5047_ctx_t *ctx = (const as5047_ctx_t *)e->chip_ctx;
+
+    if (ctx == NULL) {
+        return 0U;
+    }
+    return (ctx->phase != (uint8_t)AS5047_PHASE_IDLE) ? 1U : 0U;
+}
+
 const encoder_driver_t as5047_encoder_driver = {
     .init = as5047_chip_init,
     .async_init = as5047_chip_async_init,
@@ -218,4 +252,7 @@ const encoder_driver_t as5047_encoder_driver = {
     .on_rx_complete = as5047_chip_on_rx_complete,
     .on_error = as5047_chip_on_error,
     .unwrap = as5047_chip_unwrap,
+    .raw_to_theta_el = as5047_chip_raw_to_theta_el,
+    .blocking_read_angle = as5047_chip_blocking_read_angle,
+    .xfer_busy = as5047_chip_xfer_busy,
 };

@@ -18,6 +18,8 @@ extern "C" {
 
 /** SPI1 RX/TX DMA：须能抢占 ADC FOC。 */
 #define IRQ_PRIO_SPI1_DMA       1u
+/** SPI3 编码器 RX DMA：与 SPI1 同档。 */
+#define IRQ_PRIO_SPI3_DMA       1u
 /** TIM 刹车 / Update（与现 CubeMX 一致）。 */
 #define IRQ_PRIO_TIM_BRK_UP     1u
 /** ADC1/2/3/5 注入完成（FOC 节拍）。 */

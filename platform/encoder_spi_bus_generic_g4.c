@@ -200,6 +200,8 @@ static void gen_hw_init(encoder_spi_bus_t *bus)
 
     if (bus->dma_ll_tx_ch == LL_DMA_CHANNEL_3) {
         HAL_NVIC_DisableIRQ(DMA1_Channel3_IRQn);
+    } else if (bus->dma_ll_tx_ch == LL_DMA_CHANNEL_7) {
+        HAL_NVIC_DisableIRQ(DMA1_Channel7_IRQn);
     }
 
     LL_DMA_EnableIT_TC(DMA1, bus->dma_ll_rx_ch);

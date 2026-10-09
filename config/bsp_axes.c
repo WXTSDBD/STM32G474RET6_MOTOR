@@ -10,12 +10,15 @@
 
 #include "bsp_axes.h"
 
+#include <stddef.h>
+
 #include "bridge_cubemx.h"
 
 #include "board_encoder.h"
 #include "motor_params_m1.h"
 
 static bsp_axis_t s_axes[BSP_AXIS_COUNT];
+static encoder_t *s_m1_enc;
 
 /** 分流 ADC 诊断快照（ADC1/3/5）；M1 不写这里。 */
 int16_t adc_read[3];
@@ -30,7 +33,7 @@ static void bsp_axis_bind_defaults(bsp_axis_id_t id, bsp_axis_t *axis)
 
     if (id == BSP_AXIS_M1) {
         axis->enabled = true;
-        axis->enc = &enc_m1;
+        axis->enc = s_m1_enc;
         axis->motor_ctx = NULL;
 
         cfg->topo = ADC_SAMPLE_TOPO_SCAN;
@@ -71,6 +74,8 @@ void bsp_init(void)
 {
     bsp_axis_id_t id;
 
+    s_m1_enc = board_encoder_m1_setup();
+
     for (id = 0; id < BSP_AXIS_COUNT; id++) {
         bsp_axis_bind_defaults(id, &s_axes[id]);
         bridge_cubemx_apply_axis(id, &s_axes[id]);
@@ -79,8 +84,6 @@ void bsp_init(void)
             adc_sample_init(&s_axes[id].adc, &s_axes[id].adc_cfg);
         }
     }
-
-    board_encoder_m1_init();
 }
 
 /**

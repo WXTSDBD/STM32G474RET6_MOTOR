@@ -8,7 +8,8 @@
  *   theta_fb/mech ← motor_current getter
  *   theta_ref/err、omega_ref、iq_ref ← ctx
  *   omega_pll ← 编码器 PLL（非 s_speed_fb）
- *   mark ← dbg.open_seq_phase（D 打点，保留）
+ *   ch11：默认 mark；M1_VOFA_SIGNOFF_ENC_RAW=1 时改为 enc_raw（编码器冒烟录波）
+ *   M1_VOFA_KTH_SPEED_DIAG=1 时：ch7=iq_ref、ch10=isr_delta（速度对照）
  *
  * FOC_DQ / IDENT 仍有部分通道读 dbg（ud/uq/duty 等，本刀未迁）。
  */
@@ -17,12 +18,19 @@
 
 #include <stddef.h>
 
+#include "app_uart_dma_debug.h"
 #include "motor_params_m1.h"
 #include "dbg_monitor.h"
 #include "motor_current.h"
 
 #ifndef M1_VOFA_SIGNOFF_CH
 #define M1_VOFA_SIGNOFF_CH 0
+#endif
+#ifndef M1_VOFA_SIGNOFF_ENC_RAW
+#define M1_VOFA_SIGNOFF_ENC_RAW 0
+#endif
+#ifndef M1_VOFA_KTH_SPEED_DIAG
+#define M1_VOFA_KTH_SPEED_DIAG 0
 #endif
 #ifndef M1_VOFA_IDENT_DUTY_12CH
 #define M1_VOFA_IDENT_DUTY_12CH 0
@@ -150,6 +158,42 @@ static float tl_mark(const motor_context_t *ctx)
     return (float)dbg.open_seq_phase;
 }
 
+/**
+ * @brief 编码器 raw（KTH 0…65535，AS5047 0…16383）。
+ */
+static float tl_enc_raw(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return dbg.enc_raw;
+}
+
+/**
+ * @brief 锁转子标定得到的电角 add，单位 rad。
+ */
+static float tl_enc_cal_add(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return dbg.enc_cal_add;
+}
+
+/**
+ * @brief FOC ISR 周期差，单位 DWT cycle。
+ */
+static float tl_isr_delta(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return (float)g_telem_dbg.isr_delta;
+}
+
+/**
+ * @brief PLL ω 与差分 ω 之差，单位 rpm（速度观测质量）。
+ */
+static float tl_pll_omega_err(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return dbg.pll_omega_err_rpm;
+}
+
 static float tl_vd_est(const motor_context_t *ctx)
 {
     (void)ctx;
@@ -180,6 +224,41 @@ static float tl_duty_tc(const motor_context_t *ctx)
     return dbg.foc_duty_tc;
 }
 
+#if M1_VOFA_SIGNOFF_ENC_RAW
+#if M1_VOFA_KTH_SPEED_DIAG
+/** KTH 速度对照：… iq_ref pll_ω_err ω ω* isr_delta enc_raw；kick_skip 看 Watch */
+static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
+    { "ia",              tl_ia },
+    { "ib",              tl_ib },
+    { "ic",              tl_ic },
+    { "iq",              tl_iq },
+    { "theta_mech",      tl_theta_mech },
+    { "theta_el",        tl_theta_el },
+    { "iq_ref",          tl_iq_ref_outer },
+    { "pll_omega_err",   tl_pll_omega_err },
+    { "omega_pll",       tl_omega_pll },
+    { "omega_ref",       tl_omega_ref },
+    { "isr_delta",       tl_isr_delta },
+    { "enc_raw",         tl_enc_raw },
+};
+#else
+/** 编码器冒烟/标定：… ω_pll ω_ref enc_cal_add enc_raw */
+static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
+    { "ia",          tl_ia },
+    { "ib",          tl_ib },
+    { "ic",          tl_ic },
+    { "iq",          tl_iq },
+    { "theta_fb",    tl_theta_fb },
+    { "theta_mech",  tl_theta_mech },
+    { "theta_el",    tl_theta_el },
+    { "theta_err",   tl_theta_err },
+    { "omega_pll",   tl_omega_pll },
+    { "omega_ref",   tl_omega_ref },
+    { "enc_cal_add", tl_enc_cal_add },
+    { "enc_raw",     tl_enc_raw },
+};
+#endif
+#else
 /** 签收：ia ib ic iq θ_fb θ_mech θ_ref θ_err ω_pll ω_ref iq_ref mark */
 static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
     { "ia",         tl_ia },
@@ -195,6 +274,7 @@ static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
     { "iq_ref",     tl_iq_ref_outer },
     { "mark",       tl_mark },
 };
+#endif
 
 /** 旧统一前半 + id/iq_ref/duty：ia ib ic id iq θ ud uq id_ref iq_ref duty_dev mark */
 static const telem_ch_t s_layout_foc_dq[TELEM_TABLE_CH_N] = {

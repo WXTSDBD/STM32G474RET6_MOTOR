@@ -55,6 +55,12 @@ typedef struct {
     void (*on_error)(encoder_t *e);
     /** raw 展开成多圈机械角，单位 rad。 */
     float (*unwrap)(encoder_t *e, uint16_t raw);
+    /** raw 换单圈电角 [0, 2π)，单位 rad。 */
+    float (*raw_to_theta_el)(uint16_t raw, uint8_t pole_pairs, float offset_rad);
+    /** 阻塞读一角 raw（标定 / 种子）；热路径不要用。 */
+    uint16_t (*blocking_read_angle)(encoder_t *e);
+    /** 1=传输未完成，0=可再 kick。 */
+    uint8_t (*xfer_busy)(const encoder_t *e);
 } encoder_driver_t;
 
 struct encoder {
@@ -80,6 +86,8 @@ void encoder_on_spi_rx_complete(encoder_t *e);
 void encoder_on_spi_error(encoder_t *e);
 float encoder_get_angle(encoder_t *e, uint16_t raw);
 float encoder_get_theta_el(const encoder_t *e, uint16_t raw, uint8_t pole_pairs, float offset_rad);
+uint16_t encoder_blocking_read_angle(encoder_t *e);
+uint8_t encoder_xfer_busy(const encoder_t *e);
 
 void encoder_set_theta_el_offset(encoder_t *e, float offset_rad);
 float encoder_get_theta_el_offset(const encoder_t *e);

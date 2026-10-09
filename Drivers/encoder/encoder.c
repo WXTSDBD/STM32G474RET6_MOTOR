@@ -1,9 +1,9 @@
 /**
  * @file encoder.c
  * @date 2026-10-06
- * @brief 编码器薄转发：把 kick/raw/unwrap 转到芯片驱动。
+ * @brief 编码器薄转发：把 kick/raw/unwrap/θ 转到芯片驱动。
  *
- * 节拍限制见 encoder.h 文件头。电角换算目前走 AS5047 公式。
+ * 节拍限制见 encoder.h 文件头。电角换算必须走 drv->raw_to_theta_el。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -11,8 +11,6 @@
 #include "encoder.h"
 
 #include <stddef.h>
-
-#include "as5047.h"
 
 /**
  * @brief 绑驱动、芯片上下文和总线，并调用芯片 init。
@@ -61,7 +59,7 @@ void encoder_kick(encoder_t *e)
 }
 
 /**
- * @brief 读最新 14 位 raw。无效时返回 0。
+ * @brief 读最新角度 raw。无效时返回 0。
  */
 uint16_t encoder_get_raw(const encoder_t *e)
 {
@@ -107,8 +105,32 @@ float encoder_get_angle(encoder_t *e, uint16_t raw)
  */
 float encoder_get_theta_el(const encoder_t *e, uint16_t raw, uint8_t pole_pairs, float offset_rad)
 {
-    (void)e;
-    return as5047_raw_to_theta_el(raw, pole_pairs, offset_rad);
+    if (e == NULL || e->drv == NULL || e->drv->raw_to_theta_el == NULL) {
+        return 0.0f;
+    }
+    return e->drv->raw_to_theta_el(raw, pole_pairs, offset_rad);
+}
+
+/**
+ * @brief 阻塞读一角 raw。驱动未实现时返回 0。
+ */
+uint16_t encoder_blocking_read_angle(encoder_t *e)
+{
+    if (e == NULL || e->drv == NULL || e->drv->blocking_read_angle == NULL) {
+        return 0U;
+    }
+    return e->drv->blocking_read_angle(e);
+}
+
+/**
+ * @brief 1=传输未完成。
+ */
+uint8_t encoder_xfer_busy(const encoder_t *e)
+{
+    if (e == NULL || e->drv == NULL || e->drv->xfer_busy == NULL) {
+        return 0U;
+    }
+    return e->drv->xfer_busy(e);
 }
 
 /**

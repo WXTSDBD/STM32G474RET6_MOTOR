@@ -14,8 +14,8 @@
 #include "motor_current.h"
 #include "hal_bridge.h"
 #include "time_port.h"
-#include "as5047.h"
 #include "dbg_monitor.h"
+#include "encoder.h"
 #include "foc_svpwm.h"
 #include "encoder_spi_bus.h"
 #include "phase_detect.h"
@@ -120,10 +120,7 @@ static uint32_t s_prof_f1_delta;
 
 static void telem_enc_profile_cb(const encoder_t *e, const enc_profile_event_t *ev)
 {
-    const as5047_ctx_t *ctx = (const as5047_ctx_t *)e->chip_ctx;
-
-    (void)e;
-    if (ctx == NULL) {
+    if (e == NULL || ev == NULL) {
         return;
     }
 
@@ -135,15 +132,15 @@ static void telem_enc_profile_cb(const encoder_t *e, const enc_profile_event_t *
         s_prof_kick_cyccnt = ev->cyccnt;
         g_telem_dbg.enc_kick_cnt++;
         g_telem_dbg.enc_dma_busy = 1U;
-        g_telem_dbg.enc_dma_phase = AS5047_PHASE_FRAME1;
+        g_telem_dbg.enc_dma_phase = 1U;
         break;
     case ENC_EVT_F1_DONE:
         s_prof_f1_delta = ev->aux;
         g_telem_dbg.enc_dma_f1_cb_delta = ev->aux;
-        g_telem_dbg.enc_rx_word0 = ctx->rx_buf;
-        g_telem_dbg.enc_dma_phase = AS5047_PHASE_FRAME2;
+        g_telem_dbg.enc_dma_phase = 2U;
         break;
     case ENC_EVT_F2_DONE:
+        /* 双帧完成或 KTH 单帧完成 */
         g_telem_dbg.enc_dma_f2_cb_delta = ev->aux;
         g_telem_dbg.enc_dma_cpu_delta = s_prof_f1_delta + ev->aux;
         g_telem_dbg.enc_dma_seq_delta = ev->cyccnt - s_prof_kick_cyccnt;
@@ -151,21 +148,21 @@ static void telem_enc_profile_cb(const encoder_t *e, const enc_profile_event_t *
             g_telem_dbg.enc_dma_seq_delta_max = g_telem_dbg.enc_dma_seq_delta;
         }
         g_telem_dbg.enc_total_delta = g_telem_dbg.isr_delta + g_telem_dbg.enc_dma_cpu_delta;
-        g_telem_dbg.enc_rx_word1 = ctx->rx_buf;
-        g_telem_dbg.enc_raw = ctx->raw;
+        g_telem_dbg.enc_raw = encoder_get_raw(e);
+        g_telem_dbg.enc_rx_word1 = g_telem_dbg.enc_raw;
         g_telem_dbg.enc_cplt_cnt++;
         g_telem_dbg.enc_dma_busy = 0U;
-        g_telem_dbg.enc_dma_phase = AS5047_PHASE_IDLE;
+        g_telem_dbg.enc_dma_phase = 0U;
         break;
     case ENC_EVT_KICK_SKIP_BUSY:
         g_telem_dbg.enc_kick_skip_busy++;
-        g_telem_dbg.enc_dma_busy = (ctx->phase != AS5047_PHASE_IDLE) ? 1U : 0U;
-        g_telem_dbg.enc_dma_phase = ctx->phase;
+        g_telem_dbg.enc_dma_busy = encoder_xfer_busy(e);
+        g_telem_dbg.enc_dma_phase = g_telem_dbg.enc_dma_busy;
         break;
     case ENC_EVT_ERROR:
         g_telem_dbg.enc_err_cnt++;
         g_telem_dbg.enc_dma_busy = 0U;
-        g_telem_dbg.enc_dma_phase = AS5047_PHASE_IDLE;
+        g_telem_dbg.enc_dma_phase = 0U;
         break;
     default:
         break;

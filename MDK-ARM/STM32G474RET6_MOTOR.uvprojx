@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32G474xx,ARM_MATH_CM4</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../debug;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/math_tables;../Drivers/adc;../cal;../config;../motor/deadband;../motor/ident;../motor/speed_ident;../motor;../drivers/foc;../Drivers/encoder;../Drivers/as5047;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>../Core/Inc;../debug;../Drivers/STM32G4xx_HAL_Driver/Inc;../Drivers/STM32G4xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32G4xx/Include;../Drivers/CMSIS/Include;../bringup;../bringup/math_tables;../Drivers/adc;../cal;../config;../motor/deadband;../motor/ident;../motor/speed_ident;../motor;../drivers/foc;../Drivers/encoder;../Drivers/as5047;../Drivers/kth7823;../platform;../board;../Middlewares/Third_Party/FreeRTOS/Source/include;../Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2;../Middlewares/Third_Party/FreeRTOS/Source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1301,9 +1301,24 @@
               <FilePath>..\Drivers\as5047\as5047_async.c</FilePath>
             </File>
             <File>
+              <FileName>kth7823_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\kth7823\kth7823_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>kth7823_async.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\kth7823\kth7823_async.c</FilePath>
+            </File>
+            <File>
               <FileName>encoder.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Drivers\encoder\encoder.c</FilePath>
+            </File>
+            <File>
+              <FileName>encoder_chip.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Drivers\encoder\encoder_chip.c</FilePath>
             </File>
             <File>
               <FileName>encoder_spi_bus.c</FileName>
@@ -1324,6 +1339,11 @@
               <FileName>board_encoder_m1.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\board\board_encoder_m1.c</FilePath>
+            </File>
+            <File>
+              <FileName>board_encoder_spi3.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\board\board_encoder_spi3.c</FilePath>
             </File>
             <File>
               <FileName>board_axis_ports.c</FileName>

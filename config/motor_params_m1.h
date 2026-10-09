@@ -146,6 +146,8 @@
  * 磁链稳速：config/profiles/m1_flux_id_1000rpm.profile.h
  */
 #include "bringup_active.h"
+/** 台架角源/零偏/机械角符号：须在本文件后续 #ifndef 默认之前纳入。 */
+#include "bringup_bench.h"
 #ifndef M1_USE_FLUX_ID_PROFILE
 #define M1_USE_FLUX_ID_PROFILE          0
 #endif
@@ -763,6 +765,11 @@
  */
 #ifndef M1_VOFA_UNIFIED_12CH
 #define M1_VOFA_UNIFIED_12CH            1
+#endif
+
+/** 机械角符号（±1）。KTH 台架默认在 bringup_bench.h 置 -1。 */
+#ifndef M1_ENCODER_MECH_SIGN
+#define M1_ENCODER_MECH_SIGN            (1.0f)
 #endif
 
 /** 1=Park/VOFA 。-θ_enc。=。SVPWM 。+θ（与 Core/Inc/main.h 同名宏兼容） */

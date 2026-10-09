@@ -546,7 +546,8 @@ void motor_current_init(bsp_axis_t *axis)
     if (axis->enc != NULL) {
         const uint16_t enc_raw0 = encoder_get_raw(axis->enc);
 
-        s_theta_mech_rad = encoder_get_angle(axis->enc, enc_raw0);
+        s_theta_mech_rad =
+            M1_ENCODER_MECH_SIGN * encoder_get_angle(axis->enc, enc_raw0);
 #if M1_PLL_ENABLE
         motor_pll_reset(&s_m1_pll, s_theta_mech_rad);
         s_pll_prime_ticks = 0u;
@@ -899,7 +900,9 @@ void motor_current_tick(bsp_axis_t *axis)
 
     enc_raw = encoder_get_raw(axis->enc);
     dbg.enc_raw = (float)enc_raw;
-    s_theta_mech_rad = encoder_get_angle(axis->enc, enc_raw);
+    /* MECH_SIGN 只翻速度/位置反馈；电角仍用芯片 raw + 零偏。 */
+    s_theta_mech_rad =
+        M1_ENCODER_MECH_SIGN * encoder_get_angle(axis->enc, enc_raw);
     theta = encoder_get_theta_el(axis->enc, enc_raw, ctx->pole_pairs,
                                  encoder_get_theta_el_offset(axis->enc));
 #if M1_PLL_ENABLE

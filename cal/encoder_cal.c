@@ -2,14 +2,16 @@
  * @file encoder_cal.c
  * @date 2026-10-06
  * @brief 编码器零偏锁转子标定实现。
+ *
+ * 只认 encoder_t*：阻塞读角与等 idle 走驱动钩子，不绑具体芯片类型。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "encoder_cal.h"
 
-#include "as5047.h"
+#include <stddef.h>
+
 #include "foc_svpwm.h"
-#include "hal_bridge.h"
 #include "time_port.h"
 
 #define ENCODER_CAL_TWO_PI 6.28318530718f
@@ -56,16 +58,10 @@ float encoder_cal_apply_pi_offset(float add_raw)
 #endif
 }
 
-static as5047_ctx_t *encoder_cal_as5047_ctx(const encoder_t *enc)
-{
-    if (enc == NULL) {
-        return NULL;
-    }
-    return (as5047_ctx_t *)enc->chip_ctx;
-}
-
 /**
- * @brief 标定期间每拍用固定 θ_ref 和 Uq 吸转子。
+ * @brief 标定期间每拍用固定 θ_ref 和 Ud 吸转子。
+ * @note 必须用 Ud、Uq=0。若 Uq 且 Ud 恰为 0，SVPWM 会走 angle+π/2
+ *       捷径，与闭环 Park（ud 很少恰为 0）差 90°，表现为 iq 顶满转子钉死。
  * @param axis 轴实例。不可为 NULL。
  */
 void encoder_cal_jeoc_tick(bsp_axis_t *axis)
@@ -73,13 +69,14 @@ void encoder_cal_jeoc_tick(bsp_axis_t *axis)
     if (axis == NULL) {
         return;
     }
-    foc_svpwm_apply(axis, s_uq_lock, 0.0f, s_theta_ref);
+    /* foc_svpwm_apply(Uq, Ud, θ)：锁 d 轴 → Uq=0，Ud=s_uq_lock（电压幅值复用宏）。 */
+    foc_svpwm_apply(axis, 0.0f, s_uq_lock, s_theta_ref);
 }
 
 /**
  * @brief 锁转子后阻塞读角，写出电角零偏。
  * @param axis 轴实例，不可为 NULL。
- * @param enc AS5047 编码器，不可为 NULL。
+ * @param enc 编码器，不可为 NULL。
  * @param pole_pairs 极对数，不可为 0。
  * @param uq_lock 锁转子 Uq，单位 V。
  * @param settle_ms 等待稳定的毫秒数。
@@ -96,7 +93,6 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
                           uint16_t sample_count,
                           float *add_out)
 {
-    as5047_ctx_t *ctx;
     uint32_t t0;
     uint32_t raw_sum;
     uint16_t raw_avg;
@@ -105,11 +101,6 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
 
     if (axis == NULL || axis->pwm == NULL || enc == NULL || add_out == NULL ||
         pole_pairs == 0U || sample_count == 0U) {
-        return false;
-    }
-
-    ctx = encoder_cal_as5047_ctx(enc);
-    if (ctx == NULL || ctx->hal == NULL) {
         return false;
     }
 
@@ -125,7 +116,7 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
 
     raw_sum = 0U;
     for (i = 0U; i < sample_count; i++) {
-        raw_sum += (uint32_t)(as5047_blocking_read(ctx->hal, AS5047_ANGLEUNC) & AS5047_RAW_MASK);
+        raw_sum += (uint32_t)encoder_blocking_read_angle(enc);
     }
     raw_avg = (uint16_t)(raw_sum / (uint32_t)sample_count);
 
@@ -135,7 +126,7 @@ bool encoder_cal_run_lock(bsp_axis_t *axis,
     encoder_kick(enc);
 
     t0 = time_port_ms();
-    while (ctx->phase != (uint8_t)AS5047_PHASE_IDLE) {
+    while (encoder_xfer_busy(enc) != 0U) {
         if ((time_port_ms() - t0) >= ENCODER_CAL_DMA_WAIT_MS) {
             break;
         }

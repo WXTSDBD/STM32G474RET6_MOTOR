@@ -241,8 +241,9 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
    * CS ????????????MX_SPI3_Init ???????? M2?
    */
   HAL_GPIO_WritePin(SPI3_CS_GPIO_Port, SPI3_CS_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(SPI3_FLASH_CS_GPIO_Port, SPI3_FLASH_CS_Pin, GPIO_PIN_SET);
   telem_bringup_init();
-  telem_encoder_profile_bind(&enc_m1);
+  telem_encoder_profile_bind(bsp_axis(BSP_AXIS_M1)->enc);
 
   /* M1: TIM8 PWM + CH4→ADC2；锁转子标定须在 Base+CH4+�??? PWM 运行后进�??? */
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_1);
@@ -308,20 +309,25 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   {
     float add_raw;
     float add_final;
+    encoder_t *m1_enc = bsp_axis(BSP_AXIS_M1)->enc;
 
-    if (!encoder_cal_run_lock_default(bsp_axis(BSP_AXIS_M1), &enc_m1, M1_POLE_PAIRS, &add_raw)) {
+    if (!encoder_cal_run_lock_default(bsp_axis(BSP_AXIS_M1), m1_enc, M1_POLE_PAIRS, &add_raw)) {
       Error_Handler();
     }
     dbg.enc_cal_add_raw = add_raw;
     add_final = encoder_cal_apply_pi_offset(add_raw);
-    encoder_set_theta_el_offset(&enc_m1, add_final);
+    encoder_set_theta_el_offset(m1_enc, add_final);
     dbg.enc_cal_add = add_final;
   }
 #else
-  encoder_set_theta_el_offset(&enc_m1, M1_ENCODER_OFFSET_RAD);
-  dbg.enc_cal_add_raw = M1_ENCODER_OFFSET_RAD;
-  dbg.enc_cal_add = M1_ENCODER_OFFSET_RAD;
-  encoder_kick(&enc_m1);
+  {
+    encoder_t *m1_enc = bsp_axis(BSP_AXIS_M1)->enc;
+
+    encoder_set_theta_el_offset(m1_enc, M1_ENCODER_OFFSET_RAD);
+    dbg.enc_cal_add_raw = M1_ENCODER_OFFSET_RAD;
+    dbg.enc_cal_add = M1_ENCODER_OFFSET_RAD;
+    encoder_kick(m1_enc);
+  }
 #endif
 #if !BRINGUP_ADC_TEST
   /* Second axis (TIM1) �� no ISR control loop here */
