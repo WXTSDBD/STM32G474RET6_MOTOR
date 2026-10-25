@@ -30,6 +30,9 @@ void irq_priority_apply(void)
     HAL_NVIC_SetPriority(ADC3_IRQn, IRQ_PRIO_ADC_FOC, 0u);
     HAL_NVIC_SetPriority(ADC5_IRQn, IRQ_PRIO_ADC_FOC, 0u);
 
+    /* Outer loop 2kHz (TIM6): below FOC so the current loop always preempts. */
+    HAL_NVIC_SetPriority(TIM6_DAC_IRQn, IRQ_PRIO_OUTER_2K, 0u);
+
     /* TIM 刹车 / Update（与 tim.c 现网一致）。 */
     HAL_NVIC_SetPriority(TIM1_BRK_TIM15_IRQn, IRQ_PRIO_TIM_BRK_UP, 0u);
     HAL_NVIC_SetPriority(TIM1_UP_TIM16_IRQn, IRQ_PRIO_TIM_BRK_UP, 0u);

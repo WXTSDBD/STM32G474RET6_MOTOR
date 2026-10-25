@@ -10,9 +10,9 @@
 
 #include "emf_smo.h"
 
-#include <math.h>
 #include <stddef.h>
 
+#include "motor_math.h"
 #include "observer/obs_cfg.h"
 
 #ifndef M1_EMF_SMO_ENABLE
@@ -47,6 +47,13 @@
 #endif
 #ifndef M1_EMF_SMO_LPF_LINEAR_ENABLE
 #define M1_EMF_SMO_LPF_LINEAR_ENABLE 0
+#endif
+/** 1=每拍 atan2 写 θ̂/θ_err；PLL 吃 eαβ 时可关。 */
+#ifndef M1_EMF_SMO_ATAN_ENABLE
+#define M1_EMF_SMO_ATAN_ENABLE      1
+#endif
+#ifndef M1_EMF_EMAG_FAST_ENABLE
+#define M1_EMF_EMAG_FAST_ENABLE     0
 #endif
 #if M1_EMF_SMO_LPF_LINEAR_ENABLE
 #ifndef M1_EMF_SMO_LPF_LINEAR_K
@@ -136,9 +143,32 @@ static float emf_smo_sat_fast(float x)
     return x;
 }
 
+/** exp(-x)，x 为小正数。低通系数用，不进 libm。 */
+static float emf_smo_exp_neg(float x)
+{
+    float term = 1.0f;
+    float sum = 1.0f;
+    int i;
+
+    if (x < 0.0f) {
+        x = -x;
+    }
+    if (x > 12.0f) {
+        return 0.0f;
+    }
+    for (i = 1; i <= 8; i++) {
+        term *= -x / (float)i;
+        sum += term;
+    }
+    if (sum < 0.0f) {
+        sum = 0.0f;
+    }
+    return sum;
+}
+
 static float emf_smo_alpha_from_hz(float fc_hz, float ts)
 {
-    float a = 1.0f - expf(-EMF_SMO_TWO_PI * fc_hz * ts);
+    float a = 1.0f - emf_smo_exp_neg(EMF_SMO_TWO_PI * fc_hz * ts);
     if (a > 1.0f) {
         a = 1.0f;
     }
@@ -175,7 +205,7 @@ static void emf_smo_coeff_init(void)
     const float r = M1_EMF_SMO_R_OHM;
     const float l = M1_EMF_SMO_L_H;
 
-    s_disc_a = expf(-r * ts / l);
+    s_disc_a = emf_smo_exp_neg(r * ts / l);
     s_disc_b = (1.0f - s_disc_a) / r;
     s_lpf_ts = ts;
 #if M1_EMF_SMO_LPF_ENABLE
@@ -355,7 +385,6 @@ void emf_smo_update(emf_smo_t *o,
 {
     float za;
     float zb;
-    float th_hat;
     const float k = M1_EMF_SMO_K;
 
     if (o == NULL) {
@@ -395,10 +424,23 @@ void emf_smo_update(emf_smo_t *o,
     o->e_beta = zb;
 #endif
 
+#if M1_EMF_SMO_ATAN_ENABLE
+    /* 仅对照/遥测路径要 |e| 与 θ̂；PLL 吃 eαβ 时整段跳过 */
+#if M1_EMF_EMAG_FAST_ENABLE
+    o->emag = motor_emag_approx(o->e_alpha, o->e_beta);
+#else
     o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
-    th_hat = atan2f(-o->e_alpha, o->e_beta) - M1_EMF_SMO_THETA_OFF_RAD;
-    o->theta_hat = emf_smo_wrap_pi(th_hat);
-    o->theta_err = emf_smo_wrap_pi(o->theta_hat - theta_enc);
+#endif
+    {
+        float th_hat;
+
+        th_hat = atan2f(-o->e_alpha, o->e_beta) - M1_EMF_SMO_THETA_OFF_RAD;
+        o->theta_hat = emf_smo_wrap_pi(th_hat);
+        o->theta_err = emf_smo_wrap_pi(o->theta_hat - theta_enc);
+    }
+#else
+    (void)theta_enc;
+#endif
     o->omega_el = omega_mech_rpm * s_rpm_to_we;
 }
 

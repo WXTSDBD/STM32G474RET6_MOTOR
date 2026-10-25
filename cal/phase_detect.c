@@ -130,16 +130,16 @@ static void phase_read_zeroed_lsb(const adc_sample_t *adc, float z[3])
 
 static void phase_update_vofa_dbg(void)
 {
-    dbg.phase_cal_pwm_idx = s_pwm_idx;
-    dbg.phase_cal_delta_idx = s_delta_idx;
+    DBG.phase_cal_pwm_idx = s_pwm_idx;
+    DBG.phase_cal_delta_idx = s_delta_idx;
     if (s_st == PHASE_ST_NEUTRAL) {
-        dbg.phase_cal_st = 0u;
+        DBG.phase_cal_st = 0u;
     } else if (s_st == PHASE_ST_PULSE_POS) {
-        dbg.phase_cal_st = 1u;
+        DBG.phase_cal_st = 1u;
     } else if (s_st == PHASE_ST_PULSE_NEG) {
-        dbg.phase_cal_st = 2u;
+        DBG.phase_cal_st = 2u;
     } else {
-        dbg.phase_cal_st = 3u;
+        DBG.phase_cal_st = 3u;
     }
 }
 
@@ -186,7 +186,7 @@ static void phase_store_tier_result(uint8_t pwm, uint8_t tier, const float s[3])
     uint8_t k;
 
     for (k = 0u; k < 3u; k++) {
-        dbg.phase_cal_bipolar_lsb[pwm][tier][k] = s[k];
+        DBG.phase_cal_bipolar_lsb[pwm][tier][k] = s[k];
     }
 }
 
@@ -219,7 +219,7 @@ static bool phase_eval_pwm_from_tier(uint8_t tier)
     uint8_t k;
 
     for (k = 0u; k < 3u; k++) {
-        s[k] = dbg.phase_cal_bipolar_lsb[s_pwm_idx][tier][k];
+        s[k] = DBG.phase_cal_bipolar_lsb[s_pwm_idx][tier][k];
     }
 
     for (k = 0u; k < 3u; k++) {
@@ -258,7 +258,7 @@ static bool phase_eval_pwm_from_tier(uint8_t tier)
 
     s_pass_rank[s_pwm_idx] = dom;
     s_pass_sign[s_pwm_idx] = (s[dom] >= 0.0f) ? 1 : -1;
-    dbg.phase_cal_dom_s_lsb[s_pwm_idx] = s[dom];
+    DBG.phase_cal_dom_s_lsb[s_pwm_idx] = s[dom];
     return true;
 }
 
@@ -313,10 +313,10 @@ static void phase_reset_run(void)
     for (p = 0u; p < 3u; p++) {
         for (t = 0u; t < PHASE_DELTA_COUNT; t++) {
             for (r = 0u; r < 3u; r++) {
-                dbg.phase_cal_bipolar_lsb[p][t][r] = 0.0f;
+                DBG.phase_cal_bipolar_lsb[p][t][r] = 0.0f;
             }
         }
-        dbg.phase_cal_dom_s_lsb[p] = 0.0f;
+        DBG.phase_cal_dom_s_lsb[p] = 0.0f;
     }
     phase_update_vofa_dbg();
 }
@@ -338,7 +338,7 @@ static void phase_advance_after_tier(void)
 
     if (phase_eval_pwm_from_tier(1u)) {
         s_channels_done++;
-        dbg.phase_cal_channels_done = s_channels_done;
+        DBG.phase_cal_channels_done = s_channels_done;
     } else {
         phase_set_fail_reason(PHASE_CAL_FAIL_SNR);
     }
@@ -369,13 +369,13 @@ void phase_detect_fill_dbg(void)
 {
     uint8_t i;
 
-    dbg.phase_cal_fail_reason = s_fail_reason;
-    dbg.phase_cal_channels_done = s_channels_done;
-    dbg.phase_cal_last_snr = s_last_snr;
+    DBG.phase_cal_fail_reason = s_fail_reason;
+    DBG.phase_cal_channels_done = s_channels_done;
+    DBG.phase_cal_last_snr = s_last_snr;
     for (i = 0u; i < 3u; i++) {
-        dbg.pwm_ch_to_phase_dbg[i] = i;
-        dbg.adc_rank_to_phase_dbg[i] = s_pass_rank[i];
-        dbg.phase_sign_dbg[i] = s_pass_sign[i];
+        DBG.pwm_ch_to_phase_dbg[i] = i;
+        DBG.adc_rank_to_phase_dbg[i] = s_pass_rank[i];
+        DBG.phase_sign_dbg[i] = s_pass_sign[i];
     }
     phase_update_vofa_dbg();
 }
@@ -473,7 +473,7 @@ void phase_detect_hold_jeoc_tick(adc_sample_t *adc, void *hadc, pwm_port_t *pwm)
 
     phase_pwm_neutral(pwm);
     adc_sample_jeoc_foc(adc, hadc);
-    dbg.phase_cal_st = 4u;
+    DBG.phase_cal_st = 4u;
 }
 
 /**

@@ -33,6 +33,23 @@ extern "C" {
 /** 已注册实验 id。 */
 #define EXP_ID_NONE         0u
 #define EXP_ID_SIGNOFF      1u
+/** 有感解耦前馈同电 A/B：0→500→0，先 ff_en=0 再 =1。 */
+#define EXP_ID_FF_AB        2u
+/* --- 2026-10-25 macro -> table migration (see exp_tables.c) --- */
+#define EXP_ID_REV141          3u
+#define EXP_ID_UD_CAL          4u
+#define EXP_ID_SPEED_LADDER    5u
+#define EXP_ID_POS_STEP        6u
+#define EXP_ID_MIT_REV         7u
+#define EXP_ID_SPEED_REV       8u
+#define EXP_ID_UQ_SWEEP        9u
+#define EXP_ID_IPD_SWEEP      10u
+#define EXP_ID_IDENT          11u
+#define EXP_ID_BODE           12u
+#define EXP_ID_VASI           13u
+#define EXP_ID_IF_DRAG        14u
+#define EXP_ID_DEADBAND_LUT   15u
+#define EXP_ID_QKICK          16u
 
 typedef struct exp_seg_s exp_seg_t;
 
@@ -50,7 +67,7 @@ struct exp_seg_s {
     float p0;
     float p1;
     float p2;
-    /** 对照配置下标；0=A。E0 不用。 */
+    /** 对照配置下标；连续两段只差本字段 = 同电 A/B（E3 SCHEDULE）。 */
     uint8_t cfg_idx;
     /** 打点号基值 → 遥测 mark（与现网 open_seq 段基对齐）。 */
     uint8_t mark;

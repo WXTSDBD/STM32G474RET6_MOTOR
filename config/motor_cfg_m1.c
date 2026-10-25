@@ -15,6 +15,7 @@ const motor_cfg_t g_m1_motor_cfg = {
     .ld_h = M1_LD_H,
     .lq_h = M1_LQ_H,
     .vbus_v = M1_VBUS_V,
+    .inv_vbus = 1.0f / (float)M1_VBUS_V,
     .deadtime_ns = (uint32_t)M1_DEADTIME_NS,
     .pole_pairs = (uint8_t)M1_POLE_PAIRS,
 };

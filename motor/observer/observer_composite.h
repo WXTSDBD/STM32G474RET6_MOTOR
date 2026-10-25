@@ -29,7 +29,10 @@ void observer_bind_emf_pll(void *pll);
 void observer_bringup(void *emf_pll);
 
 void observer_telem_publish(void);
+/** ISR：只 harvest T3 快照，不填 dbg 满镜像。 */
+void observer_telem_harvest(void);
 void observer_pub_step(float theta_smo, float omega_el, float dth);
+void observer_pub_force_lo(void);
 float observer_pub_ss(void);
 float observer_pub_smo_rpm(void);
 void observer_smo_w_ma_reset(void);
@@ -37,11 +40,17 @@ float observer_smo_w_ma_step(float rpm);
 void observer_read_view(observer_view_t *v);
 
 uint8_t observer_get_stage(void);
+float observer_get_eps_dead(void);
 uint8_t observer_get_lock(void);
 float observer_get_pll_int_el(void);
 float observer_get_omega_el(void);
 uint8_t observer_consume_pi_reset(void);
+/** 1=刚进有感段：请把 Id/Iq PI 与 Ud/Uq 一起清零（读一次清一次）。 */
+uint8_t observer_consume_sens_pi_clear(void);
 uint8_t observer_speed_run_active(void);
+uint8_t observer_sensed_fb_active(void);
+void observer_sensed_keep(float theta_enc, float dt);
+void observer_hfi_hand_keep(float theta_enc, float dt);
 float observer_get_speed_ref_rpm(void);
 float observer_get_id_ref(void);
 float observer_get_iq_ref(void);
@@ -61,7 +70,11 @@ void observer_emf_update(float e_alpha, float e_beta, float theta_enc, float dt)
 
 void observer_lo_set_inj_scale(float scale);
 void observer_lo_set_iq_auth_hold(uint8_t hold);
+void observer_lo_set_hat_hold(uint8_t hold);
+uint8_t observer_hfi_inj_off(void);
 void observer_lo_seed_hat(float theta_el, float omega_el);
+/** 只同步"低速侧"速度估计（ss=2 快路径每拍喂观测速，避免脚本到点判据冻死）。 */
+void observer_lo_seed_speed(float omega_el);
 
 #ifdef __cplusplus
 }

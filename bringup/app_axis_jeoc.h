@@ -10,11 +10,18 @@
 #ifndef BRINGUP_APP_AXIS_JEOC_H
 #define BRINGUP_APP_AXIS_JEOC_H
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 void app_axis_jeoc_on_injected(void *hadc);
+
+/**
+ * @brief JEOC 诊断位：bit2=JQOVF 曾发生，bit3=漏拍（入口间隔 >1.75x8000 cycles）。
+ */
+uint32_t app_axis_jeoc_diag_bits(void);
 
 #ifdef __cplusplus
 }

@@ -84,6 +84,10 @@ static float hfi_ops_get_theta(void)
 {
     float theta_park = obs_get_theta();
 
+    /* 有感对照：不要被 SMO 发布角盖掉编码器 Park。 */
+    if (hfi_sqwave_sensed_fb_active() != 0u) {
+        return theta_park;
+    }
     if (hfi_pub_smo_active() != 0u) {
         theta_park = hfi_pub_theta();
     }
@@ -226,9 +230,27 @@ void observer_lo_set_iq_auth_hold(uint8_t hold)
     hfi_sqwave_set_iq_auth_hold(hold);
 }
 
+void observer_lo_set_hat_hold(uint8_t hold)
+{
+    hfi_sqwave_set_hat_hold(hold);
+}
+
+uint8_t observer_hfi_inj_off(void)
+{
+    return hfi_sqwave_inj_off();
+}
+
 void observer_lo_seed_hat(float theta_el, float omega_el)
 {
     hfi_sqwave_seed_hat(theta_el, omega_el);
+}
+
+/**
+ * @brief 只同步"低速侧"速度估计（不动 θ̂ / hat_hold）。
+ */
+void observer_lo_seed_speed(float omega_el)
+{
+    hfi_sqwave_seed_speed_el(omega_el);
 }
 
 /**
@@ -252,9 +274,22 @@ void observer_telem_publish(void)
     hfi_sqwave_telem_publish();
 }
 
+/**
+ * @brief ISR 拍内只收 T3 快照，不填 dbg。
+ */
+void observer_telem_harvest(void)
+{
+    hfi_sqwave_telem_harvest(0);
+}
+
 void observer_pub_step(float theta_smo, float omega_el, float dth)
 {
     hfi_pub_step(theta_smo, omega_el, dth);
+}
+
+void observer_pub_force_lo(void)
+{
+    hfi_pub_force_lo();
 }
 
 /**
@@ -291,6 +326,11 @@ uint8_t observer_get_stage(void)
     return (uint8_t)hfi_sqwave_get_stage();
 }
 
+float observer_get_eps_dead(void)
+{
+    return hfi_sqwave_get_eps_dead();
+}
+
 uint8_t observer_get_lock(void)
 {
     return (uint8_t)hfi_sqwave_get_lock();
@@ -317,9 +357,43 @@ uint8_t observer_consume_pi_reset(void)
     return hfi_sqwave_consume_pi_reset();
 }
 
+/**
+ * @brief 转发"刚进有感段，请清电流环 PI"请求。读一次清一次。
+ */
+uint8_t observer_consume_sens_pi_clear(void)
+{
+    return hfi_sqwave_consume_sens_pi_clear();
+}
+
 uint8_t observer_speed_run_active(void)
 {
     return hfi_sqwave_speed_run_active();
+}
+
+/**
+ * @brief 1=REV141 有感对照段，速度/Park 吃编码器。
+ */
+uint8_t observer_sensed_fb_active(void)
+{
+    return hfi_sqwave_sensed_fb_active();
+}
+
+/**
+ * @brief 有感段只推阶段时钟，不走 Park 前的 HFI 角路径。
+ * @param theta_enc 编码器电角，单位 rad。
+ * @param dt 节拍，单位 s。
+ */
+void observer_sensed_keep(float theta_enc, float dt)
+{
+    hfi_sqwave_sensed_keep(theta_enc, dt);
+}
+
+/**
+ * @brief 交接后注入已关：只推阶段时钟，不进 on_angle/解调。
+ */
+void observer_hfi_hand_keep(float theta_enc, float dt)
+{
+    hfi_sqwave_hand_keep(theta_enc, dt);
 }
 
 /**
@@ -537,9 +611,24 @@ void observer_lo_set_iq_auth_hold(uint8_t hold)
     (void)hold;
 }
 
+void observer_lo_set_hat_hold(uint8_t hold)
+{
+    (void)hold;
+}
+
+uint8_t observer_hfi_inj_off(void)
+{
+    return 1u;
+}
+
 void observer_lo_seed_hat(float theta_el, float omega_el)
 {
     (void)theta_el;
+    (void)omega_el;
+}
+
+void observer_lo_seed_speed(float omega_el)
+{
     (void)omega_el;
 }
 
@@ -554,12 +643,14 @@ const observer_inj_ops_t *observer_inj_ops(void)
 }
 
 void observer_telem_publish(void) {}
+void observer_telem_harvest(void) {}
 void observer_pub_step(float theta_smo, float omega_el, float dth)
 {
     (void)theta_smo;
     (void)omega_el;
     (void)dth;
 }
+void observer_pub_force_lo(void) {}
 float observer_pub_ss(void) { return 0.0f; }
 float observer_pub_smo_rpm(void) { return 0.0f; }
 void observer_smo_w_ma_reset(void) {}
@@ -569,11 +660,24 @@ float observer_smo_w_ma_step(float rpm)
     return 0.0f;
 }
 uint8_t observer_get_stage(void) { return OBS_STAGE_IDLE; }
+float observer_get_eps_dead(void) { return 0.0f; }
 uint8_t observer_get_lock(void) { return OBS_LOCK_CAPTURE; }
 float observer_get_pll_int_el(void) { return 0.0f; }
 float observer_get_omega_el(void) { return 0.0f; }
 uint8_t observer_consume_pi_reset(void) { return 0u; }
+uint8_t observer_consume_sens_pi_clear(void) { return 0u; }
 uint8_t observer_speed_run_active(void) { return 0u; }
+uint8_t observer_sensed_fb_active(void) { return 0u; }
+void observer_sensed_keep(float theta_enc, float dt)
+{
+    (void)theta_enc;
+    (void)dt;
+}
+void observer_hfi_hand_keep(float theta_enc, float dt)
+{
+    (void)theta_enc;
+    (void)dt;
+}
 float observer_get_speed_ref_rpm(void) { return 0.0f; }
 float observer_get_id_ref(void) { return 0.0f; }
 float observer_get_iq_ref(void) { return 0.0f; }

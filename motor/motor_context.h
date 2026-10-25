@@ -49,21 +49,25 @@ typedef enum {
     M1_OUTER_SPEED,
     /** 位置 P → ω_ref → 速度 PI → iq_ref。θ 是多圈机械角。 */
     M1_OUTER_POSITION,
-    /** 与 POSITION 同一套 P→速度环，速度积分冻结。 */
+    /**
+     * MIT 阻抗。默认嵌套：P→速度环且积分冻结。
+     * M1_MIT_TORQUE_LAW=1 时改为并行力矩源：iq*=Kp·Δθ+Kd·Δω+iq_ff。
+     */
     M1_OUTER_MIT,
 } m1_outer_mode_t;
 
-/** 实验开关位（atrb）：bit0 解耦前馈 / bit1 摩擦前馈 / bit2 ESO 预留。 */
+/** 实验开关位（atrb）：bit0 解耦前馈 / bit1 摩擦前馈 / bit2 ESO / bit3 死区补偿。 */
 #define M1_ATRB_DECOUP_FF  (1u << 0)
 #define M1_ATRB_FRIC_FF    (1u << 1)
 #define M1_ATRB_ESO        (1u << 2)
+#define M1_ATRB_DEADBAND   (1u << 3)
 
 typedef struct {
     /** 极对数。 */
     uint8_t pole_pairs;
     /**
      * 实验开关位（运行时副本）。初值对齐编译期能力宏，供同次上电 A/B。
-     * bit0=解耦前馈 bit1=摩擦前馈 bit2=ESO（预留）。
+     * bit0=解耦前馈 bit1=摩擦前馈 bit2=ESO bit3=死区（仍受 M1_DEADBAND_ENABLE 编译门限）。
      */
     uint8_t atrb;
     /** 开环 Uq，单位 V。 */

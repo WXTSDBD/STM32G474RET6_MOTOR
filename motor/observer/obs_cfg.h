@@ -58,5 +58,29 @@
 #ifndef M1_HFI_PUB_INJ_ON_RPM
 #define M1_HFI_PUB_INJ_ON_RPM   1400.0f
 #endif
+/** 退回 HFI：|ω_smo|≤DOWN 连续满足的拍数（20 kHz）。 */
+#ifndef M1_HFI_PUB_DN_QUAL_N
+#define M1_HFI_PUB_DN_QUAL_N    400u
+#endif
+/**
+ * 1=SMO 在中速带「转速冻住」则强制回 HFI。
+ * 假速钉死时 |ω_smo| 可能永远高于 DOWN，单靠 DOWN 退不回来。
+ */
+#ifndef M1_HFI_PUB_FREEZE_ENABLE
+#define M1_HFI_PUB_FREEZE_ENABLE 1
+#endif
+#ifndef M1_HFI_PUB_FREEZE_RPM_MIN
+#define M1_HFI_PUB_FREEZE_RPM_MIN 200.0f
+#endif
+#ifndef M1_HFI_PUB_FREEZE_RPM_MAX
+#define M1_HFI_PUB_FREEZE_RPM_MAX 900.0f
+#endif
+/** 窗内 |Δrpm| 小于此值视为冻住（对照未滤波 ω）。 */
+#ifndef M1_HFI_PUB_FREEZE_DRPM
+#define M1_HFI_PUB_FREEZE_DRPM  15.0f
+#endif
+#ifndef M1_HFI_PUB_FREEZE_N
+#define M1_HFI_PUB_FREEZE_N     400u
+#endif
 
 #endif /* MOTOR_OBSERVER_OBS_CFG_H */

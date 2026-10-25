@@ -86,6 +86,13 @@ void adc_sample_jeoc_foc(adc_sample_t *s, void *hadc);
 void adc_sample_update(adc_sample_t *s);
 void adc_sample_get_abc(const adc_sample_t *s, float *ia, float *ib, float *ic);
 
+/**
+ * @brief 注入组数据有效性位。
+ *
+ * bit2 = JQOVF 曾发生（注入队列溢出）。注入组没有常规组的 OVR 语义。
+ */
+uint32_t adc_sample_diag_bits(void);
+
 #ifdef __cplusplus
 }
 #endif

@@ -11,43 +11,14 @@
 #include "hfi_sqwave.h"
 #include "observer/obs_cfg.h"
 #include "motor_math.h"
+#include "motor_trig.h"
+#include "exp_rev141_params.h"
+#include "hfi_pll_cfg.h"
 
 #include <math.h>
 #include <stddef.h>
 
-#ifndef M1_HFI_ENABLE
-#define M1_HFI_ENABLE 0
-#endif
-
-
-#ifndef M1_HFI_MOTION_BYPASS_ENABLE
-#define M1_HFI_MOTION_BYPASS_ENABLE     0
-#endif
-#ifndef M1_ENC_OPTIONAL_ENABLE
-#define M1_ENC_OPTIONAL_ENABLE          0
-#endif
 /** 高频注入电压幅值，单位 V。复位时写入。默认 2.0；profile 可覆盖。 */
-#ifndef M1_HFI_VH_V
-#define M1_HFI_VH_V                     2.0f
-#endif
-#ifndef M1_HFI_BOOT_DELAY_S
-#define M1_HFI_BOOT_DELAY_S             0.5f
-#endif
-#ifndef M1_HFI_RUN_RPM1
-#define M1_HFI_RUN_RPM1                 150.0f
-#endif
-#ifndef M1_HFI_GATE
-#define M1_HFI_GATE                     0
-#endif
-#ifndef M1_HFI_RUN_RPM1_S
-#define M1_HFI_RUN_RPM1_S               6.0f
-#endif
-#ifndef M1_HFI_RUN_RPM2
-#define M1_HFI_RUN_RPM2                 300.0f
-#endif
-#ifndef M1_HFI_RUN_RPM2_S
-#define M1_HFI_RUN_RPM2_S               6.0f
-#endif
 #ifndef M1_HFI_RUN_RPM3
 #define M1_HFI_RUN_RPM3                 0.0f
 #endif
@@ -66,21 +37,6 @@
 #ifndef M1_HFI_RUN_RPM5_S
 #define M1_HFI_RUN_RPM5_S               0.0f
 #endif
-#ifndef M1_HFI_RUN_LADDER_ENABLE
-#define M1_HFI_RUN_LADDER_ENABLE        0
-#endif
-#ifndef M1_HFI_RUN_RPM_START
-#define M1_HFI_RUN_RPM_START            100.0f
-#endif
-#ifndef M1_HFI_RUN_RPM_STEP
-#define M1_HFI_RUN_RPM_STEP             100.0f
-#endif
-#ifndef M1_HFI_RUN_RPM_MAX
-#define M1_HFI_RUN_RPM_MAX              800.0f
-#endif
-#ifndef M1_HFI_RUN_STEP_S
-#define M1_HFI_RUN_STEP_S               5.0f
-#endif
 /* 有感标定：Park=enc、速环。enc，HFI 只影子；多档转速供离线扫前。PLL */
 #ifndef M1_HFI_A0_MOVE_UD_V
 #define M1_HFI_A0_MOVE_UD_V             2.0f
@@ -96,21 +52,6 @@
 #endif
 #ifndef M1_HFI_A0_STEP_DEG
 #define M1_HFI_A0_STEP_DEG              60.0f
-#endif
-#ifndef M1_HFI_PLL_ENABLE
-#define M1_HFI_PLL_ENABLE               1
-#endif
-#ifndef M1_HFI_PLL_KP
-#define M1_HFI_PLL_KP                   80.0f
-#endif
-#ifndef M1_HFI_PLL_KI
-#define M1_HFI_PLL_KI                   800.0f
-#endif
-#ifndef M1_HFI_PLL_W_MAX
-#define M1_HFI_PLL_W_MAX                80.0f
-#endif
-#ifndef M1_HFI_PLL_INIT_OFF_RAD
-#define M1_HFI_PLL_INIT_OFF_RAD         0.0f
 #endif
 #ifndef M1_HFI_DEMOD_PROBE_ENABLE
 #define M1_HFI_DEMOD_PROBE_ENABLE       0
@@ -130,56 +71,8 @@
 #ifndef M1_HFI_POLARITY_HOLD_N
 #define M1_HFI_POLARITY_HOLD_N          400u
 #endif
-#ifndef M1_HFI_EPS_SIGN
-#define M1_HFI_EPS_SIGN                 1.0f
-#endif
-#ifndef M1_HFI_ATAN2_ENABLE
-#define M1_HFI_ATAN2_ENABLE             0
-#endif
-#ifndef M1_HFI_DEMOD_HP_ENABLE
-#define M1_HFI_DEMOD_HP_ENABLE          0
-#endif
-#ifndef M1_HFI_DEMOD_HP_A
-#define M1_HFI_DEMOD_HP_A               (0.05f)
-#endif
-#ifndef M1_HFI_DEMOD_AB_ENABLE
-#define M1_HFI_DEMOD_AB_ENABLE          0
-#endif
-#ifndef M1_HFI_DEMOD_AB_MID_ENABLE
-#define M1_HFI_DEMOD_AB_MID_ENABLE      0
-#endif
-#if M1_HFI_DEMOD_AB_ENABLE && M1_HFI_DEMOD_AB_MID_ENABLE
-#error "M1_HFI_DEMOD_AB_ENABLE and M1_HFI_DEMOD_AB_MID_ENABLE are exclusive"
-#endif
 #ifndef M1_HFI_INJECT_AB_ENABLE
 #define M1_HFI_INJECT_AB_ENABLE         0
-#endif
-#ifndef M1_HFI_INJECT_POST_LOOP
-#define M1_HFI_INJECT_POST_LOOP         0 /* 1：Vh 沿 θ̂ 在 αβ 叠，不进 Ud_pi */
-#endif
-#ifndef M1_HFI_DEMOD_INJ_AXIS
-#define M1_HFI_DEMOD_INJ_AXIS           0 /* 1：注入轴 iαβ 半周差分，不吃 Park Id */
-#endif
-#ifndef M1_HFI_XY_X_SIGN
-#define M1_HFI_XY_X_SIGN                1.0f
-#endif
-#ifndef M1_HFI_XY_Y_SIGN
-#define M1_HFI_XY_Y_SIGN                1.0f
-#endif
-#ifndef M1_HFI_A_CMD
-#define M1_HFI_A_CMD                    0.0f
-#endif
-#ifndef M1_HFI_PARK_ENABLE
-#define M1_HFI_PARK_ENABLE              0
-#endif
-#ifndef OBS_CTRL_TS_S
-#define OBS_CTRL_TS_S                    50e-6f
-#endif
-#ifndef M1_HFI_FH_HZ
-#define M1_HFI_FH_HZ                    10000.0f
-#endif
-#ifndef M1_HFI_OMEGA_FF_SRC
-#define M1_HFI_OMEGA_FF_SRC             1
 #endif
 /*
  * 正交选轴。247 标定）：。d 。eps_d<0，假 q 。eps_d>0。
@@ -211,36 +104,6 @@
 #define M1_HFI_AXIS_SEL_IQ_MAX          0.35f
 #endif
 /* 无感盆地质量 。Iq 权威（S3c0b）。不。enc。*/
-#ifndef M1_HFI_IQ_AUTH_ENABLE
-#define M1_HFI_IQ_AUTH_ENABLE           0
-#endif
-#ifndef M1_HFI_IQ_AUTH_X_GOOD
-#define M1_HFI_IQ_AUTH_X_GOOD           0.218f
-#endif
-#ifndef M1_HFI_IQ_AUTH_X_BAD
-#define M1_HFI_IQ_AUTH_X_BAD            0.205f
-#endif
-#ifndef M1_HFI_IQ_AUTH_EPS_FALSE_MAX
-#define M1_HFI_IQ_AUTH_EPS_FALSE_MAX    0.20f
-#endif
-#ifndef M1_HFI_IQ_AUTH_HOLD_N
-#define M1_HFI_IQ_AUTH_HOLD_N           2000u
-#endif
-#ifndef M1_HFI_IQ_AUTH_CLEAR_N
-#define M1_HFI_IQ_AUTH_CLEAR_N          1u /* 1=立即清零（GATE。1）；C3b=1000 */
-#endif
-#ifndef M1_HFI_IQ_AUTH_IQ_LO
-#define M1_HFI_IQ_AUTH_IQ_LO            0.25f
-#endif
-#ifndef M1_HFI_IQ_AUTH_IQ_HI
-#define M1_HFI_IQ_AUTH_IQ_HI            3.50f
-#endif
-#ifndef M1_HFI_IQ_AUTH_SLEW_A_S
-#define M1_HFI_IQ_AUTH_SLEW_A_S         4.0f
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_ENABLE
-#define M1_HFI_IQ_AUTH_FEED_ENABLE      0 /* 1=qual_ok 后馈 Iq（C4。*/
-#endif
 #ifndef M1_HFI_IQ_AUTH_FEED_SIGN
 #define M1_HFI_IQ_AUTH_FEED_SIGN        1.0f
 #endif
@@ -282,12 +145,6 @@
 #endif
 #ifndef M1_HFI_FEED_COAST_T1_S
 #define M1_HFI_FEED_COAST_T1_S          8.0f /* [T0,T1) 强制 Iq*=0 */
-#endif
-#if M1_HFI_IQ_AUTH_FEED_ENABLE && !M1_HFI_IQ_AUTH_ENABLE
-#error "M1_HFI_IQ_AUTH_FEED_ENABLE requires M1_HFI_IQ_AUTH_ENABLE=1"
-#endif
-#if M1_HFI_FEED_COAST_ENABLE && !M1_HFI_IQ_AUTH_FEED_ENABLE
-#error "M1_HFI_FEED_COAST_ENABLE requires M1_HFI_IQ_AUTH_FEED_ENABLE=1"
 #endif
 /* 1=axis_ok 后禁止再翻（静置验收 / 。2306 连翻。*/
 #ifndef M1_HFI_AXIS_SEL_FREEZE_ON_OK
@@ -342,41 +199,14 @@
 #ifndef M1_HFI_SPD_RAMP_S
 #define M1_HFI_SPD_RAMP_S               2.0f /* 0→首档斜坡时。*/
 #endif
-#ifndef M1_HFI_PLL_INT_MAX
-#define M1_HFI_PLL_INT_MAX              M1_HFI_PLL_W_MAX
-#endif
 /**
  * PLL 角误差死区，单位 rad。复位时写入。0 表示关闭。默认 0；profile 可覆盖。
  */
-#ifndef M1_HFI_PLL_EPS_DEAD
-#define M1_HFI_PLL_EPS_DEAD             0.0f
-#endif
 #ifndef M1_HFI_PLL_SKIP_X_BELOW_A
 #define M1_HFI_PLL_SKIP_X_BELOW_A       0
 #endif
-#ifndef M1_HFI_PLL_VESC_ERR_ENABLE
-#define M1_HFI_PLL_VESC_ERR_ENABLE      0
-#endif
-#ifndef M1_HFI_PLL_VESC_MAX_ERR
-#define M1_HFI_PLL_VESC_MAX_ERR         (0.30f)
-#endif
-#ifndef M1_HFI_PLL_VESC_ERR_SIGN
-#define M1_HFI_PLL_VESC_ERR_SIGN        (1.0f)
-#endif
 #ifndef M1_HFI_LQ_WELL_FLIP_ENABLE
 #define M1_HFI_LQ_WELL_FLIP_ENABLE      0
-#endif
-#ifndef M1_HFI_LQ_WELL_X_MAX
-#define M1_HFI_LQ_WELL_X_MAX            (0.185f)
-#endif
-#ifndef M1_HFI_LQ_WELL_Y_ABS
-#define M1_HFI_LQ_WELL_Y_ABS            (0.015f)
-#endif
-#ifndef M1_HFI_LQ_WELL_HOLD_N
-#define M1_HFI_LQ_WELL_HOLD_N           20u
-#endif
-#ifndef M1_HFI_LQ_WELL_IQ_MIN
-#define M1_HFI_LQ_WELL_IQ_MIN           (0.0f)
 #endif
 #ifndef M1_HFI_LQ_WELL_KEEP_W
 #define M1_HFI_LQ_WELL_KEEP_W           0
@@ -453,13 +283,6 @@
 #ifndef M1_HFI_BIAS_CAL_WMIN_RPM
 #define M1_HFI_BIAS_CAL_WMIN_RPM        10.0f
 #endif
-#ifndef OBS_POLE_PAIRS
-#define OBS_POLE_PAIRS                   7u
-#endif
-
-#ifndef M_PI
-#define M_PI 3.14159265358979323846
-#endif
 /* |θ_err| 超过此值计为异常；>PI_RAD 。π，否则翻 π/2（消 ~90° 假锁。*/
 #ifndef M1_HFI_POLARITY_ERR_RAD
 #define M1_HFI_POLARITY_ERR_RAD         ((float)M_PI * 0.5f)
@@ -482,9 +305,6 @@
 #ifndef M1_HFI_UNLOCK_HOLD_N
 #define M1_HFI_UNLOCK_HOLD_N            200u
 #endif
-#ifndef M1_HFI_INIT_FROM_ENC
-#define M1_HFI_INIT_FROM_ENC            1
-#endif
 /* 工业 IPD：ALIGN(2θ) 。SETTLE 。P0 。SETTLE 。P1 。相对裕度判决 */
 #ifndef M1_HFI_IQ_RAMP_PRE_S
 #define M1_HFI_IQ_RAMP_PRE_S            2.0f
@@ -498,32 +318,17 @@
 #ifndef M1_HFI_IQ_RAMP_A_MAX
 #define M1_HFI_IQ_RAMP_A_MAX            2.0f
 #endif
-#ifndef M1_HFI_QKICK_AFTER_LOCK_ENABLE
-#define M1_HFI_QKICK_AFTER_LOCK_ENABLE  0
-#endif
-#ifndef M1_HFI_QKICK_THEN_HFI_ENABLE
-#define M1_HFI_QKICK_THEN_HFI_ENABLE    0 /* 1：S3b 踢完 hold→HFI RUN（沿用踢。θ̂。*/
-#endif
 #ifndef M1_HFI_ID_PI_OFF_ENABLE
 #define M1_HFI_ID_PI_OFF_ENABLE         0 /* 1：踢。LOG/RUN 旁路 Id PI（C4k。*/
 #endif
 /* 放行 Id 。Ud 。0 爬到满的拍数。0 kHz）。700：硬开会打。SMO。*/
-#ifndef M1_HFI_ID_PI_SOFT_N
-#define M1_HFI_ID_PI_SOFT_N             20000u /* 1.0 s */
-#endif
 #ifndef M1_HFI_VESC_ID_HANDOFF_ENABLE
 #define M1_HFI_VESC_ID_HANDOFF_ENABLE   0
 #endif
 #ifndef M1_HFI_HFI_ID_SOFT_ENABLE
 #define M1_HFI_HFI_ID_SOFT_ENABLE      0 /* 1: pure-HFI soft-open Id after qual */
 #endif
-#ifndef M1_HFI_ID_ON_FROM_RUN_ENABLE
-#define M1_HFI_ID_ON_FROM_RUN_ENABLE   0 /* 1: Id*=0 from RUN entry, no soft */
-#endif
 /* PRE 假锁门禁：|ε|。0° 。(ε小且|x|。 。。+π/2；|ε|持续小才准踢（C4n。*/
-#ifndef M1_HFI_QKICK_PRE_S
-#define M1_HFI_QKICK_PRE_S              0.2f
-#endif
 #ifndef M1_HFI_QKICK_HAT0_N
 #define M1_HFI_QKICK_HAT0_N             160u /* 8 ms：Iq 阶跃过后再采 θ̂0 */
 #endif
@@ -560,28 +365,13 @@
 #ifndef M1_HFI_DQ_MED_N
 #define M1_HFI_DQ_MED_N                 32u /* 1.6 ms @20 kHz */
 #endif
-#if M1_HFI_DQ_IDENT_ENABLE && (M1_HFI_DQ_MED_N > 32u)
-#error "M1_HFI_DQ_MED_N must be <= 32"
-#endif
-#ifndef M1_HFI_QKICK_FORCE_PI
-#define M1_HFI_QKICK_FORCE_PI           0
-#endif
 #define M1_HFI_QKICK_ANY                1
-#ifndef M1_HFI_QKICK_HOLD_S
-#define M1_HFI_QKICK_HOLD_S             8.0f
-#endif
 /* Step3：CRAWL 内零。Iq 阶跃 0。A。→−A。，每。SEG_S；总时长仍。CRAWL_S */
 /* CRAWL：踢后慢。Iq。→A_MAX），。Bv、无速度。*/
 #ifndef M1_HFI_QKICK_PARK_ENC
 #define M1_HFI_QKICK_PARK_ENC           0
 #endif
 /* S3c1：仅 CRAWL 段力。Park=enc；踢/LOG 。θ̂ */
-#ifndef M1_HFI_QKICK_POL_DECIDE_S
-#define M1_HFI_QKICK_POL_DECIDE_S       1.5f
-#endif
-#ifndef M1_HFI_QKICK_POL_W_RPM
-#define M1_HFI_QKICK_POL_W_RPM          8.0f
-#endif
 /* Step4：CRAWL 内短 I–f 离零（Park=θ_if，恒 Iq，ω_cmd 慢斜坡）；不开 M1_IF 全路。*/
 /* 踢后正式起动：HOLD→CAPTURE(固定Iq+电子阻尼)→HANDOVER→RUN */
 /* CAPTURE：Iq = Iq_cmd 。Bv·ω（空轴用电子阻尼代机。B；非角误。PI。*/
@@ -605,12 +395,6 @@
 #define M1_HFI_QKICK_GATE_FAKE_N        2000u /* 100 ms：假。积分顶满+eps 死区 */
 #endif
 /* 踢后进速度环前的零速预。[s]（旧 S1；START 路径不用。*/
-#ifndef M1_HFI_QKICK_IQ_A
-#define M1_HFI_QKICK_IQ_A               1.0f
-#endif
-#ifndef M1_HFI_QKICK_KICK_N
-#define M1_HFI_QKICK_KICK_N             400u /* 20 ms @20kHz */
-#endif
 #ifndef M1_HFI_QKICK_BRAKE_N
 #define M1_HFI_QKICK_BRAKE_N            400u /* 20 ms；AFTER_LOCK 切相可能仍读 */
 #endif
@@ -724,6 +508,28 @@ static uint8_t s_pair_ready;
 /* θ̂ 自身转速的低通。118 用它做积分上限，119 的积分直接等于它。编码器不参与。 */
 /** θ̂ 自身转速的低通，单位 rad/s 电。编码器不参与。 */
 static float s_speed_est;
+/** REV141 半周序号。 */
+static int s_rev141_idx;
+/** ≥0：到达 ±TARGET 后的保持起点，单位 s；<0 未到。 */
+static float s_rev141_hold = -1.0f;
+/** 1=整段（含有感与末刹）结束，可进 DONE。 */
+static uint8_t s_rev141_done;
+/** 0=无感升降，1=刹到 0，2=有感升降，3=结束。 */
+static uint8_t s_rev141_ph;
+/** 1=Park/速度反馈改吃编码器（有感对照段）。 */
+static uint8_t s_rev141_sensed;
+/** ≥0：|n| 已低于 STOP 的起点，单位 s；<0 尚未。 */
+static float s_rev141_stop_t = -1.0f;
+/** 编码器机械转速估计（原始差分），单位 rpm。 */
+static float s_enc_rpm;
+/** 门限用低通后的 enc 转速，单位 rpm。 */
+static float s_enc_rpm_lp;
+/** 上一拍编码器电角，单位 rad。 */
+static float s_theta_enc_prev;
+/** 1=s_enc_rpm 已有有效差分。 */
+static uint8_t s_enc_rpm_valid;
+/** 进入刹停段时的 s_stage_t，单位 s；超时强切。 */
+static float s_rev141_brake_t0 = -1.0f;
 /** 注入半周符号。 */
 static float s_sign;
 /** ε 低通。 */
@@ -798,14 +604,20 @@ static float s_qk_dth;
 static float s_qk_verdict;
 /** 1=上层应复位电流 PI。读一次清。 */
 static uint8_t s_qk_pi_reset;
+/** 1=刚进有感段：上层应把 Id/Iq PI 与 Ud/Uq 一起清零。读一次清。 */
+static uint8_t s_sens_pi_clear;
 /** 上一拍编码器电角，用来算 Δθ。 */
 static float s_qk_enc_prev;
 /** 1=已经有上一拍编码器角。 */
 static uint8_t s_qk_enc_prev_valid;
 /** 1=本开机已经踢过一次。 */
 static uint8_t s_qk_done;
-/** 1=CRAWL 里 ω̂ 极性已经处理。 */
+/** 1=极性已判决（enc Δθ 或踢后残速）。 */
 static uint8_t s_qk_pol_done;
+/** 1=无 Δθ_enc，等 LOG 用残速判南北。 */
+static uint8_t s_qk_pol_pending;
+/** 1=本拍翻过 π，上层 take_polarity_flip 读一次清。 */
+static uint8_t s_qk_pol_flip_req;
 
 /**
  * @brief VESC HFI V4：q 轴 di / (Vh·(1/Lq−1/Ld))
@@ -838,6 +650,10 @@ static float hfi_theta_hat_out(void)
  */
 static uint8_t hfi_park_uses_hat(void)
 {
+    /* 有感对照段：Park 改吃编码器。 */
+    if (s_rev141_sensed != 0u) {
+        return 0u;
+    }
     if ((s_stage == HFI_STAGE_MEAS) || (s_stage == HFI_STAGE_LOG) ||
         (s_stage == HFI_STAGE_CRAWL) || (s_stage == HFI_STAGE_RUN)) {
         return 1u;
@@ -913,70 +729,242 @@ static void hfi_set_inj_on_hat(void)
         s_ud_inj = s_vh_v * s_vh_scale * s_sign;
         s_uq_inj = 0.0f;
     } else {
-        /* Park≠θ̂：。hat 。d 轴的 ±Vh 表达。Park 系。。θ̂−θ_park */
+        /* Park≠θ̂：hat d 轴 ±Vh 旋到 Park 系（θ̂−θ_park）。与 FOC 同用 LUT。 */
         const float th = s_theta_hat - hfi_demod_frame_theta();
-        const float c = cosf(th);
-        const float s = sinf(th);
+        float c;
+        float s;
 
+        motor_trig_sincos(th, &c, &s);
         s_ud_inj = s_vh_v * s_vh_scale * s_sign * c;
         s_uq_inj = s_vh_v * s_vh_scale * s_sign * s;
     }
 }
 
-/**
- * @brief RUN 总时。[s]
- */
-static float hfi_run_total_s(void)
+/* ±2000 实验参数：运行期从 config/exp_rev141_params.c 的数据结构载入（阶段2 表化）。 */
+/** 无感正反对的轮数。 */
+static unsigned s_rev141_pairs;
+/** 无感跑完后跟几对有感。 */
+static unsigned s_rev141_sensed_pairs;
+/** 正/反目标转速幅值，rpm。 */
+static float s_rev141_target_rpm;
+/** |n| 低于此值算刹到 0，rpm。 */
+static float s_rev141_stop_rpm;
+/** 刹到 0 后短停时间，s。 */
+static float s_rev141_stop_hold_s;
+/** 刹停段最长等待，s。 */
+static float s_rev141_brake_timeout_s;
+/** enc 转速门限低通系数。 */
+static float s_rev141_enc_rpm_lp_a;
+
+/** 从实验参数数据文件载入 ±2000 参数（hfi_sqwave_init 调用一次）。 */
+static void rev141_params_load(void)
 {
-    /* 到了 ±1500 再保持 0.5 s 才换向，五轮。到不了则最多 40 s。 */
-    return 40.0f;
+    s_rev141_pairs = g_exp_rev141_params.pairs;
+    s_rev141_sensed_pairs = g_exp_rev141_params.sensed_pairs;
+    s_rev141_target_rpm = g_exp_rev141_params.target_rpm;
+    s_rev141_stop_rpm = g_exp_rev141_params.stop_rpm;
+    s_rev141_stop_hold_s = g_exp_rev141_params.stop_hold_s;
+    s_rev141_brake_timeout_s = g_exp_rev141_params.brake_timeout_s;
+    s_rev141_enc_rpm_lp_a = g_exp_rev141_params.enc_rpm_lp_a;
 }
 
 
-/**
- * @brief 旁路 RUN 速度指令
- */
-static int s_rev141_idx;
-static float s_rev141_hold = -1.0f;
-static uint8_t s_rev141_done;
 
+/**
+ * @brief RUN 总超时，单位 s。到点强制 DONE。
+ */
+static float hfi_run_total_s(void)
+{
+#if M1_HFI_RUN_LADDER_ENABLE
+    float n;
+    float span;
+
+    /* START..MAX 含端点；再加裕量给捕获/踢与末档。 */
+    span = M1_HFI_RUN_RPM_MAX - M1_HFI_RUN_RPM_START;
+    if (span < 0.0f) {
+        span = 0.0f;
+    }
+    if (M1_HFI_RUN_RPM_STEP > 1.0e-3f) {
+        n = span / M1_HFI_RUN_RPM_STEP + 1.0f;
+    } else {
+        n = 1.0f;
+    }
+    return (n * M1_HFI_RUN_STEP_S) + 30.0f;
+#else
+    /* 无感两对 + 有感一对 + 两次刹停；到不了则超时收。 */
+    return 90.0f;
+#endif
+}
+
+#if M1_HFI_RUN_LADDER_ENABLE
+/**
+ * @brief 无感单调转速阶梯：START → +STEP → … → MAX，每档保持 STEP_S。
+ * @return 本拍 ω*，单位 rpm。
+ */
 static float hfi_run_speed_ref_rpm(void)
 {
-    {
-        float cmd;
-        float meas;
-        const float rpm_scale =
-            60.0f / (2.0f * 3.14159265f * (float)OBS_POLE_PAIRS);
+    float rpm;
+    float span;
+    uint16_t n_steps;
 
-        /*
-         * 指令先停在 ±1500。速度观测到了这一档，再保持 0.5 s 才换向。
-         * 正反各 5 次。保持时间用 s_stage_t，本函数一拍里会被调用多次。
-         */
-        if (s_rev141_idx > 9) {
+    if (s_ladder_done != 0u) {
+        return 0.0f;
+    }
+
+    span = M1_HFI_RUN_RPM_MAX - M1_HFI_RUN_RPM_START;
+    if (span < 0.0f) {
+        span = 0.0f;
+    }
+    if (M1_HFI_RUN_RPM_STEP > 1.0e-3f) {
+        n_steps = (uint16_t)(span / M1_HFI_RUN_RPM_STEP + 1.5f);
+    } else {
+        n_steps = 1u;
+    }
+    if (n_steps < 1u) {
+        n_steps = 1u;
+    }
+
+    if (s_ladder_idx >= n_steps) {
+        s_ladder_done = 1u;
+        s_rev141_done = 1u;
+        return 0.0f;
+    }
+
+    rpm = M1_HFI_RUN_RPM_START + (float)s_ladder_idx * M1_HFI_RUN_RPM_STEP;
+    if (rpm > M1_HFI_RUN_RPM_MAX) {
+        rpm = M1_HFI_RUN_RPM_MAX;
+    }
+
+    if ((s_stage_t - s_ladder_t0) >= M1_HFI_RUN_STEP_S) {
+        s_ladder_idx++;
+        s_ladder_t0 = s_stage_t;
+        if (s_ladder_idx >= n_steps) {
+            s_ladder_done = 1u;
             s_rev141_done = 1u;
-            return -1500.0f;
+            return 0.0f;
         }
-        cmd = ((s_rev141_idx % 2) == 0) ? 1500.0f : -1500.0f;
+        rpm = M1_HFI_RUN_RPM_START + (float)s_ladder_idx * M1_HFI_RUN_RPM_STEP;
+        if (rpm > M1_HFI_RUN_RPM_MAX) {
+            rpm = M1_HFI_RUN_RPM_MAX;
+        }
+    }
+    return rpm;
+}
+#else
+/**
+ * @brief 旁路 RUN 速度指令：无感 N 对 ±TARGET → 刹到 0 → 可选有感 M 对 → 再刹到 0。
+ */
+static float hfi_run_speed_ref_rpm(void)
+{
+    float cmd;
+    float meas;
+    const float rpm_scale =
+        60.0f / (2.0f * 3.14159265f * (float)OBS_POLE_PAIRS);
+    const float target = s_rev141_target_rpm;
+    const int sl_half_max = (int)(2u * s_rev141_pairs);
+    const int sn_half_max = (int)(2u * s_rev141_sensed_pairs);
+
+    if (s_rev141_ph == 3u) {
+        s_rev141_done = 1u;
+        return 0.0f;
+    }
+
+    /* 刹停段：ω*=0，速度环仍开，靠斜坡+DECEL_BRAKE 收到 0，禁止直接 DONE。 */
+    if (s_rev141_ph == 1u) {
+        uint8_t stop_ok = 0u;
+
+        if (s_rev141_brake_t0 < 0.0f) {
+            s_rev141_brake_t0 = s_stage_t;
+        }
+        /* 门限用低通 enc；原始差分零速毛刺会反复打断 STOP_HOLD。 */
+        if (s_enc_rpm_valid != 0u) {
+            meas = s_enc_rpm_lp;
+        } else {
+            meas = s_speed_est * rpm_scale;
+        }
+        if (meas < 0.0f) {
+            meas = -meas;
+        }
+        if (meas <= s_rev141_stop_rpm) {
+            if (s_rev141_stop_t < 0.0f) {
+                s_rev141_stop_t = s_stage_t;
+            } else if ((s_stage_t - s_rev141_stop_t) >=
+                       s_rev141_stop_hold_s) {
+                stop_ok = 1u;
+            }
+        } else {
+            s_rev141_stop_t = -1.0f;
+        }
+        if ((stop_ok == 0u) &&
+            ((s_stage_t - s_rev141_brake_t0) >= s_rev141_brake_timeout_s)) {
+            stop_ok = 1u;
+        }
+        if (stop_ok != 0u) {
+            s_rev141_brake_t0 = -1.0f;
+            s_rev141_stop_t = -1.0f;
+            if ((s_rev141_sensed == 0u) && (sn_half_max > 0)) {
+                s_rev141_ph = 2u;
+                s_rev141_sensed = 1u;
+                s_rev141_idx = 0;
+                s_rev141_hold = -1.0f;
+                s_vh_scale = 0.0f;
+                hfi_clear_inj();
+                s_iq_auth_abs = M1_HFI_IQ_AUTH_IQ_HI;
+                s_iq_auth_ok = 1u;
+                /* 进有感段：请求清一次电流环 PI，别把无感段的残留积分带进来 */
+                s_sens_pi_clear = 1u;
+            } else {
+                s_rev141_ph = 3u;
+                s_rev141_done = 1u;
+            }
+        }
+        return 0.0f;
+    }
+
+    {
+        const int rev_half_max =
+            (s_rev141_ph == 2u) ? sn_half_max : sl_half_max;
+
+        if (rev_half_max <= 0) {
+            s_rev141_ph = 1u;
+            s_rev141_stop_t = -1.0f;
+            return 0.0f;
+        }
+        if (s_rev141_idx >= rev_half_max) {
+            s_rev141_ph = 1u;
+            s_rev141_stop_t = -1.0f;
+            s_rev141_brake_t0 = -1.0f;
+            return 0.0f;
+        }
+        cmd = ((s_rev141_idx % 2) == 0) ? target : -target;
         if (s_rev141_hold >= 0.0f) {
             if ((s_stage_t - s_rev141_hold) >= 0.5f) {
                 s_rev141_idx++;
                 s_rev141_hold = -1.0f;
-                if (s_rev141_idx > 9) {
-                    s_rev141_done = 1u;
-                    return cmd;
+                if (s_rev141_idx >= rev_half_max) {
+                    /* 反转到顶后先刹到 0，勿钉 -TARGET 再硬切 DONE。 */
+                    s_rev141_ph = 1u;
+                    s_rev141_stop_t = -1.0f;
+                    s_rev141_brake_t0 = -1.0f;
+                    return 0.0f;
                 }
-                cmd = ((s_rev141_idx % 2) == 0) ? 1500.0f : -1500.0f;
+                cmd = ((s_rev141_idx % 2) == 0) ? target : -target;
             }
             return cmd;
         }
-        meas = s_speed_est * rpm_scale;
-        if (((cmd > 0.0f) && (meas >= 1500.0f)) ||
-            ((cmd < 0.0f) && (meas <= -1500.0f))) {
-            s_rev141_hold = s_stage_t;
-        }
-        return cmd;
     }
+    if (s_enc_rpm_valid != 0u) {
+        meas = s_enc_rpm_lp;
+    } else {
+        meas = s_speed_est * rpm_scale;
+    }
+    if (((cmd > 0.0f) && (meas >= target)) ||
+        ((cmd < 0.0f) && (meas <= -target))) {
+        s_rev141_hold = s_stage_t;
+    }
+    return cmd;
 }
+#endif /* M1_HFI_RUN_LADDER_ENABLE */
 
 /**
  * @brief 机械 rpm 。电角速度 [rad/s]
@@ -1107,23 +1095,18 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
         s_pair_di_q = iq_now - iq_prev;
         s_pair_ready = 1u;
     }
-    s_pair_c = cosf(s_theta_hat);
-    s_pair_s = sinf(s_theta_hat);
+    /* 本拍末更新注入轴 sincos；下一拍 pair 差分用，本拍 id_inj 也复用。 */
+    motor_trig_sincos(s_theta_hat, &s_pair_c, &s_pair_s);
     s_ia_pair = s_ia_now;
     s_ib_pair = s_ib_now;
 #endif
 
 #if M1_HFI_DEMOD_INJ_AXIS
     /* 注入轴电流：iαβ 投到 θ̂，不经过 Park Id（Id PI 开着也不吃基波）。 */
-    {
-        const float c = cosf(s_theta_hat);
-        const float s = sinf(s_theta_hat);
-
-        id_inj = s_ia_now * c + s_ib_now * s;
-        iq_inj = -s_ia_now * s + s_ib_now * c;
-        (void)id;
-        (void)iq;
-    }
+    id_inj = s_ia_now * s_pair_c + s_ib_now * s_pair_s;
+    iq_inj = -s_ia_now * s_pair_s + s_ib_now * s_pair_c;
+    (void)id;
+    (void)iq;
 #else
     /* Park=θ̂：id/iq 已在 θ̂ 系；否则从 Park 系旋到 θ̂ 再解调 */
     if (hfi_demod_on_hat() != 0u) {
@@ -1131,9 +1114,10 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
         iq_inj = iq;
     } else {
         const float th = s_theta_hat - hfi_demod_frame_theta();
-        const float c = cosf(th);
-        const float s = sinf(th);
+        float c;
+        float s;
 
+        motor_trig_sincos(th, &c, &s);
         id_inj = id * c + iq * s;
         iq_inj = -id * s + iq * c;
     }
@@ -1182,7 +1166,12 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
         /* P0-1：滤向量再取角，避免 ±π 支割上把 ±90° 抹平 */
         s_x_lp += a * (s_x_raw - s_x_lp);
         s_y_lp += a * (s_y_raw - s_y_lp);
+#if M1_HFI_ATAN2_ENABLE
         s_eps = 0.5f * atan2f(s_y_lp, s_x_lp - M1_HFI_A_CMD);
+#else
+        /* PLL 已吃 VESC 残差；关 atan2 时 s_eps 复用，省 libm。 */
+        s_eps = s_e_pll;
+#endif
         s_eps_lp = s_eps;
         hfi_iq_auth_step();
         if (update_angle != 0u) {
@@ -1190,11 +1179,8 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
             {
                 float w_ff;
                 float dw;
-                float e_pll = s_eps;
+                float e_pll = s_e_pll;
                 float ae_eps;
-
-                /* atan2 的 s_eps 仍给 PRE/AUTH/VOFA。115/116：PLL 直接吃 s_eps。 */
-                e_pll = s_e_pll;
                 ae_eps = e_pll;
                 if (ae_eps < 0.0f) {
                     ae_eps = -ae_eps;
@@ -1213,7 +1199,7 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
                      */
                     (void)ae_eps;
                     s_pll_int = s_speed_est;
-                    dw = M1_HFI_PLL_KP * e_pll + s_pll_int;
+                    dw = g_hfi_pll_cfg.kp * e_pll + s_pll_int;
                 }
 
                 w_ff = 0.0f;
@@ -1239,11 +1225,11 @@ static void hfi_demod_step(float id, float iq, uint8_t update_angle)
                         ae_sh = -ae_sh;
                     }
                     if ((s_pll_eps_dead <= 0.0f) || (ae_sh >= s_pll_eps_dead)) {
-                        s_sh_int += M1_HFI_PLL_KI * e_sh * OBS_CTRL_TS_S;
+                        s_sh_int += g_hfi_pll_cfg.ki * e_sh * OBS_CTRL_TS_S;
                     }
-                    s_sh_int = motor_clampf(s_sh_int, M1_HFI_PLL_INT_MAX);
-                    s_sh_w = motor_clampf(M1_HFI_PLL_KP * e_sh + s_sh_int,
-                                        M1_HFI_PLL_INT_MAX);
+                    s_sh_int = motor_clampf(s_sh_int, g_hfi_pll_cfg.int_max);
+                    s_sh_w = motor_clampf(g_hfi_pll_cfg.kp * e_sh + s_sh_int,
+                                        g_hfi_pll_cfg.int_max);
                     s_sh_th = motor_wrap_pi(s_sh_th + s_sh_w * OBS_CTRL_TS_S);
                 }
                 s_theta_hat = motor_wrap_pi(s_theta_hat + s_omega_el * OBS_CTRL_TS_S);
@@ -1291,6 +1277,13 @@ static void hfi_enter_run(void)
     s_rev141_idx = 0;
     s_rev141_hold = -1.0f;
     s_rev141_done = 0u;
+    s_rev141_ph = 0u;
+    s_rev141_sensed = 0u;
+    s_rev141_stop_t = -1.0f;
+    s_rev141_brake_t0 = -1.0f;
+    s_enc_rpm = 0.0f;
+    s_enc_rpm_lp = 0.0f;
+    s_enc_rpm_valid = 0u;
     s_sign = 1.0f;
     s_inj_prev_valid = 0u;
     hfi_xy_lp_reset();
@@ -1302,9 +1295,9 @@ static void hfi_enter_run(void)
     /* IDLE/DONE 强制 0V 。PI 会顶满；。RUN 必须卸掉，否则首。Ud~十数 V 。HFI */
     s_qk_pi_reset = 1u;
 #if M1_HFI_INIT_FROM_ENC && !M1_ENC_OPTIONAL_ENABLE
-    s_theta_hat = motor_wrap_pi(s_theta_enc + M1_HFI_PLL_INIT_OFF_RAD);
+    s_theta_hat = motor_wrap_pi(s_theta_enc + g_hfi_pll_cfg.init_off_rad);
 #else
-    s_theta_hat = motor_wrap_pi(M1_HFI_PLL_INIT_OFF_RAD);
+    s_theta_hat = motor_wrap_pi(g_hfi_pll_cfg.init_off_rad);
 #endif
     s_pll_int = 0.0f;
     s_omega_el = 0.0f; /* 禁止把上层残留的 enc ω 种进 PLL */
@@ -1323,6 +1316,13 @@ static void hfi_enter_run_after_kick(void)
     s_rev141_idx = 0;
     s_rev141_hold = -1.0f;
     s_rev141_done = 0u;
+    s_rev141_ph = 0u;
+    s_rev141_sensed = 0u;
+    s_rev141_stop_t = -1.0f;
+    s_rev141_brake_t0 = -1.0f;
+    s_enc_rpm = 0.0f;
+    s_enc_rpm_lp = 0.0f;
+    s_enc_rpm_valid = 0u;
     s_sign = 1.0f;
     s_inj_prev_valid = 0u;
     s_di_q = 0.0f;
@@ -1362,7 +1362,8 @@ static void hfi_qk_set_zero_u(void)
 
 /**
  * @brief 踢段结束：用 Δθ_enc 判南北，并把冻住期间的轴位移补回 θ̂。
- * @note 正转补位移不翻 π。反转补位移再加 π。位移太小且编码器可选打开时按北锁。
+ * @note 正转补位移不翻 π。反转补位移再加 π。
+ *       无感且位移不足：不定北，进 LOG 用踢后残速再判（见 hfi_qk_pol_tick_log）。
  */
 static void hfi_qk_decide_after_lock(void)
 {
@@ -1371,14 +1372,19 @@ static void hfi_qk_decide_after_lock(void)
     if (ae < 0.0f) {
         ae = -ae;
     }
-    /* +Iq 期望正转。反。= 锁在 d+π。不。= 拒判。*/
+    /* +Iq 期望正转。反转 = 锁在 d+π。*/
     if (ae < M1_HFI_QKICK_DTH_MIN_RAD) {
 #if M1_ENC_OPTIONAL_ENABLE
-        /* 拔线 SPI 钉死：不拒判，默认北。插着仍走 Δθ_enc。 */
-        s_qk_verdict = 1.0f;
-        s_lock = HFI_LOCK_LOCKED;
+        /* 无 Δθ_enc：暂不定南北，LOG 看残速；窗口结束仍模糊才默认北。 */
+        s_qk_verdict = 0.0f;
+        s_qk_pol_done = 0u;
+        s_qk_pol_pending = 1u;
+        s_qk_pol_flip_req = 0u;
+        s_lock = HFI_LOCK_CAPTURE;
 #else
         s_qk_verdict = 0.0f;
+        s_qk_pol_done = 1u;
+        s_qk_pol_pending = 0u;
         s_lock = HFI_LOCK_FAULT;
 #endif
     } else if (s_qk_dth > 0.0f) {
@@ -1387,13 +1393,18 @@ static void hfi_qk_decide_after_lock(void)
         s_theta_hat = motor_wrap_pi(s_theta_hat + s_qk_dth);
         s_pll_int = 0.0f;
         s_omega_el = 0.0f;
+        s_qk_pol_done = 1u;
+        s_qk_pol_pending = 0u;
         s_lock = HFI_LOCK_LOCKED;
     } else {
-        /* 南：补位。+ 。π 。落在。d 附近再进 LOG */
+        /* 南：补位移再加 π，落回 d 附近再进 LOG */
         s_qk_verdict = -1.0f;
         s_theta_hat = motor_wrap_pi(s_theta_hat + s_qk_dth + (float)M_PI);
         s_pll_int = 0.0f;
         s_omega_el = 0.0f;
+        s_qk_pol_done = 1u;
+        s_qk_pol_pending = 0u;
+        s_qk_pol_flip_req = 1u;
         s_lock = HFI_LOCK_LOCKED;
     }
     s_theta_err = motor_wrap_pi(s_theta_hat - s_theta_enc);
@@ -1404,14 +1415,11 @@ static void hfi_qk_decide_after_lock(void)
     s_theta_cmd = s_theta_hat;
 }
 
+
 static void hfi_qk_enter_from_lock(void)
 {
     s_qk_done = 1u;
     s_qk_seed_i = 0u;
-#if M1_HFI_QKICK_FORCE_PI
-    s_theta_hat = motor_wrap_pi(s_theta_hat + (float)M_PI);
-    s_qk_seed_i = 1u; /* 标记：踢前故意错 π */
-#endif
     s_theta_err = motor_wrap_pi(s_theta_hat - s_theta_enc);
     s_theta_cmd = s_theta_hat;
     s_stage = HFI_STAGE_MEAS;
@@ -1422,9 +1430,12 @@ static void hfi_qk_enter_from_lock(void)
     s_qk_hat0 = s_theta_hat;
     s_qk_verdict = 0.0f;
     s_qk_enc_prev_valid = 0u;
+    s_qk_pol_done = 0u;
+    s_qk_pol_pending = 0u;
+    s_qk_pol_flip_req = 0u;
     s_qk_iq_ref = 0.0f;
     s_qk_ov = 0u;
-    /* 踢段。PLL（on_current update_angle=0），不跟泄漏。*/
+    /* 踢段冻 PLL（on_current update_angle=0），避免 Iq 泄漏进解调。 */
     s_omega_trim_el = M1_HFI_QKICK_IQ_A;
     s_vh_sign = 1.0f;
 }
@@ -1503,6 +1514,7 @@ static void hfi_qk_on_meas(void)
  */
 void hfi_sqwave_init(void)
 {
+    rev141_params_load();
     hfi_sqwave_reset();
 }
 
@@ -1542,11 +1554,22 @@ void hfi_sqwave_reset(void)
     hfi_xy_lp_reset();
     s_pll_int = 0.0f;
     s_speed_est = 0.0f;
-    s_pll_eps_dead = M1_HFI_PLL_EPS_DEAD;
+    s_pll_eps_dead = g_hfi_pll_cfg.eps_dead;
     s_polarity_cnt = 0u;
     s_omega_ff_el = 0.0f;
     s_omega_el = 0.0f;
     s_omega_trim_el = 0.0f;
+    s_rev141_idx = 0;
+    s_rev141_hold = -1.0f;
+    s_rev141_done = 0u;
+    s_rev141_ph = 0u;
+    s_rev141_sensed = 0u;
+    s_rev141_stop_t = -1.0f;
+    s_rev141_brake_t0 = -1.0f;
+    s_enc_rpm = 0.0f;
+    s_enc_rpm_lp = 0.0f;
+    s_enc_rpm_valid = 0u;
+    s_theta_enc_prev = 0.0f;
     s_sh_int = 0.0f;
     s_sh_w = 0.0f;
     s_sh_th = 0.0f;
@@ -1569,6 +1592,8 @@ void hfi_sqwave_reset(void)
     s_qk_enc_prev_valid = 0u;
     s_qk_done = 0u;
     s_qk_pol_done = 0u;
+    s_qk_pol_pending = 0u;
+    s_qk_pol_flip_req = 0u;
     (void)M1_HFI_FH_HZ;
 }
 
@@ -1582,22 +1607,126 @@ void hfi_sqwave_set_omega_ff_el(float omega_el_rad_s)
 }
 
 /**
+ * @brief REV141 有感对照：只推进阶梯/阶段，关 Vh，不跑解调前的注入摆角。
+ * @note ω* 仍由 get_speed_ref_rpm→hfi_run_speed_ref_rpm 推进；此处只管 stage/DONE。
+ * @param run_total_s RUN 总超时，单位 s。
+ */
+static void hfi_sqwave_sensed_tick(float run_total_s)
+{
+    hfi_clear_inj();
+    s_vh_scale = 0.0f;
+
+    switch (s_stage) {
+    case HFI_STAGE_RUN:
+        /* 有感段前踢应已结束；仍留门，避免异常重入。 */
+        if ((s_qk_done == 0u) && (s_stage_t >= M1_HFI_QKICK_PRE_S)) {
+            hfi_qk_enter_from_lock();
+            break;
+        }
+        if ((s_rev141_done != 0u) || (s_stage_t >= run_total_s)) {
+            s_stage = HFI_STAGE_DONE;
+            s_stage_t = 0.0f;
+            hfi_clear_inj();
+            s_omega_el = 0.0f;
+            s_omega_trim_el = 0.0f;
+            s_lock = HFI_LOCK_CAPTURE;
+            s_lock_cnt = 0u;
+        }
+        break;
+    case HFI_STAGE_DONE:
+    default:
+        hfi_clear_inj();
+        hfi_qk_set_zero_u();
+        break;
+    }
+}
+
+/**
  * @brief Park 前推进估计角和阶段机。
  * @param theta_enc_el 编码器电角，单位 rad。编码器可选打开时不要当控制量。
  * @param dt 节拍，单位 s。
  */
-void hfi_sqwave_on_angle(float theta_enc_el, float dt)
+/**
+ * @brief 有感对照只推 stage 时钟和编码转速低通，不选 Park、不解调。
+ * @param theta_enc_el 编码器电角，单位 rad。
+ * @param dt 节拍，单位 s。
+ */
+void hfi_sqwave_sensed_keep(float theta_enc_el, float dt)
 {
     const float run_total_s = hfi_run_total_s();
-
-    s_theta_enc = theta_enc_el;
 
     if (dt <= 0.0f) {
         dt = OBS_CTRL_TS_S;
     }
+#if !M1_ENC_OPTIONAL_ENABLE
+    if (s_enc_rpm_valid != 0u) {
+        const float dth = motor_wrap_pi(theta_enc_el - s_theta_enc_prev);
+        const float w_el = dth / dt;
+        const float a = s_rev141_enc_rpm_lp_a;
+
+        s_enc_rpm = w_el * (60.0f / (2.0f * 3.14159265f * (float)OBS_POLE_PAIRS));
+        s_enc_rpm_lp += a * (s_enc_rpm - s_enc_rpm_lp);
+    } else {
+        s_enc_rpm_valid = 1u;
+        s_enc_rpm = 0.0f;
+        s_enc_rpm_lp = 0.0f;
+    }
+    s_theta_enc_prev = theta_enc_el;
+#endif
+    s_theta_enc = theta_enc_el;
+    s_stage_t += dt;
+    hfi_sqwave_sensed_tick(run_total_s);
+}
+
+/**
+ * @brief 交接后注入已关：与有感 keep 相同，只推阶段时钟。
+ */
+void hfi_sqwave_hand_keep(float theta_enc_el, float dt)
+{
+    hfi_sqwave_sensed_keep(theta_enc_el, dt);
+}
+
+/** 1=已交接且注入幅值为 0。解调与注入叠压可以整段跳过。 */
+static uint8_t hfi_inj_off_hold(void)
+{
+    return ((s_hat_hold != 0u) && (s_vh_scale <= 0.0f)) ? 1u : 0u;
+}
+
+/** 注入已关：θ̂ 只按保持速度走一步，不再进解调。 */
+static void hfi_coast_hat(void)
+{
+    s_omega_el = s_omega_coast;
+    s_theta_hat = motor_wrap_pi(s_theta_hat + s_omega_coast * OBS_CTRL_TS_S);
+}
+
+void hfi_sqwave_on_angle(float theta_enc_el, float dt)
+{
+    const float run_total_s = hfi_run_total_s();
+
+    if (dt <= 0.0f) {
+        dt = OBS_CTRL_TS_S;
+    }
+#if !M1_ENC_OPTIONAL_ENABLE
+    /* REV141 门限用 enc 转速；原始差分须低通，否则零速毛刺卡死刹停段。 */
+    if (s_enc_rpm_valid != 0u) {
+        const float dth = motor_wrap_pi(theta_enc_el - s_theta_enc_prev);
+        const float w_el = dth / dt;
+        const float a = s_rev141_enc_rpm_lp_a;
+
+        s_enc_rpm = w_el * (60.0f / (2.0f * 3.14159265f * (float)OBS_POLE_PAIRS));
+        s_enc_rpm_lp += a * (s_enc_rpm - s_enc_rpm_lp);
+    } else {
+        s_enc_rpm_valid = 1u;
+        s_enc_rpm = 0.0f;
+        s_enc_rpm_lp = 0.0f;
+    }
+    s_theta_enc_prev = theta_enc_el;
+#endif
+    s_theta_enc = theta_enc_el;
     s_stage_t += dt;
 
     s_theta_err = motor_wrap_pi(s_theta_hat - theta_enc_el);
+
     switch (s_stage) {
     case HFI_STAGE_IDLE:
         hfi_clear_inj();
@@ -1606,7 +1735,10 @@ void hfi_sqwave_on_angle(float theta_enc_el, float dt)
         }
         break;
     case HFI_STAGE_RUN:
-        hfi_set_inj_on_hat();
+        /* 幅值已是 0：不再算注入轴。阶段时钟和超时仍走下面。 */
+        if (hfi_inj_off_hold() == 0u) {
+            hfi_set_inj_on_hat();
+        }
         /* S3b：预。PRE_S 后踢；PRE_GATE：须 pre_ok，否则逃。等待，超时拒。*/
         if ((s_qk_done == 0u) && (s_stage_t >= M1_HFI_QKICK_PRE_S)) {
             hfi_qk_enter_from_lock();
@@ -1626,7 +1758,7 @@ void hfi_sqwave_on_angle(float theta_enc_el, float dt)
         hfi_qk_on_meas();
         break;
     case HFI_STAGE_LOG:
-        /* 注入 + 电流。Iq=0；eps 。on_current 解调写入，勿。dth 盖掉 */
+        /* 注入 + Iq=0；eps 由 on_current 解调写入，勿用 dth 盖掉 */
         hfi_set_inj_on_hat();
         s_qk_iq_ref = 0.0f;
         s_qk_id_ref = 0.0f;
@@ -1634,7 +1766,7 @@ void hfi_sqwave_on_angle(float theta_enc_el, float dt)
         s_omega_trim_el = s_qk_verdict;
         s_theta_err = motor_wrap_pi(s_theta_hat - s_theta_enc);
         if (s_stage_t >= M1_HFI_QKICK_HOLD_S) {
-            /* S3b 踢结。。。hold 。HFI RUN（qk_done=1，不会再踢） */
+            /* S3b 踢完 hold → HFI RUN（qk_done=1，不会再踢） */
             hfi_enter_run_after_kick();
         }
         break;
@@ -1655,6 +1787,19 @@ void hfi_sqwave_on_angle(float theta_enc_el, float dt)
  */
 void hfi_sqwave_on_current(float id, float iq, float i_alpha, float i_beta)
 {
+    /* 有感对照：解调不跑。注入轴在 pre_park 里摆。 */
+    if (s_rev141_sensed != 0u) {
+        (void)id;
+        (void)iq;
+        (void)i_alpha;
+        (void)i_beta;
+        return;
+    }
+    /* 交接后注入已关：不求 |I|，不进解调。θ̂ 在这里走一步。 */
+    if (hfi_inj_off_hold() != 0u) {
+        hfi_coast_hat();
+        return;
+    }
 #if M1_HFI_DEMOD_INJ_AXIS
     s_ia_now = i_alpha;
     s_ib_now = i_beta;
@@ -1763,12 +1908,23 @@ void hfi_sqwave_get_inj_ab(float *u_alpha_inj, float *u_beta_inj)
     float ua = 0.0f;
     float ub = 0.0f;
 
+    /* 幅值已是 0：不必再做 sincos。 */
+    if (s_vh_scale <= 0.0f) {
+        if (u_alpha_inj != NULL) {
+            *u_alpha_inj = 0.0f;
+        }
+        if (u_beta_inj != NULL) {
+            *u_beta_inj = 0.0f;
+        }
+        return;
+    }
     /* 用本半周锁定的 s_vh_sign，勿用解调后已翻转的 s_sign */
     if (s_vh_sign != 0.0f) {
         const float mag = s_vh_v * s_vh_scale * s_vh_sign;
-        const float c = cosf(s_theta_hat);
-        const float s = sinf(s_theta_hat);
+        float c;
+        float s;
 
+        motor_trig_sincos(s_theta_hat, &c, &s);
         ua = mag * c;
         ub = mag * s;
     }
@@ -1973,10 +2129,15 @@ float hfi_sqwave_get_omega_trim_el(void)
 }
 
 /**
- * @brief 速度环开头极性反了时翻过一次 π。读一次后清掉。未开这路恒为 0。
+ * @brief 本拍因判南翻过 π 时返回 1，读一次后清掉。
+ * @note 上层用来复位 SMO/VEQ，避免反电势状态跟着错半球。
  */
 uint8_t hfi_sqwave_take_polarity_flip(void)
 {
+    if (s_qk_pol_flip_req != 0u) {
+        s_qk_pol_flip_req = 0u;
+        return 1u;
+    }
     return 0u;
 }
 
@@ -2064,6 +2225,14 @@ void hfi_sqwave_set_torque_theta(float theta, uint8_t enable)
 /**
  * @brief 1：ε 不再写入 θ̂，角度按保持速度每拍积分。
  */
+/**
+ * @brief 1=已交接且注入幅值为 0。电流环据此跳过叠注入。
+ */
+uint8_t hfi_sqwave_inj_off(void)
+{
+    return hfi_inj_off_hold();
+}
+
 void hfi_sqwave_set_hat_hold(uint8_t hold)
 {
     uint8_t on;
@@ -2102,6 +2271,18 @@ void hfi_sqwave_seed_hat(float theta_el, float omega_el)
     s_theta_err = 0.0f;
     /* 下一拍积分直接等于这次播进去的转速 */
     s_speed_est = omega_el;
+}
+
+/**
+ * @brief 只把"低速侧"速度估计同步成观测速；不动 θ̂、不动 hat_hold、不跑解调。
+ * @param omega_el 电角速度，单位 rad/s。
+ * @note 专治 ss=2 快路径把 s_speed_est / s_omega_coast 冻死：
+ *       REV141 脚本的到点判据与 PLL 相位前馈的频率都吃这个量。
+ */
+void hfi_sqwave_seed_speed_el(float omega_el)
+{
+    s_speed_est = omega_el;
+    s_omega_coast = omega_el;
 }
 
 /**
@@ -2176,6 +2357,9 @@ uint8_t hfi_sqwave_axis_ok(void)
  */
 float hfi_sqwave_get_iq_auth_abs(void)
 {
+    if (s_rev141_sensed != 0u) {
+        return M1_HFI_IQ_AUTH_IQ_HI;
+    }
     return s_iq_auth_abs;
 }
 
@@ -2276,6 +2460,18 @@ uint8_t hfi_sqwave_consume_pi_reset(void)
 }
 
 /**
+ * @brief 1=刚进有感段，上层应清 Id/Iq PI 与 Ud/Uq。读一次清。
+ */
+uint8_t hfi_sqwave_consume_sens_pi_clear(void)
+{
+    if (s_sens_pi_clear != 0u) {
+        s_sens_pi_clear = 0u;
+        return 1u;
+    }
+    return 0u;
+}
+
+/**
  * @brief 1=旁路 Id PI，只留注入。q 环仍开。未开对应宏恒为 0。
  */
 uint8_t hfi_sqwave_id_pi_bypass(void)
@@ -2284,11 +2480,19 @@ uint8_t hfi_sqwave_id_pi_bypass(void)
 }
 
 /**
- * @brief 有感标定圈号，从 0 起。非标定恒 0。
+ * @brief 有感标定圈号，从 0 起。REV141 有感对照段为 1。
  */
 uint8_t hfi_sqwave_get_sensed_cal_loop(void)
 {
-    return 0u;
+    return (s_rev141_sensed != 0u) ? 1u : 0u;
+}
+
+/**
+ * @brief 1=REV141 有感对照：Park/速度反馈吃编码器。
+ */
+uint8_t hfi_sqwave_sensed_fb_active(void)
+{
+    return s_rev141_sensed;
 }
 
 static hfi_telem_snap_t s_telem;

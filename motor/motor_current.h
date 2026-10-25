@@ -23,6 +23,17 @@ extern "C" {
 
 void motor_current_init(bsp_axis_t *axis);
 void motor_current_tick(bsp_axis_t *axis);
+/**
+ * @brief 2 kHz 外环 tick —— 只允许从 TIM6 中断调用（M1_OUTER_IN_TIM6=1 时生效）。
+ * @note 与 20 kHz 内环剥离：内环不再调 motor_outer_loop_tick，只刷新使能标志。
+ */
+void motor_current_outer_tick_2k(void);
+/** @brief [诊断] 外环使能标志（run_speed_loop 的静态镜像）。 */
+uint8_t motor_current_outer_run_enable(void);
+/** @brief [台架诊断] TIM6 ISR 累计次数。 */
+uint32_t motor_current_get_tim6_cnt(void);
+/** @brief [台架诊断] FOC ISR 累计次数。 */
+uint32_t motor_current_get_foc_cnt(void);
 void motor_current_set_mode(bsp_axis_t *axis, m1_ctrl_mode_t mode);
 
 void motor_current_set_idq_ref(bsp_axis_t *axis, float id_ref, float iq_ref);

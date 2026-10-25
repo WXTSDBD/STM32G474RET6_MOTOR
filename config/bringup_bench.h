@@ -15,9 +15,6 @@ extern "C" {
 #endif
 
 /** M1 角源：0=SPI1+AS5047，1=SPI3+KTH7823。 */
-#ifndef M1_ENCODER_SRC_AS5047_SPI1
-#define M1_ENCODER_SRC_AS5047_SPI1      0
-#endif
 #ifndef M1_ENCODER_SRC_KTH7823_SPI3
 #define M1_ENCODER_SRC_KTH7823_SPI3     1
 #endif
@@ -54,8 +51,18 @@ extern "C" {
 
 #ifndef M1_ENCODER_OFFSET_RAD
 #if (M1_ENCODER_SRC == M1_ENCODER_SRC_KTH7823_SPI3)
-/** KTH Ud 锁：vofa+202610082358 ch10 稳态（能转；疯转因 MECH_SIGN 反了）。 */
-#define M1_ENCODER_OFFSET_RAD           3.181572f
+/**
+ * KTH7823 电角零偏（出厂值）。
+ * 2026-10-25 用"纯有感恒速 2000rpm"实测 δ 反推（最干净：无 HFI/无观测器/无无感段）：
+ *   在 offset=3.6586 下实测 δ=+9.92° ⇒ 正确值 = 3.6586 + 0.1732 = 3.8318 rad
+ *   ⇒ 3.830 rad (219.4°)
+ * 备注①：12 步 Id 锁轴探针给出 209.62°(3.6586)，被齿槽力带偏约 10°（3A×Kt≈0.09N·m 与齿槽同量级），
+ *        不能直接用；锁轴法需要更大电流或反复正反平均。
+ * 备注②：原值 3.181572 来源注释引用的 10-08 23:58 录波其实是一次 100rpm 拖动，不是 Ud 锁，来源不可信；
+ *        实测它比正确值小约 37°。
+ * 备注③：编码器存在 ±6° 电角的 1 次机械周期误差（偏心）。
+ */
+#define M1_ENCODER_OFFSET_RAD           3.830f
 #else
 #define M1_ENCODER_OFFSET_RAD           2.10f
 #endif
@@ -74,9 +81,6 @@ extern "C" {
  * 1=KTH raw 取负。2334 证明：开 DIR_REV 重标会把 add 打进坏区；
  * 且 2301 在 DIR_REV=0、add≈2.04 时已能出力疯转 → 默认关。
  */
-#ifndef M1_ENCODER_DIR_REV
-#define M1_ENCODER_DIR_REV              0
-#endif
 
 /**
  * 机械角符号。2358：Ud 标定后 +Iq 时 raw 增、MECH_SIGN=-1 把 ω 翻成负 → 正反馈疯转。

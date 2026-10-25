@@ -65,6 +65,7 @@ void USART1_IRQHandler(void);
 void TIM8_BRK_IRQHandler(void);
 void TIM8_UP_IRQHandler(void);
 void ADC3_IRQHandler(void);
+void TIM6_DAC_IRQHandler(void);
 void TIM7_DAC_IRQHandler(void);
 void ADC5_IRQHandler(void);
 void LPUART1_IRQHandler(void);

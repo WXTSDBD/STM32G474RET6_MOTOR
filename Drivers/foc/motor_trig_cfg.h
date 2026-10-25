@@ -15,12 +15,16 @@
 #define MOTOR_TRIG_BACKEND_LUT     1
 #define MOTOR_TRIG_BACKEND_CORDIC  2
 
-/**
- * A/B ???190108??CORDIC ? ? ? Iq ?????? LUT ? CSV ???
- * LUT ??? bringup/math_tables/??????? CORDIC ?? wrap?
+/*
+ * 默认 LUT（bringup/math_tables）。无 LTO 时 sincos 在 motor_trig.h 内联。
+ * 需要 CORDIC 对照时：-DMOTOR_TRIG_BACKEND=2。量产/移植保持 LUT。
  */
 #ifndef MOTOR_TRIG_BACKEND
 #define MOTOR_TRIG_BACKEND  MOTOR_TRIG_BACKEND_LUT
+#endif
+#if MOTOR_TRIG_BACKEND != MOTOR_TRIG_BACKEND_LUT && \
+    MOTOR_TRIG_BACKEND != MOTOR_TRIG_BACKEND_CORDIC
+#error "MOTOR_TRIG_BACKEND must be LUT(1) or CORDIC(2)"
 #endif
 
 #endif

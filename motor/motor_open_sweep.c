@@ -114,7 +114,7 @@ static void motor_open_sweep_begin_pre_id_ladder_on_round(motor_context_t *ctx)
     deadband_service_apply_profile(DEADBAND_PROFILE_FIXED);
 #endif
     motor_open_sweep_apply_pre_id_ladder_voltage(ctx, s_pre_id_v_ladder[0]);
-    dbg.open_seq_phase = M1_OPEN_PRE_ID_LADDER_PHASE_ON_BASE;
+    DBG.open_seq_phase = M1_OPEN_PRE_ID_LADDER_PHASE_ON_BASE;
 }
 
 static void motor_open_sweep_begin_pre_id_ladder_common(motor_context_t *ctx)
@@ -133,11 +133,11 @@ static void motor_open_sweep_begin_pre_id_ladder_common(motor_context_t *ctx)
 #if M1_OPEN_PRE_ID_LADDER_ALIGN_ENABLE
     s_pre_id_sub = PRE_ID_SUB_ALIGN;
     motor_open_sweep_clear_open_voltages(ctx);
-    dbg.open_seq_phase = M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE;
+    DBG.open_seq_phase = M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE;
 #else
     s_pre_id_sub = PRE_ID_SUB_LADDER;
     motor_open_sweep_apply_pre_id_ladder_voltage(ctx, s_pre_id_v_ladder[0]);
-    dbg.open_seq_phase = motor_open_sweep_ladder_phase_base();
+    DBG.open_seq_phase = motor_open_sweep_ladder_phase_base();
 #endif
 }
 #endif /* pre-id ladder */
@@ -297,13 +297,13 @@ void motor_open_sweep_tick(motor_context_t *ctx)
             const uint32_t t = s_tick++;
 
             motor_open_sweep_clear_open_voltages(ctx);
-            dbg.open_seq_phase = M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE;
+            DBG.open_seq_phase = M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE;
             if (align_ticks == 0u || t + 1u >= align_ticks) {
                 s_pre_id_sub = PRE_ID_SUB_LADDER;
                 s_tick = 0u;
                 s_ladder_step = 0u;
                 motor_open_sweep_apply_pre_id_ladder_voltage(ctx, s_pre_id_v_ladder[0]);
-                dbg.open_seq_phase = motor_open_sweep_ladder_phase_base();
+                DBG.open_seq_phase = motor_open_sweep_ladder_phase_base();
             }
             return;
         }
@@ -315,7 +315,7 @@ void motor_open_sweep_tick(motor_context_t *ctx)
 
             motor_open_sweep_apply_pre_id_ladder_voltage(ctx,
                                                          s_pre_id_v_ladder[s_ladder_step]);
-            dbg.open_seq_phase =
+            DBG.open_seq_phase =
                 (uint8_t)(motor_open_sweep_ladder_phase_base() + s_ladder_step);
             if (dwell_ticks == 0u || t + 1u >= dwell_ticks) {
                 s_tick = 0u;
@@ -331,7 +331,7 @@ void motor_open_sweep_tick(motor_context_t *ctx)
                     s_kind = SWEEP_KIND_NONE;
                     s_pre_id_sub = PRE_ID_SUB_LADDER;
                     motor_open_sweep_clear_open_voltages(ctx);
-                    dbg.open_seq_phase = motor_open_sweep_ladder_done_phase();
+                    DBG.open_seq_phase = motor_open_sweep_ladder_done_phase();
                 }
             }
         }
@@ -344,12 +344,12 @@ void motor_open_sweep_tick(motor_context_t *ctx)
 
         ctx->uq_open = s_fixed_uq_v;
         ctx->ud_open = 0.0f;
-        dbg.open_seq_phase = 80u;
+        DBG.open_seq_phase = 80u;
         if (t >= s_fixed_duration_ticks) {
             s_armed = 0u;
             s_kind = SWEEP_KIND_NONE;
             motor_open_sweep_clear_open_voltages(ctx);
-            dbg.open_seq_phase = 81u;
+            DBG.open_seq_phase = 81u;
         }
         return;
     }
@@ -367,7 +367,7 @@ void motor_open_sweep_tick(motor_context_t *ctx)
             s_kind = SWEEP_KIND_NONE;
         }
 
-        dbg.open_seq_phase = (uint8_t)phase;
+        DBG.open_seq_phase = (uint8_t)phase;
 
         switch (phase / 2u) {
         case 0u:
@@ -405,13 +405,13 @@ void motor_open_sweep_tick(motor_context_t *ctx)
 
         if (t < step_ticks) {
             ctx->uq_open = M1_OPEN_UQ_SWEEP_V0;
-            dbg.open_seq_phase = 0u;
+            DBG.open_seq_phase = 0u;
         } else if (t < (2u * step_ticks)) {
             ctx->uq_open = M1_OPEN_UQ_SWEEP_V1;
-            dbg.open_seq_phase = 1u;
+            DBG.open_seq_phase = 1u;
         } else {
             ctx->uq_open = M1_OPEN_UQ_SWEEP_V2;
-            dbg.open_seq_phase = 2u;
+            DBG.open_seq_phase = 2u;
             if (t >= (3u * step_ticks)) {
                 s_armed = 0u;
                 s_kind = SWEEP_KIND_NONE;

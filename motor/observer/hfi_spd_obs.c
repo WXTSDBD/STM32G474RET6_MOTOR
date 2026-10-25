@@ -10,8 +10,8 @@
 #include "observer/hfi_spd_obs.h"
 #include "observer/obs_cfg.h"
 
-#if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE && M1_EMF_SMO_ENABLE && \
-    M1_EMF_PLL_ENABLE
+#if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE && M1_EMF_PLL_ENABLE && \
+    (M1_EMF_SMO_ENABLE || M1_EMF_VEQ_ENABLE)
 /** 窗口采样，单位 rpm。 */
 static float s_smo_w_hist[HFI_SMO_W_MA_N];
 /** 窗口内求和，单位 rpm。 */

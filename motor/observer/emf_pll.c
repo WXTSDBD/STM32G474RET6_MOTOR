@@ -10,7 +10,6 @@
 
 #include "emf_pll.h"
 
-#include <math.h>
 #include <stddef.h>
 
 #include "observer/obs_cfg.h"
@@ -82,6 +81,33 @@ static float emf_pll_clamp(float x, float lim)
     return x;
 }
 
+/**
+ * @brief atan2 多项式，与 VESC utils_fast_atan2 同一组系数。
+ * @note 这里只用来算 atan(fe/fc)，fc 恒正。
+ */
+static float emf_pll_fast_atan2(float y, float x)
+{
+    float abs_y = (y >= 0.0f) ? y : -y;
+    float angle;
+
+    abs_y += 1.0e-20f;
+    if (x >= 0.0f) {
+        float r = (x - abs_y) / (x + abs_y);
+        float rsq = r * r;
+
+        angle = ((0.1963f * rsq) - 0.9817f) * r + 0.78539816f;
+    } else {
+        float r = (x + abs_y) / (abs_y - x);
+        float rsq = r * r;
+
+        angle = ((0.1963f * rsq) - 0.9817f) * r + 2.35619449f;
+    }
+    if (y < 0.0f) {
+        angle = -angle;
+    }
+    return angle;
+}
+
 /** 低通滞后。正转提前 θ̂，反转改为滞后。返回值从 θ̂ 里减去。 */
 static float emf_pll_lpf_phase_ff(float omega_el)
 {
@@ -99,7 +125,7 @@ static float emf_pll_lpf_phase_ff(float omega_el)
     if (w < 1.0f || fc < 1.0f) {
         return 0.0f;
     }
-    return -atanf(fe / fc);
+    return -emf_pll_fast_atan2(fe, fc);
 #else
     (void)omega_el;
     return 0.0f;
@@ -160,14 +186,10 @@ void emf_pll_update(emf_pll_t *p,
     float sin_h;
     float err;
     float omega_cmd;
-    float emag;
 
     if (p == NULL || dt <= 0.0f) {
         return;
     }
-
-    emag = sqrtf(e_alpha * e_alpha + e_beta * e_beta);
-    p->emag = emag;
 
     if (p->primed == 0u) {
         /* 内部跟踪滤波后 e 帧；输出扣 θ_off + LPF 相位前馈 */
@@ -177,6 +199,7 @@ void emf_pll_update(emf_pll_t *p,
         p->theta_hat = theta_enc;
         p->theta_err = 0.0f;
         p->last_pd = 0.0f;
+        p->emag = 0.0f;
         p->primed = 1u;
         return;
     }
@@ -190,7 +213,16 @@ void emf_pll_update(emf_pll_t *p,
         err = -err;
     }
 #if M1_EMF_PLL_NORM_ENABLE
-    err /= (emag + M1_EMF_PLL_NORM_EPS);
+    {
+        const float emag = sqrtf(e_alpha * e_alpha + e_beta * e_beta);
+
+        /* 打开时与历史增益同口径：err/(|e|+eps)。 */
+        p->emag = emag;
+        err /= (emag + M1_EMF_PLL_NORM_EPS);
+    }
+#else
+    /* T1：鉴相用原始正交误差，省 sqrt+除法；增益等效随 |e| 变。 */
+    p->emag = 0.0f;
 #endif
     p->last_pd = err;
 

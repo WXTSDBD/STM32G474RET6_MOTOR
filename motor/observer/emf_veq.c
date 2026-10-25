@@ -136,8 +136,6 @@ void emf_veq_update(emf_veq_t *o,
     float dib;
     float ea_raw;
     float eb_raw;
-    float we;
-    float th_hat;
     const float r = M1_EMF_VEQ_R_OHM;
     const float l = M1_EMF_VEQ_L_H;
 
@@ -183,6 +181,20 @@ void emf_veq_update(emf_veq_t *o,
     o->e_beta = eb_raw;
 #endif
 
+#if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO
+    /* PLL 直接吃 eαβ，热路径不再 sqrt/atan2。 */
+    (void)theta_enc;
+    (void)omega_mech_rpm;
+    o->emag = 0.0f;
+    o->theta_hat = 0.0f;
+    o->theta_err = 0.0f;
+    o->omega_el = 0.0f;
+    o->psi_inst = 0.0f;
+#else
+    {
+    float we;
+    float th_hat;
+
     o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
     th_hat = atan2f(-o->e_alpha, o->e_beta) - M1_EMF_VEQ_THETA_OFF_RAD;
     o->theta_hat = emf_veq_wrap_pi(th_hat);
@@ -193,6 +205,8 @@ void emf_veq_update(emf_veq_t *o,
     if (fabsf(we) > M1_EMF_VEQ_PSI_WMIN) {
         o->psi_inst = o->emag / fabsf(we);
     }
+    }
+#endif
 }
 
 #else /* !M1_EMF_VEQ_ENABLE */

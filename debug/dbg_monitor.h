@@ -212,6 +212,11 @@ typedef struct {
 
 extern volatile DbgMon_t dbg;
 
+/** 历史别名：生成文件与 bringup 写 DBG.xxx，与 dbg 同实例。 */
+#ifndef DBG
+#define DBG dbg
+#endif
+
 #ifdef __cplusplus
 }
 #endif

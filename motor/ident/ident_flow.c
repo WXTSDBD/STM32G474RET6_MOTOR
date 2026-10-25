@@ -85,15 +85,15 @@ static void ident_flow_sync_dbg_step(uint8_t round)
 #if M1_IDENT_STEP_BANDS > 1u
     /* 双频段 8 轮：round 0..ROUNDS-1 → open_seq 61..(60+ROUNDS)，
      * 与 VOFA ch3/ch4=Iq/Iq_ref 窗口对齐（勿复用 80/81 开环验收相） */
-    dbg.open_seq_phase = (uint8_t)(61u + round);
+    DBG.open_seq_phase = (uint8_t)(61u + round);
 #else
     if (round < M1_IDENT_STEP_OFF_ROUNDS) {
-        dbg.open_seq_phase = (uint8_t)(61u + round);
+        DBG.open_seq_phase = (uint8_t)(61u + round);
     } else if (round < (M1_IDENT_STEP_OFF_ROUNDS + M1_IDENT_STEP_FIXED_ROUNDS)) {
-        dbg.open_seq_phase =
+        DBG.open_seq_phase =
             (uint8_t)(67u + (round - M1_IDENT_STEP_OFF_ROUNDS));
     } else {
-        dbg.open_seq_phase = (uint8_t)(74u + (round - M1_IDENT_STEP_OFF_ROUNDS -
+        DBG.open_seq_phase = (uint8_t)(74u + (round - M1_IDENT_STEP_OFF_ROUNDS -
                                               M1_IDENT_STEP_FIXED_ROUNDS));
     }
 #endif
@@ -114,7 +114,7 @@ static ident_flow_db_seg_t ident_flow_bode_db_seg(uint8_t round)
 
 static void ident_flow_sync_dbg_bode(uint8_t round)
 {
-    dbg.open_seq_phase = (uint8_t)(62u + round);
+    DBG.open_seq_phase = (uint8_t)(62u + round);
 }
 #endif
 
@@ -180,7 +180,7 @@ static void ident_flow_sync_dbg(void)
 
     switch (state) {
     case IDENT_MOD_HOLD:
-        dbg.open_seq_phase = 60u;
+        DBG.open_seq_phase = 60u;
         break;
 #if M1_IDENT_IQ_STEP_ENABLE
     case IDENT_MOD_STEP:
@@ -194,7 +194,7 @@ static void ident_flow_sync_dbg(void)
 #endif
     case IDENT_MOD_DONE:
     default:
-        dbg.open_seq_phase = 73u;
+        DBG.open_seq_phase = 73u;
         break;
     }
 }

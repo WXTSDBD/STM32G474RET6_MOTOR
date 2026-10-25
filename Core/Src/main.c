@@ -43,6 +43,7 @@
 #include "irq_priority.h"
 #include "motor_current.h"
 #include "motor_params_m1.h"
+#include "experiment/exp_runner.h"
 #include "motor_phase_binding.h"
 #include "phase_detect.h"
 #include "time_port.h"
@@ -88,10 +89,10 @@ volatile uint8_t cnt=0;
 static void dbg_snapshot_opamp_ch(uint8_t idx, OPAMP_TypeDef *opamp)
 {
   uint32_t csr = opamp->CSR;
-  dbg.opamp[idx].csr = csr;
-  dbg.opamp[idx].en = (csr & OPAMP_CSR_OPAMPxEN) ? 1U : 0U;
-  dbg.opamp[idx].intout = (csr & OPAMP_CSR_OPAMPINTEN) ? 1U : 0U;
-  dbg.opamp[idx].pggain = (uint16_t)((csr & OPAMP_CSR_PGGAIN_Msk) >> OPAMP_CSR_PGGAIN_Pos);
+  DBG.opamp[idx].csr = csr;
+  DBG.opamp[idx].en = (csr & OPAMP_CSR_OPAMPxEN) ? 1U : 0U;
+  DBG.opamp[idx].intout = (csr & OPAMP_CSR_OPAMPINTEN) ? 1U : 0U;
+  DBG.opamp[idx].pggain = (uint16_t)((csr & OPAMP_CSR_PGGAIN_Msk) >> OPAMP_CSR_PGGAIN_Pos);
 }
 
 static void dbg_snapshot_m1_adc(const bsp_axis_t *m1)
@@ -99,13 +100,13 @@ static void dbg_snapshot_m1_adc(const bsp_axis_t *m1)
   uint8_t i;
 
   for (i = 0U; i < 3U; i++) {
-    dbg.adc_offset[i] = m1->adc_cfg.ch[i].offset;
-    dbg.adc_zeroed[i] = (int16_t)((int32_t)m1->adc.raw[i] - m1->adc_cfg.ch[i].offset);
-    dbg.adc_reg[i] = m1->adc.raw[i];
+    DBG.adc_offset[i] = m1->adc_cfg.ch[i].offset;
+    DBG.adc_zeroed[i] = (int16_t)((int32_t)m1->adc.raw[i] - m1->adc_cfg.ch[i].offset);
+    DBG.adc_reg[i] = m1->adc.raw[i];
   }
-  dbg.adc_ia = m1->adc.ia;
-  dbg.adc_ib = m1->adc.ib;
-  dbg.adc_ic = m1->adc.ic;
+  DBG.adc_ia = m1->adc.ia;
+  DBG.adc_ib = m1->adc.ib;
+  DBG.adc_ic = m1->adc.ic;
 }
 
 static void dbg_snapshot_phase_binding(void)
@@ -114,9 +115,9 @@ static void dbg_snapshot_phase_binding(void)
   uint8_t i;
 
   for (i = 0U; i < 3U; i++) {
-    dbg.pwm_ch_to_phase_dbg[i] = b->pwm_ch_to_phase[i];
-    dbg.adc_rank_to_phase_dbg[i] = b->adc_rank_to_phase[i];
-    dbg.phase_sign_dbg[i] = b->phase_sign[i];
+    DBG.pwm_ch_to_phase_dbg[i] = b->pwm_ch_to_phase[i];
+    DBG.adc_rank_to_phase_dbg[i] = b->adc_rank_to_phase[i];
+    DBG.phase_sign_dbg[i] = b->phase_sign[i];
   }
 }
 
@@ -148,12 +149,12 @@ static void dbg_snapshot_all(void)
   dbg_snapshot_opamp_ch(0, OPAMP1);
   dbg_snapshot_opamp_ch(1, OPAMP3);
   dbg_snapshot_opamp_ch(2, OPAMP4);
-  dbg.opamp[0].hal_state = hopamp1.State;
-  dbg.opamp[1].hal_state = hopamp3.State;
-  dbg.opamp[2].hal_state = hopamp4.State;
-  dbg.adc_shunt[0] = adc_read[0];
-  dbg.adc_shunt[1] = adc_read[1];
-  dbg.adc_shunt[2] = adc_read[2];
+  DBG.opamp[0].hal_state = hopamp1.State;
+  DBG.opamp[1].hal_state = hopamp3.State;
+  DBG.opamp[2].hal_state = hopamp4.State;
+  DBG.adc_shunt[0] = adc_read[0];
+  DBG.adc_shunt[1] = adc_read[1];
+  DBG.adc_shunt[2] = adc_read[2];
   /* M1 adc_reg[] ? app_axis_jeoc_snapshot_m1_adc ???????? */
 }
 /* USER CODE END 0 */
@@ -206,6 +207,7 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_TIM15_Init();
   MX_CORDIC_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   irq_priority_apply();
   /* DWT 毫秒口：标定超时先于 telem_bringup_init 也可用�?? */
@@ -228,6 +230,23 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 	__HAL_ADC_CLEAR_FLAG(&hadc5, ADC_FLAG_JEOC);
 	bsp_init();
 	motor_current_init(bsp_axis(BSP_AXIS_M1));
+#if M1_OUTER_IN_TIM6
+	/* 2kHz outer-loop timer (TIM6). Must start AFTER motor_current_init(),
+	   otherwise the ISR would run the outer loop on an uninitialised ctx. */
+	if (HAL_TIM_Base_Start_IT(&htim6) != HAL_OK) {
+		Error_Handler();
+	}
+#endif
+#if M1_EXP_FRAMEWORK_ENABLE && (M1_EXP_BOOT_UD_CAL || M1_EXP_BOOT_REV141)
+	/* pilot: boot the experiment selected by build switches. */
+	exp_runner_init();
+#if M1_EXP_BOOT_REV141
+	(void)exp_runner_select(EXP_ID_REV141);
+#else
+	(void)exp_runner_select(EXP_ID_UD_CAL);
+#endif
+	exp_runner_arm(motor_current_ctx(bsp_axis(BSP_AXIS_M1)));
+#endif
 	if (!bsp_axis_adc_calibrate_zero(BSP_AXIS_M1, 20, 100, 50)) {
 		Error_Handler();
 	}
@@ -255,21 +274,21 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
   HAL_TIM_PWM_Start(&htim8, TIM_CHANNEL_4);
   HAL_TIM_Base_Start(&htim8);
 
-  dbg.phase_cal_ok = 0U;
-  dbg.binding_loaded = 0U;
-  dbg.phase_cal_fail = 0U;
-  dbg.phase_cal_fail_reason = PHASE_CAL_FAIL_NONE;
-  dbg.phase_cal_channels_done = 0U;
-  dbg.phase_cal_last_snr = 0.0f;
+  DBG.phase_cal_ok = 0U;
+  DBG.binding_loaded = 0U;
+  DBG.phase_cal_fail = 0U;
+  DBG.phase_cal_fail_reason = PHASE_CAL_FAIL_NONE;
+  DBG.phase_cal_channels_done = 0U;
+  DBG.phase_cal_last_snr = 0.0f;
 
 #if M1_APPLY_PHASE_BINDING && !M1_RUN_PHASE_CAL
 #if M1_BINDING_OVERRIDE_2325
   m1_apply_binding_2325();
-  dbg.binding_loaded = 1U;
+  DBG.binding_loaded = 1U;
   dbg_snapshot_phase_binding();
 #else
   if (factory_nvm_apply_phase_binding()) {
-    dbg.binding_loaded = 1U;
+    DBG.binding_loaded = 1U;
     dbg_snapshot_phase_binding();
   } else {
     motor_phase_binding_t id;
@@ -286,17 +305,17 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
     bsp_axis_t *m1 = bsp_axis(BSP_AXIS_M1);
 
     if (phase_detect_run(&m1->adc, m1->pwm, &binding, false)) {
-      dbg.phase_cal_ok = 1U;
-      dbg.phase_cal_fail = 0U;
-      dbg.phase_cal_fail_reason = PHASE_CAL_FAIL_NONE;
+      DBG.phase_cal_ok = 1U;
+      DBG.phase_cal_fail = 0U;
+      DBG.phase_cal_fail_reason = PHASE_CAL_FAIL_NONE;
       dbg_snapshot_phase_binding();
     } else {
       motor_phase_binding_t id;
 
       motor_phase_binding_set_identity(&id);
       motor_phase_binding_set_active(&id, false);
-      dbg.phase_cal_ok = 0U;
-      dbg.phase_cal_fail = 1U;
+      DBG.phase_cal_ok = 0U;
+      DBG.phase_cal_fail = 1U;
     }
     g_cal_hold = 1U;
     for (;;) {
@@ -314,18 +333,18 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
     if (!encoder_cal_run_lock_default(bsp_axis(BSP_AXIS_M1), m1_enc, M1_POLE_PAIRS, &add_raw)) {
       Error_Handler();
     }
-    dbg.enc_cal_add_raw = add_raw;
+    DBG.enc_cal_add_raw = add_raw;
     add_final = encoder_cal_apply_pi_offset(add_raw);
     encoder_set_theta_el_offset(m1_enc, add_final);
-    dbg.enc_cal_add = add_final;
+    DBG.enc_cal_add = add_final;
   }
 #else
   {
     encoder_t *m1_enc = bsp_axis(BSP_AXIS_M1)->enc;
 
     encoder_set_theta_el_offset(m1_enc, M1_ENCODER_OFFSET_RAD);
-    dbg.enc_cal_add_raw = M1_ENCODER_OFFSET_RAD;
-    dbg.enc_cal_add = M1_ENCODER_OFFSET_RAD;
+    DBG.enc_cal_add_raw = M1_ENCODER_OFFSET_RAD;
+    DBG.enc_cal_add = M1_ENCODER_OFFSET_RAD;
     encoder_kick(m1_enc);
   }
 #endif
@@ -431,8 +450,8 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
     if (hadc == &hadc1) {
         // ??????????????????????????
          adc_read[0] = (int16_t)hadc1.Instance->JDR1;
-         dbg.opamp[0].adc_jdr1 = (uint16_t)hadc1.Instance->JDR1;
-         dbg.opamp[0].adc_irq_cnt++;
+         DBG.opamp[0].adc_jdr1 = (uint16_t)hadc1.Instance->JDR1;
+         DBG.opamp[0].adc_irq_cnt++;
          dbg_snapshot_all();
     }
 	if (hadc == &hadc2) {
@@ -440,14 +459,14 @@ void HAL_ADCEx_InjectedConvCpltCallback(ADC_HandleTypeDef *hadc)
 	}
 	if (hadc == &hadc3) {
 		adc_read[1] = (int16_t)hadc3.Instance->JDR1;
-		dbg.opamp[1].adc_jdr1 = (uint16_t)hadc3.Instance->JDR1;
-		dbg.opamp[1].adc_irq_cnt++;
+		DBG.opamp[1].adc_jdr1 = (uint16_t)hadc3.Instance->JDR1;
+		DBG.opamp[1].adc_irq_cnt++;
 		dbg_snapshot_all();
 	}
 	if (hadc == &hadc5) {
 		adc_read[2] = (int16_t)hadc5.Instance->JDR1;
-		dbg.opamp[2].adc_jdr1 = (uint16_t)hadc5.Instance->JDR1;
-		dbg.opamp[2].adc_irq_cnt++;
+		DBG.opamp[2].adc_jdr1 = (uint16_t)hadc5.Instance->JDR1;
+		DBG.opamp[2].adc_irq_cnt++;
 		dbg_snapshot_all();
 	}
 

@@ -163,6 +163,14 @@
 #ifndef M1_USE_HFI_STANDSTILL_PROFILE
 #define M1_USE_HFI_STANDSTILL_PROFILE   0
 #endif
+/**
+ * 外环执行位置：
+ *   1 = 速度/位置/力矩等外环在 TIM6 2 kHz 中断里跑（与 20 kHz FOC 内环剥离，降抖动）
+ *   0 = 旧行为：在 20 kHz FOC ISR 里按 M1_SPEED_DECIM 分频调用
+ */
+#ifndef M1_OUTER_IN_TIM6
+#define M1_OUTER_IN_TIM6                0
+#endif
 #ifndef M1_USE_SENSED_POS_MIT_PROFILE
 #define M1_USE_SENSED_POS_MIT_PROFILE   0
 #endif
@@ -231,6 +239,49 @@
 #define M1_MIT_KI_DISABLE               0
 #endif
 
+/**
+ * MIT 力矩律形态（运控/力控常用「并行」写法）。
+ * 0=嵌套旧路径：位置 P → 速度 PI（Ki 可关）→ iq_ref（可回退）。
+ * 1=并行力矩源：iq* = Kp·Δθ + Kd·Δω + iq_ff，不经速度 PI；电流环跟 Iq*。
+ */
+#ifndef M1_MIT_TORQUE_LAW
+#define M1_MIT_TORQUE_LAW               0
+#endif
+/**
+ * 1=并行 MIT 在电流环节拍（20 kHz）每拍刷新 iq_ref；时间表仍按 SPEED_DECIM。
+ * 仅 M1_MIT_TORQUE_LAW=1 时有效。0=只在外环分频拍更新（2 kHz 若 DECIM=10）。
+ */
+#ifndef M1_MIT_TORQUE_LAW_20KHZ
+#define M1_MIT_TORQUE_LAW_20KHZ         1
+#endif
+/**
+ * 并行 MIT 刚度，单位 A/rad（电流域；与 iq_ff 同单位，便于刚度 A/B）。
+ * 运控若下发 Nm：Kp_A = Kp_Nm / Kt（Kt 见 M1_MIT_KT_NM_A）。
+ * 默认约对齐嵌套档 scale=1 的等效刚度（scale=2 时约 44 A/rad）。
+ */
+#ifndef M1_MIT_KP_A_PER_RAD
+#define M1_MIT_KP_A_PER_RAD             22.0f
+#endif
+/** 并行 MIT 阻尼，单位 A·s/rad。低刚度档默认 0。 */
+#ifndef M1_MIT_KD_A_S_PER_RAD
+#define M1_MIT_KD_A_S_PER_RAD           0.0f
+#endif
+/**
+ * 高刚度档专用阻尼，单位 A·s/rad。
+ * PACK_MK 中 Kp_scale ≥ M1_MIT_KD_HIGH_SCALE_MIN 时改用本值（×6 松手抑振）。
+ * 由 202610150052 反推：ζ≈0.3–0.4 → 约 0.35–0.5；默认 0.4。
+ */
+#ifndef M1_MIT_KD_HIGH_A_S_PER_RAD
+#define M1_MIT_KD_HIGH_A_S_PER_RAD      0.4f
+#endif
+/** 启用高档阻尼的最小 Kp_scale（含）。 */
+#ifndef M1_MIT_KD_HIGH_SCALE_MIN
+#define M1_MIT_KD_HIGH_SCALE_MIN        6.0f
+#endif
+#if M1_MIT_TORQUE_LAW && !M1_OUTER_NEST_ENABLE
+#error "M1_MIT_TORQUE_LAW=1 requires M1_OUTER_NEST_ENABLE=1"
+#endif
+
 /* ---- 库仑摩擦方向前馈（静摩擦死区补偿）---- */
 
 /** 1=使能。出口叠加；标定段由时间表分段关掉。 */
@@ -257,11 +308,50 @@
 #define M1_OUTER_SIGNOFF_PACK2          0
 #endif
 /**
+ * 1=只跑 MIT 刚度 A/B：多档 iq_ff × Kp_scale∈{1,2,3,4,6}（一包自动）。
+ * 与 PACK1/PACK2/PACK_BW 互斥；推-放另包。×6 可用高档阻尼。
+ */
+#ifndef M1_OUTER_SIGNOFF_PACK_MK
+#define M1_OUTER_SIGNOFF_PACK_MK        0
+#endif
+/**
+ * 1=位置/MIT 带宽签收：小阶跃 + 密扫频（目标约 10 Hz）。
+ * 与 PACK1/PACK2/PACK_MK 互斥。
+ */
+#ifndef M1_OUTER_SIGNOFF_PACK_BW
+#define M1_OUTER_SIGNOFF_PACK_BW        0
+#endif
+/** PACK_MK：每档 iq_ff 保持时间，单位 s。 */
+#ifndef M1_OUTER_MK_HOLD_S
+#define M1_OUTER_MK_HOLD_S              5.0f
+#endif
+/** PACK_MK：档间回零间隙，单位 s。 */
+#ifndef M1_OUTER_MK_GAP_S
+#define M1_OUTER_MK_GAP_S               2.5f
+#endif
+/**
  * 1=外环实验走 motor/experiment 注册表（E0）。
  * 签收档打开后由 exp_runner SCRIPT 调现网 signoff tick，行为逐拍等价。
  */
 #ifndef M1_EXP_FRAMEWORK_ENABLE
 #define M1_EXP_FRAMEWORK_ENABLE         0
+#endif
+/**
+ * 阶段1 pilot：上电是否直接跑表驱动 UD_CAL（Ud/Id 锁轴标定）。
+ * 1=启动时 exp_runner_select(EXP_ID_UD_CAL)+arm（与旧 M1_UD_PROBE_* 双轨）；
+ * 0=不跑（默认）。
+ */
+#ifndef M1_EXP_BOOT_UD_CAL
+#define M1_EXP_BOOT_UD_CAL              0
+#endif
+/** 阶段2 pilot：上电跑表驱动 ±2000（EXP_ID_REV141），HFI 141 脚本让位。 */
+#ifndef M1_EXP_BOOT_REV141
+#define M1_EXP_BOOT_REV141              0
+#endif
+
+/** 1=有感解耦前馈同电 A/B（0→500→0）；需 M1_EXP_FRAMEWORK_ENABLE 与 ROTATION_FF。 */
+#ifndef M1_EXP_FF_AB_ENABLE
+#define M1_EXP_FF_AB_ENABLE             0
 #endif
 /** 摩擦表点数。PACK2 用。 */
 #ifndef M1_FRIC_MAP_N
@@ -304,12 +394,14 @@
 #ifndef M1_HFI_SPEED_FB_ENABLE
 #define M1_HFI_SPEED_FB_ENABLE          0
 #endif
-#ifndef M1_HFI_OMEGA_FF_SRC
-#define M1_HFI_OMEGA_FF_SRC             0
-#endif
 #ifndef M1_VOFA_HFI_12CH
 #define M1_VOFA_HFI_12CH                0
 #endif
+/** 1=HFI 12ch 的 ch10 发 isr_delta（DWT cycle）；0=发 hfi_stage。 */
+#ifndef M1_VOFA_HFI_ISR_CH
+#define M1_VOFA_HFI_ISR_CH              0
+#endif
+/** GATE141 实验参数已迁到 motor/observer/hfi_sqwave.c 的 static const（阶段2 表化）。 */
 #ifndef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               0
 #endif
@@ -422,7 +514,7 @@
 #error "PLL without USE_SMO requires M1_EMF_VEQ_ENABLE"
 #endif
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
-/** 实验1 签收：。ramp 500 rpm/s（仅 SPEED_IDENT。*/
+/* TODO(factory)：斜坡速率出厂自算；500 为联调临时。见 docs/规范_外环限幅与斜坡_出厂整定_2026-10-11.md */
 #ifndef M1_SPEED_OMEGA_RAMP_ENABLE
 #define M1_SPEED_OMEGA_RAMP_ENABLE      1
 #endif
@@ -483,19 +575,38 @@
 #endif
 #ifndef M1_SPEED_OMEGA_RAMP_ENABLE
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
-#define M1_SPEED_OMEGA_RAMP_ENABLE      1   /* 实验1：抑减速硬阶跃 */
+#define M1_SPEED_OMEGA_RAMP_ENABLE      1   /* 抑指令硬切；速率见 TODO(factory) */
 #else
 #define M1_SPEED_OMEGA_RAMP_ENABLE      0
 #endif
 #endif
+/* TODO(factory)：rpm/s 非物理默认值；出厂按 J、Kt、I_avail 写入。勿随 VBUS 改。 */
 #ifndef M1_SPEED_OMEGA_RAMP_RPM_S
 #define M1_SPEED_OMEGA_RAMP_RPM_S       500.0f
 #endif
 #ifndef M1_SPEED_IQ_SLEW_ENABLE
 #define M1_SPEED_IQ_SLEW_ENABLE         0
 #endif
+/* TODO(factory)：Iq slew 出厂收；3 A/s 仅为未开 slew 时的占位默认。 */
 #ifndef M1_SPEED_IQ_SLEW_A_PER_S
 #define M1_SPEED_IQ_SLEW_A_PER_S        3.0f
+#endif
+/*
+ * 降速制动下限（VESC CURRENT_BRAKE 简化）：|ω_ref|+margin < |ω_fb| 时
+ * 至少施加 ±I_BRAKE（与转速反向）。默认关；profile 按台架打开。
+ * TODO(factory)：I_BRAKE / margin 出厂整定，勿随 VBUS 臆改。
+ */
+#ifndef M1_SPEED_DECEL_BRAKE_ENABLE
+#define M1_SPEED_DECEL_BRAKE_ENABLE     0
+#endif
+#ifndef M1_SPEED_DECEL_BRAKE_A
+#define M1_SPEED_DECEL_BRAKE_A          3.0f
+#endif
+#ifndef M1_SPEED_DECEL_BRAKE_MARGIN_RPM
+#define M1_SPEED_DECEL_BRAKE_MARGIN_RPM 80.0f
+#endif
+#ifndef M1_SPEED_DECEL_BRAKE_MIN_RPM
+#define M1_SPEED_DECEL_BRAKE_MIN_RPM    100.0f
 #endif
 #ifndef M1_FOC_ROTATION_FF_ENABLE
 #define M1_FOC_ROTATION_FF_ENABLE       0
@@ -508,6 +619,10 @@
 #endif
 #ifndef M1_VOFA_SPEED_CH8_11
 #define M1_VOFA_SPEED_CH8_11            1
+#endif
+/** 1=SPEED 布局 ch10 发 isr_delta（DWT cycle）；0=发 iq_ref。 */
+#ifndef M1_VOFA_SPEED_ISR_CH
+#define M1_VOFA_SPEED_ISR_CH            0
 #endif
 
 /** 1=位置 P 外环（θ_ref 。ω_ref 。速度 PI）；上电相对零位，不 NVM */
@@ -645,9 +760,13 @@
 #ifndef M1_MIT_IQ_SLEW_A_PER_S
 #define M1_MIT_IQ_SLEW_A_PER_S          40.0f
 #endif
-/** 力矩→电流：τ [Nm] = Kt·Iq；待 Kt 标定后可。*/
+/**
+ * 力矩→电流：τ [Nm] = Kt·Iq。
+ * 取值 0.063：反电势实测约 0.0633（tools/offline_emf_angle.py / 规划_位置与MIT §9）；
+ * 手册约 0.068；口头约 0.066。旧占位 0.025 已废弃。
+ */
 #ifndef M1_MIT_KT_NM_A
-#define M1_MIT_KT_NM_A                  0.025f
+#define M1_MIT_KT_NM_A                  0.063f
 #endif
 #if (M1_MIT_STEP_SEQ_BASE + 26u) > 255u
 #error "M1_MIT_STEP_SEQ_BASE + 26 steps must fit uint8 open_seq (<256)"
@@ -748,6 +867,26 @@
 #ifndef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     2u
 #endif
+
+/**
+ * ISR dbg 瘦身（默认关 = 省 foc 窗 cycles；Watch 深挖时单开）。
+ * OPT12 无感只需 hfi_stage；满拷 read_view 曾把 foc 从 ~6100 抬回 ~7200。
+ */
+#ifndef M1_DBG_ISR_MIRROR_HFI
+#define M1_DBG_ISR_MIRROR_HFI           0
+#endif
+#ifndef M1_DBG_ISR_MIRROR_OBS
+#define M1_DBG_ISR_MIRROR_OBS           0
+#endif
+#ifndef M1_DBG_ISR_MIRROR_SVPWM
+#define M1_DBG_ISR_MIRROR_SVPWM         0
+#endif
+#ifndef M1_DBG_ISR_MIRROR_ACDC
+#define M1_DBG_ISR_MIRROR_ACDC          0
+#endif
+#ifndef M1_DBG_ISR_MIRROR_PLL_DIAG
+#define M1_DBG_ISR_MIRROR_PLL_DIAG      0
+#endif
 #if M1_POS_MIT_COMBO_ENABLE
 #undef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     4u    /* MIT。kHz。0kHz/4。*/
@@ -777,7 +916,10 @@
 #define M1_THETA_NEGATE     0
 #endif
 
-/** 母线电压（V），限幅。Vbus/。运行时副本见 g_m1_motor_cfg。 */
+/**
+ * 母线电压（V）→ 仅电压限幅 PI_V_MAX；运行时副本见 g_m1_motor_cfg。
+ * 改 24→48 等时不要顺手改 I_REF / 斜坡（电流额定与采样链另定）。
+ */
 #ifndef M1_VBUS_V
 #define M1_VBUS_V           24.0f
 #endif
@@ -824,6 +966,11 @@
 #define M1_I_REF_ABS_MAX    0.5f
 #else
 #define M1_PI_V_LIMIT_V     M1_PI_V_MAX
+/*
+ * TODO(factory)：I_REF 出厂取 min(电机峰值/连续, 分流满量程, 驱动热设计)，单一源。
+ * 11/5 A 为联调分支临时，非额定；与 VBUS 无公式关系。
+ * 见 docs/规范_外环限幅与斜坡_出厂整定_2026-10-11.md
+ */
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT) && \
     (M1_USE_SENSED_POS_MIT_PROFILE == 0) && \
     (M1_USE_SENSORLESS_POS_MIT_PROFILE == 0)
@@ -840,7 +987,7 @@
 #define M1_PI_INT_LIMIT_MIN (-M1_PI_INT_LIMIT_V)
 
 #if M1_SPEED_LOOP_ENABLE
-/** 速度。Iq_ref 限幅 [A]（与辨识分轨；SPEED_IDENT 实验 11 A。*/
+/* TODO(factory)：速度环 Iq 上限应等于 I_REF 单一源；勿再平行写死 11。 */
 #ifndef M1_SPEED_IQ_REF_ABS_MAX
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT) && \
     (M1_USE_SENSED_POS_MIT_PROFILE == 0) && \
@@ -1732,6 +1879,35 @@
 #if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO && !M1_EMF_VEQ_ENABLE
 #error "PLL on Veq requires M1_EMF_VEQ_ENABLE after profile include"
 #endif
+/**
+ * 1=SMO 每拍 atan2 出 θ̂（对照/遥测）。
+ * 须在 profile 之后：PLL 吃 eαβ 时默认关，省热路径 libm atan2。
+ */
+#ifndef M1_EMF_SMO_ATAN_ENABLE
+#if M1_EMF_PLL_ENABLE && M1_EMF_PLL_USE_SMO
+#define M1_EMF_SMO_ATAN_ENABLE          0
+#else
+#define M1_EMF_SMO_ATAN_ENABLE          1
+#endif
+#endif
+/** 1=|e| 用 max+0.5·min；0=libm sqrtf。须在 profile 之后。 */
+#ifndef M1_EMF_EMAG_FAST_ENABLE
+#if M1_EMF_PLL_ENABLE || M1_EMF_SMO_ENABLE
+#define M1_EMF_EMAG_FAST_ENABLE         1
+#else
+#define M1_EMF_EMAG_FAST_ENABLE         0
+#endif
+#endif
+/**
+ * 1=低速互斥：|ω| 低于 MUX_LO_RPM 时跳过 SMO/EMF-PLL（只跑 HFI）。
+ * 须在 profile 之后。
+ */
+#ifndef M1_HFI_MUX_LO_ENABLE
+#define M1_HFI_MUX_LO_ENABLE            0
+#endif
+#ifndef M1_HFI_MUX_LO_RPM
+#define M1_HFI_MUX_LO_RPM               200.0f
+#endif
 #if (M1_VOFA_OBS_PLL_12CH + M1_VOFA_OBS_SMO_12CH + M1_VOFA_OBS_VEQ_12CH + \
      M1_VOFA_OBS_SMO_RAW_12CH + M1_VOFA_HFI_12CH + M1_VOFA_IF_12CH) > 1
 #error "Only one VOFA 12ch layout (OBS/IF/HFI) after profile include"
@@ -1742,20 +1918,11 @@
 #if M1_USE_HFI_STANDSTILL_PROFILE && (M1_HFI_GATE != 141)
 #error "M1_HFI_GATE must be 141 (HFI standstill delivery)"
 #endif
-#ifndef M1_HFI_ID_PI_OFF_ENABLE
-#define M1_HFI_ID_PI_OFF_ENABLE         0
-#endif
 #ifndef M1_HFI_ID_PI_SOFT_N
 #define M1_HFI_ID_PI_SOFT_N             20000u /* 放行 Ud 软开 1.0 s @ 20 kHz */
 #endif
-#ifndef M1_HFI_VESC_ID_HANDOFF_ENABLE
-#define M1_HFI_VESC_ID_HANDOFF_ENABLE   0 /* 1：窗内 VH↓ 同时放行 Id PI */
-#endif
 #ifndef M1_HFI_VESC_HANDOFF_N
 #define M1_HFI_VESC_HANDOFF_N          10000u /* 0.5 s @20 kHz */
-#endif
-#ifndef M1_HFI_HFI_ID_SOFT_ENABLE
-#define M1_HFI_HFI_ID_SOFT_ENABLE      0 /* 1：纯 HFI 锁后软开 Id，VH 不动 */
 #endif
 #ifndef M1_HFI_ID_ON_FROM_RUN_ENABLE
 #define M1_HFI_ID_ON_FROM_RUN_ENABLE   0 /* 1：进 RUN 即 Id*=0 常开（无 soft） */
@@ -1771,9 +1938,6 @@
 #endif
 #ifndef M1_HFI_DEMOD_HP_A
 #define M1_HFI_DEMOD_HP_A               (0.05f)
-#endif
-#ifndef M1_HFI_DEMOD_SKIP_OUTLIER
-#define M1_HFI_DEMOD_SKIP_OUTLIER       0 /* 1：不像凸极的半周不更新 x/ε/PLL */
 #endif
 #ifndef M1_HFI_DEMOD_SKIP_Y_ABS
 #define M1_HFI_DEMOD_SKIP_Y_ABS         (0.08f)
@@ -1793,9 +1957,6 @@
 #ifndef M1_HFI_PLL_VESC_ERR_SIGN
 #define M1_HFI_PLL_VESC_ERR_SIGN        (1.0f)
 #endif
-#ifndef M1_HFI_LQ_WELL_FLIP_ENABLE
-#define M1_HFI_LQ_WELL_FLIP_ENABLE      0 /* 1：x 低且 y≈0 则 θ̂ 一次 +π/2 */
-#endif
 #ifndef M1_HFI_LQ_WELL_X_MAX
 #define M1_HFI_LQ_WELL_X_MAX            (0.185f)
 #endif
@@ -1808,17 +1969,11 @@
 #ifndef M1_HFI_LQ_WELL_IQ_MIN
 #define M1_HFI_LQ_WELL_IQ_MIN           (0.0f)
 #endif
-#ifndef M1_HFI_LQ_WELL_KEEP_W
-#define M1_HFI_LQ_WELL_KEEP_W           0
-#endif
 #ifndef M1_HFI_DEMOD_AB_ENABLE
 #define M1_HFI_DEMOD_AB_ENABLE          0 /* 1：αβ 半周差分再 Park(θ̂) */
 #endif
 #ifndef M1_HFI_DEMOD_AB_MID_ENABLE
 #define M1_HFI_DEMOD_AB_MID_ENABLE      0 /* 1：αβ 三端点中点差分再 Park(中点 θ̂) */
-#endif
-#ifndef M1_HFI_INJECT_AB_ENABLE
-#define M1_HFI_INJECT_AB_ENABLE         0 /* 1：反 Park 后沿 θ̂ 叠 ±Vh 到 αβ */
 #endif
 #ifndef M1_HFI_INJECT_POST_LOOP
 #define M1_HFI_INJECT_POST_LOOP         0 /* 1：环后沿 θ̂ 叠 Vh（用 s_vh_sign） */
@@ -1829,14 +1984,8 @@
 #ifndef M1_HFI_SMO_SUB_VH_ENABLE
 #define M1_HFI_SMO_SUB_VH_ENABLE        0 /* 1：SMO 用 u−u_hfi，HFI 段不停观测 */
 #endif
-#ifndef M1_HFI_ROTATE_PI_ENABLE
-#define M1_HFI_ROTATE_PI_ENABLE         0 /* 1：Park 切 SMO 时旋 Id/Iq PI */
-#endif
 #ifndef M1_HFI_QKICK_FORCE_PI
 #define M1_HFI_QKICK_FORCE_PI           0
-#endif
-#ifndef M1_HFI_QKICK_PRE_GATE_ENABLE
-#define M1_HFI_QKICK_PRE_GATE_ENABLE    0
 #endif
 #ifndef M1_HFI_IQ_AUTH_ENABLE
 #define M1_HFI_IQ_AUTH_ENABLE           0
@@ -1846,15 +1995,6 @@
 #endif
 #ifndef M1_HFI_IQ_AUTH_FEED_ENABLE
 #define M1_HFI_IQ_AUTH_FEED_ENABLE      0
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_A
-#define M1_HFI_IQ_AUTH_FEED_A           0.0f
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_HOLD
-#define M1_HFI_IQ_AUTH_FEED_HOLD        0 /* 1：FEED 已起后 auth 掉旗不掐 Iq* */
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH
-#define M1_HFI_IQ_AUTH_FEED_LEGACY_BRANCH 0
 #endif
 #if M1_VOFA_HFI_12CH && !M1_HFI_ENABLE
 #error "M1_VOFA_HFI_12CH requires M1_HFI_ENABLE=1"

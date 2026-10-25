@@ -41,6 +41,15 @@ struct pwm_port {
 extern const pwm_port_ops_t pwm_port_ops_stm32g4_reg;
 
 void pwm_port_set_duty3(pwm_port_t *port, uint32_t ccr1, uint32_t ccr2, uint32_t ccr3);
+
+/**
+ * @brief 最近一次 set_duty3 写完 CCR 后立刻取的 TIM8 CNT|DIR。
+ *
+ * 位[11:0]=CNT（0..4095），位[12]=DIR（1=向下计数）。
+ * 中心对齐下同一 CNT 值上/下计数各出现一次，必须带 DIR 才能还原时间。
+ * @return 打包值；未发生过写入时为 0。
+ */
+uint32_t pwm_port_get_last_cnt_dir(void);
 void pwm_port_enable(pwm_port_t *port);
 void pwm_port_disable(pwm_port_t *port);
 

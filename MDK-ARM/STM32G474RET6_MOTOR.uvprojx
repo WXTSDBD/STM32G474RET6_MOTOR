@@ -1496,9 +1496,44 @@
               <FilePath>..\motor\experiment\exp_signoff.c</FilePath>
             </File>
             <File>
+              <FileName>exp_act_basic.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\experiment\exp_act_basic.c</FilePath>
+            </File>
+            <File>
+              <FileName>exp_cfg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\experiment\exp_cfg.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_current_exp_hooks.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_current_exp_hooks.c</FilePath>
+            </File>
+            <File>
+              <FileName>exp_tables.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\experiment\exp_tables.c</FilePath>
+            </File>
+            <File>
               <FileName>motor_current.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\motor_current.c</FilePath>
+            </File>
+            <File>
+              <FileName>motor_bind.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\motor_bind.c</FilePath>
+            </File>
+            <File>
+              <FileName>exp_rev141_params.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\exp_rev141_params.c</FilePath>
+            </File>
+            <File>
+              <FileName>hfi_pll_cfg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\hfi_pll_cfg.c</FilePath>
             </File>
             <File>
               <FileName>ident_module.c</FileName>

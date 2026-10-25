@@ -60,6 +60,8 @@ void hfi_sqwave_init(void);
 void hfi_sqwave_reset(void);
 
 void hfi_sqwave_on_angle(float theta_enc_el, float dt);
+void hfi_sqwave_sensed_keep(float theta_enc_el, float dt);
+void hfi_sqwave_hand_keep(float theta_enc_el, float dt);
 void hfi_sqwave_on_current(float id, float iq, float i_alpha, float i_beta);
 
 void hfi_sqwave_set_omega_ff_el(float omega_el_rad_s);
@@ -103,8 +105,10 @@ float hfi_sqwave_get_id_pi_soft(void);
 uint8_t hfi_sqwave_id_pi_bypass(void);
 void hfi_sqwave_set_torque_theta(float theta, uint8_t enable);
 void hfi_sqwave_set_hat_hold(uint8_t hold);
+uint8_t hfi_sqwave_inj_off(void);
 void hfi_sqwave_set_hat_coast_el(float omega_el);
 void hfi_sqwave_seed_hat(float theta_el, float omega_el);
+void hfi_sqwave_seed_speed_el(float omega_el);
 void hfi_sqwave_set_iq_auth_hold(uint8_t hold);
 void hfi_sqwave_flip_hat_pi(void);
 float hfi_sqwave_get_omega_shadow_el(void);
@@ -125,7 +129,10 @@ float hfi_sqwave_get_qkick_seed(void);
 float hfi_sqwave_get_qkick_dth(void);
 float hfi_sqwave_get_qkick_verdict(void);
 uint8_t hfi_sqwave_consume_pi_reset(void);
+/** 1=刚进有感段（REV141 SENSED_PAIRS）：上层清 Id/Iq PI 与 Ud/Uq。读一次清。 */
+uint8_t hfi_sqwave_consume_sens_pi_clear(void);
 uint8_t hfi_sqwave_get_sensed_cal_loop(void);
+uint8_t hfi_sqwave_sensed_fb_active(void);
 
 /**
  * ISR 末尾发布的 HFI 遥测快照。任务和 VOFA 只读这份，不要直抠 getter。

@@ -10,13 +10,14 @@
 
 一句话：**做一套「能换电机、能换板、能换传感器」的 PMSM 控制平台** —— 而不只是"让电机能转"。
 
-它由三条线组成：
+它由四条线组成：
 
 | 线 | 目标 | 现状 |
 |---|---|---|
 | **① 控制能力** | 电流 → 速度 → 位置/MIT 三环闭合；能用编码器（有感），也能不用（无感） | 大部分签收，见下一节 |
 | **② 平台化** | 换硬件只改**数据**（板级描述 / 铭牌 / 实验表），**算法层零改动** | `motor/` 已零 HAL；四张 Port 契约；铭牌 `motor_cfg_t` |
 | **③ 产品化** | 交出去**不会烧硬件**、能远程配置与升级 | ❌ 未做（安全层 / 总线 / OTA） |
+| **④ 建模台** | 数据 → 模型 → 预测：参数单一源、质量门、传递函数/状态空间、真 C SIL | 🟡 可用骨架，见「统一建模台」 |
 
 **最终交付**：一套**带实测签收证据**的代码 + 一套**可复用的过程方法**（交付包 / 金样 / 判据 / 宏账）。
 
@@ -68,20 +69,75 @@
 | **安全层**（故障状态机 / 错误码） | ❌ 未做 | BKIN / IWDG **当前不做**、保留重评条件（见「延后项与触发条件」）；错误码 / 故障状态机见 M3 |
 | **通信 / OTA**（CANopen / CLI / 升级） | ❌ 未做 | 后排 |
 | **工程设施** | ✅ | 交付包（hex + `sha256` + `git.txt`）/ 宏账 / 遥测表驱动 / 实验框架 E0 / 板级描述 / NVIC 集中 |
+| **统一建模台** | 🟡 可用骨架 | 数据质量门 + 参数单一源 + 传递函数/状态空间 + 预测/SIL；`arch` 54 模块、`regress` 30/30 |
+| **真 C SIL** | 🟡 原语级 | `siltick`（Clarke/Park/PI/SVPWM）、`silpll`（PLL scheme 0/1）；**不是完整 ISR** |
 
 > 状态明细与切换方式以 [`docs/联调实例_INDEX.md`](docs/联调实例_INDEX.md) 为准。
 
 ---
 
+## 统一建模台（2026-10-17）
+
+一句话：把散落在录波、报告、固件宏里的“事实”收成**可追溯、可失败、可预测**的模型，
+用 CLI + JSON/Markdown 输出；**不做 GUI，不做 RL**。它是分析工具，不替代台架签收。
+
+| 层 | 现在有什么 | 证据 / 边界 |
+|---|---|---|
+| **数据** | 质量门（元数据/秩/条件数/残差/EMF 信息量/回放）、全段聚合、A/B/C 锚点 | `out/current_batch_20261017_225507.json`：回放 13 PASS/13 WARN/12 REJECT；质量 0 PASS/26 WARN/12 REJECT；新门重选锚点 A=0/B=13。**这不等于数据已清洗干净** |
+| **对象** | `machine.py` 物理对象；`plant.py` 回放/拟合；参数单一源 | `params.py:113-133`：`Rs=0.123859 Ω`、`Ld=59.94 µH`、`Lq=87 µH`、`J=8.0e-5`（工作先验）、`τc=0.022 N·m`、`B=0`（B 不可辨识）；`Lq/Td` 仍有推断项 |
+| **包络** | 稳态 dq 电压/电流约束、基速、每转速最大 iq | `envelope.py --firmware`：空载基速 3150 rpm、11 A 基速 2809 rpm；3000 rpm 仅 5.07 A；>3150 rpm 标电压阻断（无弱磁） |
+| **控制器** | 唯一 PI 基线；LQR/极点配置/观测器/RLS | `electrical.py:210 pi_loop_baseline()`；LQR 延迟扫描 `out/lqr_current_3000_delay.json`：`nd=2` 时 ρ>1 |
+| **预测** | P0 回放 / P1 插值 / P2 交叉 / P3 外推 | `predict.py`、`horizon.py`；真实外推仍未签收 |
+| **SIL** | 真 C `foc_pi.c`、FOC 核心 tick、`motor_pll.c` | `siltick` 800 拍 PASS；`silpll` 200×64 PASS（`theta=3.26e-7`、`omega=2.95e-4`，tol `5e-4`） |
+| **判据** | A1–A6 架构判据 + 单入口回归 | `arch.py` 54 模块全过；`regress.py` 30/30，日志 `out/regress_20261017_234253.log` |
+| **换电机** | `plantview`/`predict`/`bench` 的 `--params-json` | 用 `PmsmParams.from_json()` 替换 Rs/Ld/Lq/ψ/J/B/τc，模型结构不变；见 `tools/model/README.md` §8 |
+
+> 5065 商品页只作先验：J 6.9e-5~1.93e-4、B 3~9e-5；Kt 仍以实测 0.063 为准（照片 KV 270–400 与实测不自洽）。
+> 编码器延迟已按 1 拍 = 50 µs 建模；10–500 rpm 仅 0.02–1.05° 电角。详见 [`docs/分析_5065铭牌先验与编码器延迟_2026-10-17.md`](docs/分析_5065铭牌先验与编码器延迟_2026-10-17.md)。
+> **控制器配置不再手抄**：`python tools/simtool/fwcfg.py` 直接读当前 active profile；`python tools/simtool/firmwareview.py --rpm 10 --t-end 3` 用同一份配置做预测。
+> **工作包络**：`python tools/simtool/envelope.py --firmware` 给出 24 V/11 A 下的基速与每转速最大 iq；当前空载 3150 rpm、满载 2809 rpm，>3150 rpm 无弱磁即失效。见 [`docs/分析_工作包络与基速_2026-10-17.md`](docs/分析_工作包络与基速_2026-10-17.md)。
+> **当前固件模型卡**：`python tools/simtool/plantview.py --firmware --export`，再跑 `modelcard.py --export`。
+> 2026-10-17 实测：`M1_USE_SPEED_LOW_SWEEP_PROFILE=1`，PLL bw=1000、β=0.4、齿槽前馈=1、I 限幅=11 A；
+> 不要拿 `foccfg.py` 的 400/1.0 默认值当当前固件。详见 [`docs/分析_当前固件控制主体配置_2026-10-17.md`](docs/分析_当前固件控制主体配置_2026-10-17.md)。
+> 想直接看当前配置的预测：`python tools\simtool\bench.py --firmware --t-end 3.0`。
+> 录波包用 `tools/pkg_snapshot.py` 冻结：`config/` + 全部 profile + `params.py` + `fwcfg.json` + hex hash。
+
+常用命令：
+
+```powershell
+python -B tools\simtool\arch.py
+python -B tools\simtool\arch.py --selftest
+python -B tools\simtool\regress.py
+python -B tools\simtool\siltick.py --selftest
+python -B tools\simtool\silpll.py --selftest
+python -B tools\simtool\frictionrun.py --selftest
+```
+
+边界（必须先说清）：
+
+- `siltick`/`silpll` 是**真 C 原语/核心链**，不是完整 `motor_current.c` ISR；ADC 重构、SMO/HFI、死区 LUT/GEO、启动状态机仍未拉回 host。编码器延迟已在 `topologies`/`plant` 建模（1 拍），但真 C 整机 ISR 尚未逐拍对账。
+- 数据契约 D011 仍是“部分”：`tools/sim/sig.py:76` 的 `delay=0`，`layout_id/timestamp/drop_count` 未进动态拟合，阻塞在固件帧头/排期。
+- LQR 未进固件（D021 `proposed`）；模型结论不等于硬件结论。
+- `tools/sim/loader.py` 815 行是已登记的豁免项（`BCK-001`）。
+
+入口文档：[`docs/纲领_统一建模台_使命与边界_2026-10-17.md`](docs/纲领_统一建模台_使命与边界_2026-10-17.md)、
+[`docs/台账_建模台决策记录_2026-10-17.md`](docs/台账_建模台决策记录_2026-10-17.md)、
+[`docs/收口_2026-10-17_1515.md`](docs/收口_2026-10-17_1515.md)、
+[`docs/回应_外部评审_2026-10-17.md`](docs/回应_外部评审_2026-10-17.md)、
+[`tools/simtool/README.md`](tools/simtool/README.md)。
+
+---
+
 ## 接下来要做什么（路线）
 
-**三轨并行**（无强制先后，按硬件到货与可支配时间插空）：
+**四轨并行**（无强制先后，按硬件到货与可支配时间插空）：
 
 | 轨 | 下一步 | 前置 / 说明 |
 |---|---|---|
 | **① 功能** | **带载无感速度环** → 解耦前馈 A/B → ESO；死区 runtime ON；ψf 辨识签收；MIT 正式报告 | 前馈/ESO 的 A/B 需要"**段表带配置**"（实验框架的下一小步）；其余现在就能开 |
 | **② 平台化** | 换一款**新编码器**（16-bit SPI）→ 换 **CBT6 板**（同家族不同型号）→ 每次记录「迁移成本 4 个数」 | 硬件到货；**保留一份 AS5047 接线**做已知好参考 |
 | **③ 工程化** | 错误码 / 故障状态机 → 出厂整定（辨识→校验→写回 NVM）→ CANopen / OTA | BKIN / IWDG **当前不做**（理由见「延后项与触发条件」）；NVM 与 OTA 的 Flash 布局**同批做** |
+| **④ 建模台** | 数据契约（`layout_id/timestamp/drop_count`）→ ADC 重构/编码器量化 → 死区 FIXED SIL → SMO/HFI | 先补证据再谈预测；GUI/RL 不做；每刀必须能失败、可复现 |
 
 **贯穿**：每完成一项就出**对比图 + 签收**（论文素材），并把结论写回 `docs/`。
 
@@ -130,6 +186,9 @@
 | `Core/` | CubeMX 生成代码（尽量少改业务） |
 | `docs/` | 设计、签收、施工与 RUNBOOK（**文档索引**见下） |
 | `tools/` | 可复用分析 / 宏账 / 短回归脚本 |
+| `tools/model/` | 建模数学：参数单一源、对象、PI/裕度、回放、PLL 参考 |
+| `tools/simtool/` | CLI 入口、架构判据、质量门、LQR/观测器、真 C SIL |
+| `tools/sim/` | 数据装载与信号契约 |
 | `VOFA+CSV/<日期>/` | 录波与对应 `_analyze_*`（勿堆仓库根） |
 | `MDK-ARM/_pkg/` | 本地可烧录包快照（一般不进 git） |
 
@@ -151,7 +210,7 @@ Start-Process -FilePath "D:\keil5\UV4\UV4.exe" `
 Get-Content .\rebuild_log.txt -Tail 5
 ```
 
-CubeMX / AC6 / FreeRTOS 细则：[`docs/Keil_AC6_FreeRTOS_CubeMX配置说明.md`](docs/Keil_AC6_FreeRTOS_CubeMX配置说明.md)。
+CubeMX / AC6 / FreeRTOS 细则：[`docs/Keil_AC6_FreeRTOS_CubeMX适配说明.md`](docs/Keil_AC6_FreeRTOS_CubeMX适配说明.md)。
 
 ---
 
@@ -231,6 +290,10 @@ Core/(CubeMX) → config/hal_bridge.h ─┬→ platform/（Port 契约 + backen
 
 | 想了解 | 先看 |
 |---|---|
+| 统一建模台（北极星/边界） | [`docs/纲领_统一建模台_使命与边界_2026-10-17.md`](docs/纲领_统一建模台_使命与边界_2026-10-17.md) |
+| 建模台决策台账 | [`docs/台账_建模台决策记录_2026-10-17.md`](docs/台账_建模台决策记录_2026-10-17.md) |
+| 本轮收口 / 外部评审回应 | [`docs/收口_2026-10-17_1515.md`](docs/收口_2026-10-17_1515.md)、[`docs/回应_外部评审_2026-10-17.md`](docs/回应_外部评审_2026-10-17.md) |
+| 建模命令与 SIL | [`tools/simtool/README.md`](tools/simtool/README.md) |
 | Agent / 当前主线停在哪 | [`docs/施工_总纲_Agent_2026-10-07.md`](docs/施工_总纲_Agent_2026-10-07.md) |
 | 架构接缝与触发条件 | [`docs/规划_架构改进_2026-10-07.md`](docs/规划_架构改进_2026-10-07.md) |
 | 代码现状与问题 | [`docs/总结_代码现状与问题分析_2026-10-07.md`](docs/总结_代码现状与问题分析_2026-10-07.md) |
@@ -296,4 +359,4 @@ Core/(CubeMX) → config/hal_bridge.h ─┬→ platform/（Port 契约 + backen
 
 ---
 
-*最后更新：2026-10-08*
+*最后更新：2026-10-17*

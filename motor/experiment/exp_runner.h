@@ -1,7 +1,7 @@
 /**
  * @file exp_runner.h
  * @date 2026-10-07
- * @brief 实验执行器：选实验、武装、外环 tick（E0）。
+ * @brief 实验执行器：选实验、武装、外环 tick（E0 SCRIPT + E3 SCHEDULE）。
  *
  * 只在 2 kHz 外环路径调用 exp_runner_tick。不要从 20 kHz 电流环直接调。
  */

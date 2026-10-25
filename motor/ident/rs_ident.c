@@ -218,11 +218,11 @@ void rs_ident_get_result(rs_ident_result_t *out)
 
 void rs_ident_sync_dbg(void)
 {
-    dbg.rs_ident_ohm = s_result.rs_ohm;
-    dbg.rs_ident_intercept_v = s_result.intercept_v;
-    dbg.rs_ident_n = (float)s_result.n;
-    dbg.rs_ident_ok = s_result.ok;
-    dbg.rs_ident_round = s_round;
+    DBG.rs_ident_ohm = s_result.rs_ohm;
+    DBG.rs_ident_intercept_v = s_result.intercept_v;
+    DBG.rs_ident_n = (float)s_result.n;
+    DBG.rs_ident_ok = s_result.ok;
+    DBG.rs_ident_round = s_round;
 }
 
 #endif /* M1_RS_IDENT_ENABLE */

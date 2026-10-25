@@ -36,12 +36,12 @@ extern "C" {
 
 /* Exported types ------------------------------------------------------------*/
 /* USER CODE BEGIN ET */
-/* DbgMon_t �?? debug/dbg_monitor.h */
+/* DbgMon_t �??? debug/dbg_monitor.h */
 /* USER CODE END ET */
 
 /* Exported constants --------------------------------------------------------*/
 /* USER CODE BEGIN EC */
-/* 台架�?关真相源：config/bringup_bench.h（BINDING_OVERRIDE 默认 0）�?? */
+/* 台架�??关真相源：config/bringup_bench.h（BINDING_OVERRIDE 默认 0）�?? */
 #include "bringup_bench.h"
 /* USER CODE END EC */
 
@@ -54,7 +54,7 @@ extern "C" {
 void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
-/* extern dbg �?? debug/dbg_monitor.h */
+/* extern dbg �??? debug/dbg_monitor.h */
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

@@ -37,6 +37,26 @@ static inline float motor_absf(float x)
     return (x < 0.0f) ? -x : x;
 }
 
+/**
+ * @brief αβ 幅值快近似：max + 0.5·min（相对真值约 ±11%）。
+ */
+static inline float motor_emag_approx(float a, float b)
+{
+    float aa = motor_absf(a);
+    float bb = motor_absf(b);
+    float mx;
+    float mn;
+
+    if (aa >= bb) {
+        mx = aa;
+        mn = bb;
+    } else {
+        mx = bb;
+        mn = aa;
+    }
+    return mx + 0.5f * mn;
+}
+
 /** Four Newton iterations; x<=0 returns 0. Same as former hfi_lead_sqrt / hfi_rip_sqrt. */
 static inline float motor_sqrt4(float x)
 {

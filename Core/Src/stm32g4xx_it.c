@@ -23,6 +23,8 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "board_encoder.h"
+#include "motor_current.h"
+#include "motor_params_m1.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,6 +73,7 @@ extern DMA_HandleTypeDef hdma_spi1_tx;
 extern DMA_HandleTypeDef hdma_spi3_rx;
 extern DMA_HandleTypeDef hdma_spi3_tx;
 extern TIM_HandleTypeDef htim1;
+extern TIM_HandleTypeDef htim6;
 extern TIM_HandleTypeDef htim8;
 extern TIM_HandleTypeDef htim15;
 extern TIM_HandleTypeDef htim7;
@@ -225,7 +228,7 @@ void DMA1_Channel5_IRQHandler(void)
 void DMA1_Channel6_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel6_IRQn 0 */
-  /* LL 编码器路径：与 SPI1/Ch2 相同，禁止再走 HAL_DMA_IRQHandler */
+  /* LL 编码器路径：�? SPI1/Ch2 相同，禁止再�? HAL_DMA_IRQHandler */
   board_encoder_spi3_dma_isr();
   return;
   /* USER CODE END DMA1_Channel6_IRQn 0 */
@@ -241,7 +244,7 @@ void DMA1_Channel6_IRQHandler(void)
 void DMA1_Channel7_IRQHandler(void)
 {
   /* USER CODE BEGIN DMA1_Channel7_IRQn 0 */
-  /* TX TC 已在 generic_g4 hw_init 里关 NVIC；占位防 Cube 空引用 */
+  /* TX TC 已在 generic_g4 hw_init 里关 NVIC；占位防 Cube 空引�? */
   return;
   /* USER CODE END DMA1_Channel7_IRQn 0 */
   HAL_DMA_IRQHandler(&hdma_spi3_tx);
@@ -362,6 +365,28 @@ void ADC3_IRQHandler(void)
   /* USER CODE BEGIN ADC3_IRQn 1 */
 
   /* USER CODE END ADC3_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM6 global interrupt, DAC1 and DAC3 channel underrun error interrupts.
+  */
+void TIM6_DAC_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM6_DAC_IRQn 0 */
+#if M1_OUTER_IN_TIM6
+  /* 2kHz outer loop: decoupled from HAL. Clear UIF directly (write 0),
+     no HAL_TIM_IRQHandler dispatch => ~1-2us less and no branch jitter.
+     Startup still via HAL_TIM_Base_Start_IT(&htim6) in main.c (one shot). */
+  if ((TIM6->SR & TIM_SR_UIF) != 0u) {
+    TIM6->SR = (uint32_t)~TIM_SR_UIF;
+    motor_current_outer_tick_2k();
+  }
+#endif
+  /* USER CODE END TIM6_DAC_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim6);
+  /* USER CODE BEGIN TIM6_DAC_IRQn 1 */
+
+  /* USER CODE END TIM6_DAC_IRQn 1 */
 }
 
 /**

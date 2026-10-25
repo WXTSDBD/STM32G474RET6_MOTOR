@@ -35,6 +35,7 @@
 #include "telem_lut_dump.h"
 #include "telem_table.h"
 #include "bsp_axes.h"
+#include "motor_math.h"
 #ifndef M1_HFI_ENABLE
 #define M1_HFI_ENABLE                   0
 #endif
@@ -111,6 +112,37 @@ static uint32_t s_seq;
 static uint32_t s_decim_cnt;
 
 telem_dbg_t g_telem_dbg;
+
+/* ---- P-1 遥测快照化（2026-10-18 22:05 / 22:20 改环形）：ISR 只写 12xfloat，打包/DMA 交给任务侧 ---- */
+#ifndef TELEM_SNAP_DEPTH
+#define TELEM_SNAP_DEPTH             32u   /* 32 帧 ≈ 3.2 ms @10 kHz，够任务侧 1 ms 周期排空 */
+#endif
+
+typedef struct {
+    float vals[TELEM_BRINGUP_K];
+} telem_snap_t;
+
+static telem_snap_t s_snap[TELEM_SNAP_DEPTH];
+static volatile uint16_t s_snap_w;    /* ISR 写指针 */
+static volatile uint16_t s_snap_r;    /* 任务读指针 */
+static uint32_t s_snap_drop;          /* 环满丢帧计数（调试用） */
+
+/** @brief ISR 侧：把本拍 12 个采样值写进快照环（不打包、不碰 UART 缓冲）。 */
+static void telem_snapshot_commit(const float vals[TELEM_BRINGUP_K])
+{
+    uint16_t w = s_snap_w;
+    uint16_t nw = (uint16_t)((w + 1u) % TELEM_SNAP_DEPTH);
+
+    memcpy(s_snap[w].vals, vals, sizeof(s_snap[w].vals));
+    __DMB();
+    if (nw == s_snap_r) {
+        /* 环满：丢最旧一帧，计数记进 acquire_fail（P-1 起它同时表示遥测丢帧） */
+        s_snap_r = (uint16_t)((s_snap_r + 1u) % TELEM_SNAP_DEPTH);
+        s_snap_drop++;
+        g_telem_dbg.acquire_fail++;
+    }
+    s_snap_w = nw;
+}
 
 /** 调试：最近一。ch2_wire（isr_delta。*/
 volatile uint32_t time_cnt;
@@ -469,9 +501,8 @@ static void telem_fill_id_cal_12ch(float vals[TELEM_BRINGUP_K])
 #endif
 #endif /* !TELEM_FOC_UNIFIED_12CH_ACTIVE */
 
-static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
+static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
 {
-    float vals[TELEM_BRINGUP_K];
     uint32_t k;
 
     for (k = 0u; k < TELEM_BRINGUP_K; k++) {
@@ -502,49 +533,56 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #ifndef M1_VOFA_HFI_12CH
 #define M1_VOFA_HFI_12CH             0
 #endif
+#ifndef M1_VOFA_HFI_ISR_CH
+#define M1_VOFA_HFI_ISR_CH           0
+#endif
 
 #if M1_VOFA_IDENT_DUMP_ENABLE
     if (telem_ident_dump_next(vals, TELEM_BRINGUP_K)) {
-        telem_write_frame_vals(buf, offset, vals);
+        /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
         return;
     }
 #endif
 #if M1_VOFA_LUT_DUMP_ENABLE
     if (telem_lut_dump_next(vals, TELEM_BRINGUP_K)) {
-        telem_write_frame_vals(buf, offset, vals);
+        /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
         return;
     }
 #endif
 
 #if M1_HFI_ENABLE && M1_VOFA_HFI_12CH && (TELEM_BRINGUP_K >= 12u)
 {
-    hfi_telem_snap_t hfi_tm;
-
-    hfi_sqwave_telem_read(&hfi_tm);
     /*
-     * GATE 141 金样 12ch（QKICK_AFTER_LOCK）：
-     * ch0 θ_err  ch1 e_vesc  ch2 eps  ch3 x_lp  ch4 y_lp
-     * ch5 ω_enc  ch6 HFI pll_int rpm  ch7 Iq*
-     * ch8 θ_smo−θ_hfi [deg]  ch9 ω_smo_ma−ω_hfi  ch10 stage  ch11 pub ss
+     * GATE 141 12ch（Park 直录；改映射须重录金样）：
+     * ch0 θ_park−θ_enc [rad]  ch1 θ_park  ch2 θ_enc  ch3 HFI−enc [rad]
+     * ch4 θ_smo−θ_hfi [rad]  ch5 ω_enc  ch6 ω_fb(进速度环)  ch7 Iq*
+     * ch8 Iq  ch9 ω_ref  ch10 stage（M1_VOFA_HFI_ISR_CH=1 时改 isr_delta）
+     * ch11 pub ss
      */
     {
-        const float rpm_scale =
-            60.0f / (2.0f * 3.14159265f * (float)g_m1_motor_cfg.pole_pairs);
+        const float th_park = dbg.foc_theta_el;
+        const float th_enc = dbg.enc_theta_el;
 
-        vals[0] = dbg.hfi_theta_err;
-        vals[1] = hfi_tm.pll_vesc_err;
-        vals[2] = hfi_tm.eps;
-        vals[3] = hfi_tm.x_lp;
-        vals[4] = hfi_tm.y_lp;
-        vals[5] = dbg.pll_omega_mech_rpm;
-        vals[6] = hfi_tm.pll_int_el * rpm_scale;
+        vals[0] = motor_wrap_pi(th_park - th_enc);
+        vals[1] = th_park;
+        vals[2] = th_enc;
+        vals[3] = dbg.hfi_theta_err;
+        vals[4] = dbg.obs_pll_theta_err;
+        /* 编码器 PLL 真值（勿用未维护的 dbg 裸读；与 get_enc_pll 同源）。 */
+        vals[5] = motor_current_get_enc_pll_omega_mech_rpm();
+        /* 141 无 OBS_SOFT_SWITCH 时 dbg.outer_omega_mech_rpm 不更新；读本拍速度环 fb。 */
+        vals[6] = motor_current_get_pll_omega_mech_rpm();
         vals[7] = dbg.foc_iq_ref;
-        vals[8] = dbg.obs_pll_theta_err * (180.0f / 3.14159265f);
-        vals[9] = dbg.obs_spd_rpm_err - vals[6];
+        vals[8] = dbg.foc_iq;
+        vals[9] = dbg.outer_omega_ref;
+#if M1_VOFA_HFI_ISR_CH
+        vals[10] = (float)g_telem_dbg.isr_delta;
+#else
         vals[10] = dbg.hfi_stage;
+#endif
         vals[11] = dbg.obs_ss_spd_on;
     }
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 }
 #endif
@@ -586,7 +624,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #else
     vals[11] = (float)dbg.open_seq_phase;
 #endif
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -604,7 +642,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[9] = dbg.obs_smo_emag;
     vals[10] = dbg.obs_pll_theta_hat;
     vals[11] = dbg.obs_smo_lpf_hz;
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -662,7 +700,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[10] = (float)g_telem_dbg.obs_delta;
     vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
 #endif
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -680,7 +718,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[9] = (float)g_telem_dbg.foc_delta;
     vals[10] = (float)g_telem_dbg.obs_delta;
     vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -698,7 +736,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[9] = dbg.obs_emag;
     vals[10] = dbg.obs_omega_el;
     vals[11] = dbg.obs_psi_inst;
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -710,7 +748,7 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
     vals[3] = dbg.foc_uq_out;
     vals[4] = dbg.pll_omega_mech_rpm;
     vals[5] = dbg.outer_omega_ref;
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
     return;
 #endif
 
@@ -824,15 +862,61 @@ static void telem_write_small_frame(telem_buf_t *buf, uint16_t offset)
 #endif /* !TELEM_FOC_UNIFIED_12CH_ACTIVE */
     }
 
-    telem_write_frame_vals(buf, offset, vals);
+    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
 }
 
 /**
- * @brief ISR 侧组一帧。
+ * @brief 任务侧：把最近一帧 ISR 快照打包进写缓冲（P-1：打包搬出热路径）。
+ * @note  只在任务上下文调用（UART_DMA_DEBUG_TASK 循环里），与 ISR 无共享写。
+ */
+static void telem_bringup_pack_ready(void)
+{
+    telem_buf_t *buf;
+    uint16_t off;
+    float vals[TELEM_BRINGUP_K];
+
+    while (s_snap_r != s_snap_w) {
+        uint16_t r = s_snap_r;
+
+        if (!telem_acquire_write_buf()) {
+            g_telem_dbg.acquire_fail++;
+            return;
+        }
+        buf = s_write_buf;
+
+        if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
+            telem_seal_write_buf_ready();
+            if (!telem_acquire_write_buf()) {
+                g_telem_dbg.acquire_fail++;
+                return;
+            }
+            buf = s_write_buf;
+        }
+
+        memcpy(vals, s_snap[r].vals, sizeof(vals));
+        __DMB();
+        s_snap_r = (uint16_t)((r + 1u) % TELEM_SNAP_DEPTH);
+
+        off = buf->used_bytes;
+        telem_write_frame_vals(buf, off, vals);
+        buf->used_bytes = (uint16_t)(buf->used_bytes + TELEM_SMALL_FRAME_BYTES);
+        g_telem_dbg.ch1_wire = g_telem_dbg.cyccnt_end;
+        g_telem_dbg.ch2_wire = g_telem_dbg.isr_delta;
+        time_cnt = g_telem_dbg.isr_delta;
+
+        if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
+            telem_seal_write_buf_ready();
+        }
+        g_telem_dbg.tick_frame_ok++;
+    }
+}
+
+/**
+ * @brief ISR 侧：只做分频 + 取 12 个值 + 写快照（P-1 后不再打包、不碰 UART 缓冲）。
  */
 void telem_bringup_tick(void)
 {
-    telem_buf_t *buf;
+    float vals[TELEM_BRINGUP_K];
 
     g_telem_dbg.tick_total++;
     s_decim_cnt++;
@@ -842,38 +926,8 @@ void telem_bringup_tick(void)
     }
     s_decim_cnt = 0u;
 
-    if (!telem_acquire_write_buf()) {
-        g_telem_dbg.acquire_fail++;
-        return;
-    }
-
-    buf = s_write_buf;
-
-    if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
-        telem_seal_write_buf_ready();
-        if (!telem_acquire_write_buf()) {
-            g_telem_dbg.acquire_fail++;
-            return;
-        }
-        buf = s_write_buf;
-    }
-
-    {
-        uint16_t off = buf->used_bytes;
-        uint32_t ch1_raw = g_telem_dbg.cyccnt_end;
-        uint32_t ch2_raw = g_telem_dbg.isr_delta;
-
-        telem_write_small_frame(buf, off);
-        g_telem_dbg.ch1_wire = ch1_raw;
-        g_telem_dbg.ch2_wire = ch2_raw;
-        time_cnt = ch2_raw;
-    }
-    buf->used_bytes = (uint16_t)(buf->used_bytes + TELEM_SMALL_FRAME_BYTES);
-
-    if ((uint32_t)buf->used_bytes + TELEM_SMALL_FRAME_BYTES > TELEM_BUF_BYTES) {
-        telem_seal_write_buf_ready();
-    }
-    g_telem_dbg.tick_frame_ok++;
+    telem_fill_small_frame_vals(vals);
+    telem_snapshot_commit(vals);
 }
 
 /**
@@ -946,6 +1000,9 @@ void telem_bringup_init(void)
     s_write_buf = NULL;
     s_sending_buf = NULL;
     s_decim_cnt = 0u;
+    s_snap_w = 0u;
+    s_snap_r = 0u;
+    s_snap_drop = 0u;
     g_telem_dbg.isr_t0 = 0u;
     g_telem_dbg.isr_t1 = 0u;
     g_telem_dbg.cyccnt_end = 0u;
@@ -994,6 +1051,7 @@ void UART_DMA_DEBUG_TASK(void *argument)
 
     for (;;) {
         g_telem_dbg.uart_task_loops++;
+        telem_bringup_pack_ready();   /* P-1：打包在任务上下文，ISR 只写快照环 */
         telem_bringup_try_send();
         osDelay(1);
     }

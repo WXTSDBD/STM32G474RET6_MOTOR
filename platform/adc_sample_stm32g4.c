@@ -223,12 +223,30 @@ void adc_sample_on_injected(adc_sample_t *s, void *hadc)
  * @param s 采样实例。
  * @param hadc 实际是 ADC_HandleTypeDef*。
  */
+static uint32_t s_adc_diag_bits;
+
 void adc_sample_jeoc_foc(adc_sample_t *s, void *hadc)
 {
     ADC_HandleTypeDef *hadc_hal = (ADC_HandleTypeDef *)hadc;
 
+    if (hadc_hal != NULL) {
+        /* §7.4：注入组只有 JQOVF（注入队列溢出），没有常规组 OVR；W1C 清标志。 */
+        if ((hadc_hal->Instance->ISR & ADC_ISR_JQOVF) != 0u) {
+            hadc_hal->Instance->ISR = ADC_ISR_JQOVF;
+            s_adc_diag_bits |= 0x04u;
+        }
+    }
+
     adc_sample_read_jdr123(hadc_hal->Instance, s->raw);
     adc_sample_apply_scale(s);
+}
+
+/**
+ * @brief 注入组数据有效性位（bit2=JQOVF 曾发生）。
+ */
+uint32_t adc_sample_diag_bits(void)
+{
+    return s_adc_diag_bits;
 }
 
 /**

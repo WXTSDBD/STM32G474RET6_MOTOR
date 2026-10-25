@@ -4,6 +4,7 @@
  * @brief Clarke、Park、反 Park、SVPWM 和死区占空比补偿。
  *
  * foc_svpwm_apply 只允许从电流环节拍调用。变换函数可以在同一拍里先算电流。
+ * apply_abc_sc 的正余弦须与本拍 Park 同角，避免热路径再算一次。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -30,6 +31,11 @@ void foc_svpwm_apply_abc(bsp_axis_t *axis,
                          float Uq, float Ud, float angle_el,
                          float ia, float ib, float ic,
                          float id_dq, float iq_dq);
+void foc_svpwm_apply_abc_sc(bsp_axis_t *axis,
+                            float Uq, float Ud, float angle_el,
+                            float sin_el, float cos_el,
+                            float ia, float ib, float ic,
+                            float id_dq, float iq_dq);
 int svpwm_sector_from_uq_ud(float Uq, float Ud, float angle_el);
 
 #ifdef __cplusplus

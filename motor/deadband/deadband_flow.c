@@ -125,12 +125,12 @@ static void deadband_flow_enter_speed_off(motor_context_t *ctx)
     ctx->ud_open = 0.0f;
     motor_foc_loop_pi_reset(ctx);
     deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-    dbg.deadband_mode = (uint8_t)deadband_service_get_mode();
+    DBG.deadband_mode = (uint8_t)deadband_service_get_mode();
 #if M1_SPEED_PROFILE_ENABLE
     motor_speed_profile_arm_ex(ctx, 0u);
     motor_outer_set_mode(ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
 #endif
-    dbg.open_seq_phase = 200u;
+    DBG.open_seq_phase = 200u;
 }
 
 static void deadband_flow_enter_speed_lut(motor_context_t *ctx)
@@ -144,12 +144,12 @@ static void deadband_flow_enter_speed_lut(motor_context_t *ctx)
     } else {
         deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
     }
-    dbg.deadband_mode = (uint8_t)deadband_service_get_mode();
+    DBG.deadband_mode = (uint8_t)deadband_service_get_mode();
 #if M1_SPEED_PROFILE_ENABLE
     motor_speed_profile_arm_ex(ctx, (M1_SPEED_PROFILE_REPEAT != 0) ? 1u : 0u);
     motor_outer_set_mode(ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
 #endif
-    dbg.open_seq_phase = 210u;
+    DBG.open_seq_phase = 210u;
 }
 #endif /* M1_DEADBAND_FLOW_ONE_SHOT */
 
@@ -198,7 +198,7 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
         deadband_id_cal_boot_rs_ld_lq_only(ctx);
 #endif
 #if M1_DEADBAND_FLOW_ONE_SHOT
-        dbg.open_seq_phase = 201u;
+        DBG.open_seq_phase = 201u;
 #endif
         break;
 #endif
@@ -260,7 +260,7 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
                                      M1_IDENT_POST_BODE_OPEN_UQ_S);
         ctx->mode = M1_CTRL_OPEN_LOOP;
         deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-        dbg.open_seq_phase = 80u;
+        DBG.open_seq_phase = 80u;
         break;
 #endif
 
@@ -385,7 +385,7 @@ void deadband_flow_tick(motor_context_t *ctx)
             ctx->mode = M1_CTRL_OBSERVE_ONLY;
             ctx->uq_open = 0.0f;
             ctx->ud_open = 0.0f;
-            dbg.open_seq_phase = 81u;
+            DBG.open_seq_phase = 81u;
         }
         break;
 #endif

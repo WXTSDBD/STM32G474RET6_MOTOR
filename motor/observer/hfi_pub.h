@@ -5,6 +5,7 @@
  *
  * 电流环走 Composite。obs_angle 只读 HFI Park，发布覆盖在 Composite get_theta。
  * hfi_pub_step 只允许从电流环节拍调用。任务只读 ss、rpm 快照。
+ * 已发布后：|ω_smo|≤DOWN 或中速带冻住 → 退回 HFI 并开注入（过零桥）。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -19,6 +20,8 @@ extern "C" {
 #endif
 
 void hfi_pub_step(float theta_smo, float omega_el, float dth);
+/** 强制退回 HFI 发布（低速互斥关 SMO 时调用）。 */
+void hfi_pub_force_lo(void);
 uint8_t hfi_pub_smo_active(void);
 float hfi_pub_theta(void);
 float hfi_pub_ss(void);

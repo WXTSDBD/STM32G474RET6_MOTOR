@@ -81,6 +81,10 @@ void motor_speed_profile_arm_ex(motor_context_t *ctx, uint8_t repeat_en);
 uint8_t motor_speed_profile_consume_ladder_done(void);
 #endif
 
+#if M1_MIT_TORQUE_LAW
+void motor_outer_mit_torque_law_apply(motor_context_t *ctx);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

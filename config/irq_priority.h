@@ -30,6 +30,8 @@ extern "C" {
 #define IRQ_PRIO_UART           4u
 /** 其余 DMA 通道。 */
 #define IRQ_PRIO_DMA_LO         5u
+/* Outer loop 2kHz (TIM6): must stay BELOW ADC FOC(2) so FOC can preempt. */
+#define IRQ_PRIO_OUTER_2K       3u
 
 void irq_priority_apply(void);
 

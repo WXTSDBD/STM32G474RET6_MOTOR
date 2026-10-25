@@ -22,6 +22,14 @@
 #include "motor_params_m1.h"
 #include "dbg_monitor.h"
 #include "motor_current.h"
+#if M1_EXP_FRAMEWORK_ENABLE
+#include "experiment/exp_runner.h"
+#include "experiment/exp_act_basic.h"
+#endif
+#include "motor_math.h"
+#include "pwm_port.h"
+#include "observer/observer_composite.h"
+#include "app_axis_jeoc.h"
 
 #ifndef M1_VOFA_SIGNOFF_CH
 #define M1_VOFA_SIGNOFF_CH 0
@@ -32,11 +40,18 @@
 #ifndef M1_VOFA_KTH_SPEED_DIAG
 #define M1_VOFA_KTH_SPEED_DIAG 0
 #endif
+#ifndef M1_VOFA_OPT12
+#define M1_VOFA_OPT12 0
+#endif
+
 #ifndef M1_VOFA_IDENT_DUTY_12CH
 #define M1_VOFA_IDENT_DUTY_12CH 0
 #endif
 #ifndef M1_VOFA_SPEED_CH8_11
 #define M1_VOFA_SPEED_CH8_11 0
+#endif
+#ifndef M1_VOFA_SPEED_ISR_CH
+#define M1_VOFA_SPEED_ISR_CH 0
 #endif
 #ifndef M1_POS_MIT_COMBO_ENABLE
 #define M1_POS_MIT_COMBO_ENABLE 0
@@ -224,6 +239,90 @@ static float tl_duty_tc(const motor_context_t *ctx)
     return dbg.foc_duty_tc;
 }
 
+/* ---- OPT12（2026-10-18 §7 定稿）：优化期专用 12ch ---- */
+
+/** @brief theta_park - theta_enc（wrap），单位 rad。 */
+static float tl_opt_theta_err(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return motor_wrap_pi(dbg.foc_theta_el - dbg.enc_theta_el);
+}
+
+/** @brief ISR 全程 DWT cycle。 */
+static float tl_opt_isr_delta(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return (float)g_telem_dbg.isr_delta;
+}
+
+/** @brief FOC 计算段 DWT cycle（Clark->PI->SVPWM/kick，不含观测器）。 */
+static float tl_opt_foc_delta(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return (float)g_telem_dbg.foc_delta;
+}
+
+/** @brief d 轴电流实测值（诊断有感/无感电流环差异用；替换原 ch9 cnt_dir）。 */
+static float tl_opt_id_dbg(const motor_context_t *ctx)
+{
+    return (ctx != NULL) ? ctx->id : 0.0f;
+}
+
+/**
+ * @brief PI 的 d 轴输出（进桥之前；替换原 ch8 foc_delta）。
+ * 与 ch5 ud_out 对比：已实测两段都 =1.0000，说明 PI 之后无叠加/缩放。
+ */
+static float tl_opt_ud_pi_dbg(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return dbg.foc_ud_pi;
+}
+
+/** @brief [台架诊断] FOC ISR 计数（ch9，原 id）。 */
+static float tl_opt_foc_cnt_dbg(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return (float)(motor_current_get_foc_cnt() % 30000u);
+}
+
+/**
+ * @brief [diag] packed experiment state: 100000*outer_run + 10000*armed
+ *        + 1000*active_id + 10*theta_active + (mode==CURRENT_LOOP).
+ */
+static float tl_opt_diag_wref(const motor_context_t *ctx)
+{
+    float v = 0.0f;
+    v += 100000.0f * (float)motor_current_outer_run_enable();
+    v += 10000.0f * (float)exp_runner_is_armed();
+    v += 1000.0f * (float)exp_runner_active_id();
+    v += 10.0f * (float)exp_act_theta_is_active();
+    v += ((ctx != NULL) && (ctx->mode == M1_CTRL_CURRENT_LOOP)) ? 1.0f : 0.0f;
+    return v;
+}
+
+/** @brief status 位：bit0 hfi_stage>0, bit1 有感反馈, bit2 JQOVF, bit3 漏拍。 */
+static float tl_opt_status(const motor_context_t *ctx)
+{
+    uint32_t b = 0u;
+
+    (void)ctx;
+    if (dbg.hfi_stage > 0.0f) {
+        b |= 0x01u;
+    }
+    if (observer_sensed_fb_active() != 0u) {
+        b |= 0x02u;
+    }
+    b |= (app_axis_jeoc_diag_bits() & 0x0Cu);
+    return (float)b;
+}
+
+/** @brief 真正进速度环的反馈，单位 rpm（无感=观测速）。 */
+static float tl_opt_omega_fb(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return motor_current_get_pll_omega_mech_rpm();
+}
+
 #if M1_VOFA_SIGNOFF_ENC_RAW
 #if M1_VOFA_KTH_SPEED_DIAG
 /** KTH 速度对照：… iq_ref pll_ω_err ω ω* isr_delta enc_raw；kick_skip 看 Watch */
@@ -292,7 +391,10 @@ static const telem_ch_t s_layout_foc_dq[TELEM_TABLE_CH_N] = {
     { "mark",     tl_mark },
 };
 
-/** 速度环常用：前 8 同 foc_dq 的 ud/uq 段，后为 ω_pll ω_ref iq_ref mark */
+/**
+ * 速度环：ia ib ic id iq θ ud uq ω ω* ch10 mark。
+ * M1_VOFA_SPEED_ISR_CH=1 时 ch10=isr_delta（DWT cycle），否则 iq_ref。
+ */
 static const telem_ch_t s_layout_speed[TELEM_TABLE_CH_N] = {
     { "ia",        tl_ia },
     { "ib",        tl_ib },
@@ -304,11 +406,35 @@ static const telem_ch_t s_layout_speed[TELEM_TABLE_CH_N] = {
     { "uq_out",    tl_uq_out },
     { "omega_pll", tl_omega_pll },
     { "omega_ref", tl_omega_ref },
+#if M1_VOFA_SPEED_ISR_CH
+    { "isr_delta", tl_isr_delta },
+#else
     { "iq_ref",    tl_iq_ref_outer },
+#endif
     { "mark",      tl_mark },
 };
 
 /** 辨识 duty：ia ib ic id iq θ vd vq ta tb tc mark */
+/**
+ * OPT12：theta_err / enc_raw / omega_ref / iq / iq_ref / ud / uq /
+ * isr_delta / foc_delta / cnt|DIR / status / omega_fb
+ * ch1 原 omega_enc（编码器 PLL）与有感段 omega_fb 重复；改 enc_raw 供离线差分转速。
+ */
+static const telem_ch_t s_layout_opt[TELEM_TABLE_CH_N] = {
+    { "theta_park_err", tl_opt_theta_err },
+    { "enc_raw",        tl_enc_raw },
+    { "omega_ref",      tl_omega_ref },
+    { "iq",             tl_iq },
+    { "iq_ref",         tl_iq_ref_foc },
+    { "ud_out",         tl_ud_out },
+    { "uq_out",         tl_uq_out },
+    { "isr_delta",      tl_opt_isr_delta },
+    { "ud_pi",          tl_opt_ud_pi_dbg },   /* PI 输出 vs ch5 ud_out */
+    { "id",             tl_opt_id_dbg },      /* d 轴电流 */
+    { "status",         tl_opt_status },
+    { "omega_fb",       tl_opt_omega_fb },
+};
+
 static const telem_ch_t s_layout_ident_duty[TELEM_TABLE_CH_N] = {
     { "ia",       tl_ia },
     { "ib",       tl_ib },
@@ -334,6 +460,7 @@ static const telem_layout_slot_t s_layouts[] = {
     { TELEM_LAYOUT_SIGNOFF,    s_layout_signoff },
     { TELEM_LAYOUT_SPEED,      s_layout_speed },
     { TELEM_LAYOUT_IDENT_DUTY, s_layout_ident_duty },
+    { TELEM_LAYOUT_OPT,        s_layout_opt },
 };
 
 static const telem_ch_t *telem_table_find(uint8_t id)
@@ -350,7 +477,9 @@ static const telem_ch_t *telem_table_find(uint8_t id)
 
 static uint8_t telem_table_default_layout(void)
 {
-#if M1_VOFA_SIGNOFF_CH
+#if M1_VOFA_OPT12
+    return TELEM_LAYOUT_OPT;
+#elif M1_VOFA_SIGNOFF_CH
     return TELEM_LAYOUT_SIGNOFF;
 #elif M1_VOFA_IDENT_DUTY_12CH && !M1_SPEED_LOOP_ENABLE
     return TELEM_LAYOUT_IDENT_DUTY;

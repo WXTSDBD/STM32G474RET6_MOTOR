@@ -32,8 +32,9 @@ extern "C" {
 
 #define TELEM_LAYOUT_FOC_DQ        0u /* ia ib ic id iq θ ud uq … 旧统一前半 */
 #define TELEM_LAYOUT_SIGNOFF       1u /* 有感/MIT 签收 12ch */
-#define TELEM_LAYOUT_SPEED         2u /* 速度环：ω_pll ω_ref iq_ref mark */
+#define TELEM_LAYOUT_SPEED         2u /* 速度环：ω ω*；ch10=iq_ref 或 isr_delta */
 #define TELEM_LAYOUT_IDENT_DUTY    3u /* 辨识 duty / Vd Vq */
+#define TELEM_LAYOUT_OPT           4u /* 优化期 12ch（2026-10-18 22:40 §7 定稿） */
 #define TELEM_LAYOUT_LEGACY        255u /* 走旧 #elif 手填 */
 
 typedef struct {

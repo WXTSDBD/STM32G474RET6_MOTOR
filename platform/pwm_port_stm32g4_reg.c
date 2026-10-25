@@ -19,6 +19,9 @@
  * @param ccr2 逻辑 B 相比较值。
  * @param ccr3 逻辑 C 相比较值。
  */
+/** 最近一次 set_duty3 写完 CCR 后的 TIM8 CNT|DIR（§7.3 打点）。 */
+static volatile uint32_t s_last_cnt_dir;
+
 static void pwm_port_stm32g4_set_duty3(pwm_port_t *port,
                                        uint32_t ccr1,
                                        uint32_t ccr2,
@@ -48,6 +51,10 @@ static void pwm_port_stm32g4_set_duty3(pwm_port_t *port,
             htim->Instance->CCR3 = (uint16_t)ccr_in[i];
         }
     }
+
+    /* Td 在线分量（§7.3）：写完 CCR 后立刻取 CNT|DIR；中心对齐需 DIR 消歧。+1~2 cycles（档 2）。 */
+    s_last_cnt_dir = (((uint32_t)htim->Instance->CNT) & 0x0FFFu) |
+                     (((htim->Instance->CR1 & TIM_CR1_DIR) != 0u) ? 0x1000u : 0u);
 }
 
 static void pwm_port_stm32g4_enable(pwm_port_t *port)
@@ -75,6 +82,14 @@ void pwm_port_set_duty3(pwm_port_t *port, uint32_t ccr1, uint32_t ccr2, uint32_t
         return;
     }
     port->ops->set_duty3(port, ccr1, ccr2, ccr3);
+}
+
+/**
+ * @brief 最近一次 set_duty3 写完 CCR 后的 TIM8 CNT|DIR。
+ */
+uint32_t pwm_port_get_last_cnt_dir(void)
+{
+    return s_last_cnt_dir;
 }
 
 /**

@@ -9,9 +9,7 @@
  */
 
 #include "encoder_spi_bus.h"
-
 #include <stddef.h>
-
 #include "hal_bridge.h"
 #include "stm32g4xx_ll_dma.h"
 #include "stm32g4xx_ll_spi.h"

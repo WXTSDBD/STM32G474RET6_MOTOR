@@ -178,22 +178,22 @@ void motor_foc_loop_dbg_id_ref(const motor_context_t *ctx)
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
 #if M1_ID_LOCK_CAL_SWEEP
         if (deadband_flow_speed_ladder_active()) {
-            dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-            dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+            DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
         } else if (deadband_id_cal_use_cal_pi_limits()) {
-            dbg.foc_id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
-            dbg.foc_iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
+            DBG.foc_id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
+            DBG.foc_iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
         } else {
-            dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-            dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+            DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
         }
 #else
-        dbg.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-        dbg.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+        DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+        DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
 #endif
     } else {
-        dbg.foc_id_ref = 0.0f;
-        dbg.foc_iq_ref = 0.0f;
+        DBG.foc_id_ref = 0.0f;
+        DBG.foc_iq_ref = 0.0f;
     }
 }
 
@@ -413,8 +413,8 @@ void motor_foc_loop_tick(motor_context_t *ctx,
     }
 #endif
 
-    dbg.foc_ud_pi = ctx->ud_pi;
-    dbg.foc_uq_pi = startup->use_fixed_uq ? startup->uq_out : ctx->uq_pi;
+    DBG.foc_ud_pi = ctx->ud_pi;
+    DBG.foc_uq_pi = startup->use_fixed_uq ? startup->uq_out : ctx->uq_pi;
 
 #if M1_ID_LOCK_CAL_SWEEP
     if (deadband_flow_id_cal_active() &&

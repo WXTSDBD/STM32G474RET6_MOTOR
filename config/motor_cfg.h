@@ -26,6 +26,8 @@ typedef struct {
     float lq_h;
     /** 母线电压标称，V（补偿/限幅用）。 */
     float vbus_v;
+    /** 1/vbus_v，1/V。热路径用乘法，避免每拍除法。 */
+    float inv_vbus;
     /** 有效死区，ns（含驱动与 MOS；非定时器编程值）。 */
     uint32_t deadtime_ns;
     /** 极对数。 */
