@@ -62,6 +62,17 @@
 
 ---
 
+## GATE141 无感速度环（交付路径）
+
+| 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
+|---------|-----|------|------------------|---------|------|--------|
+| `hfi141_step_baseline` | OBS/SPEED | BOOT_ONCE | `M1_USE_HFI_STANDSTILL_PROFILE=1` + `M1_BRINGUP_MODE_NORMAL`；profile：`RUN_LADDER=0`、`RAMP=0`、`IQ_SLEW=0`、`PAIRS=1`、`SENSED_PAIRS=1` | 📝 [操作说明](联调实例_141_阶跃基线_操作说明_2026-10-18.md) | 🚧 待跑（v0 基线） | 待录：+1500→−1500 无感一轮 + 有感一轮 |
+| `gate141_empty` | OBS/SPEED | BOOT_ONCE | 同上（空载 ±1500 ×2 + 有感 ×1） | — | ✅ 冻结（10-06） | [签收](签收_GATE141_无感速度反馈_2026-10-06.md) |
+| `gate141_load_mag` | OBS/SPEED | BOOT_ONCE | 同上 + 磁粉 0.5/1.0/1.5 V | — | ⚠️ 有条件（≤1.5 V） | [带载签收](报告_GATE141无感带载磁粉梯子签收_2026-10-12.md)；角差/遥测澄清 [10-13](报告_GATE141角差与遥测澄清_2026-10-13.md) |
+| `rev141_2000` | OBS/SPEED | BOOT_ONCE | `M1_USE_HFI_STANDSTILL_PROFILE=1`；段表 `config/experiments/exp_rev141.c`；角度指针 `g_angle_hfi` / `g_angle_enc` | [10-25 日报](联调日报_2000rpm路径跑通_2026-10-25.md) | ⚠️ 空载跑通 | `VOFA+CSV/20261025/vofa+202610252337.csv` |
+
+---
+
 ## 位置环
 
 | 实例 ID | 域 | 触发 | 配置入口（现状） | RUNBOOK | 验收 | 主录波 |
@@ -132,4 +143,4 @@ SMO 三包后 **改 EMF-PLL**：[总结_OBS_SMO旁路与换PLL决策_2026-09-10]
 
 ---
 
-**最后更新**：2026-10-07（补无感位控冒烟一行；架构接缝包 2–4 / 台架开关迁 `bringup_bench.h`）
+**最后更新**：2026-10-25（`rev141_2000` 空载 ±2000 跑通，日报见 `联调日报_2000rpm路径跑通_2026-10-25.md`）

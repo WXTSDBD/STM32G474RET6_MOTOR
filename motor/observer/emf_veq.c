@@ -15,30 +15,7 @@
 
 #include "observer/obs_cfg.h"
 
-#ifndef M1_EMF_VEQ_ENABLE
-#define M1_EMF_VEQ_ENABLE 0
-#endif
-
 #if M1_EMF_VEQ_ENABLE
-
-#ifndef M1_EMF_VEQ_R_OHM
-#define M1_EMF_VEQ_R_OHM            OBS_RS_OHM
-#endif
-#ifndef M1_EMF_VEQ_L_H
-#define M1_EMF_VEQ_L_H              OBS_LD_H
-#endif
-#ifndef M1_EMF_VEQ_LPF_HZ
-#define M1_EMF_VEQ_LPF_HZ           200.0f
-#endif
-#ifndef M1_EMF_VEQ_LPF_ENABLE
-#define M1_EMF_VEQ_LPF_ENABLE       1
-#endif
-#ifndef M1_EMF_VEQ_THETA_OFF_RAD
-#define M1_EMF_VEQ_THETA_OFF_RAD    (-0.4054f)
-#endif
-#ifndef M1_EMF_VEQ_PSI_WMIN
-#define M1_EMF_VEQ_PSI_WMIN         20.0f
-#endif
 
 #define EMF_VEQ_PI       3.14159265358979323846f
 #define EMF_VEQ_TWO_PI   6.28318530717958647692f

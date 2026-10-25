@@ -13,10 +13,7 @@
 #include <stddef.h>
 
 #include "motor_params_m1.h"
-
-#ifndef M1_TWO_PI
-#define M1_TWO_PI 6.28318530718f
-#endif
+#include "motor_math.h"
 
 #if M1_STARTUP_ENABLE
 

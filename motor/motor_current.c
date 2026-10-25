@@ -3,7 +3,7 @@
  * @date 2026-10-06
  * @brief M1 电流环节拍编排：采样、选 Park 角、电流 PI、SVPWM。
  *
- * 本文件负责把一步串起来，并在编码器、I-f、观测器之间选角度。
+ * 本文件负责把一步串起来。已绑定 route 时，Park 和速度反馈只解引用角度指针。
  * 本文件不填 HAL 句柄，不含 HFI 解调。观测器算法在 motor/observer/。
  * 节拍和中断限制见 motor_current.h 文件头，这里不重复。
  *
@@ -45,6 +45,7 @@ static uint8_t exp_owns_drive(void)
 }
 #endif
 #include "motor_params_m1.h"
+#include "core/motor_route.h"
 
 #if M1_EXP_FRAMEWORK_ENABLE
 #include "experiment/exp_runner.h"
@@ -227,6 +228,7 @@ void motor_current_init(bsp_axis_t *axis)
 #endif
     s_m1_obs = observer_ops();
     s_m1_inj = observer_inj_ops();
+    motor_route_bind(&s_m1_ctx, &g_route_hfi_standstill);
 #elif M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
     s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
     s_m1_ctx.id_ref = 0.0f;
@@ -617,10 +619,10 @@ void motor_current_tick(bsp_axis_t *axis)
         dbg.pll_omega_mech_rpm = 0.0f;
 #endif
 #if M1_HFI_ENABLE && M1_HFI_SPEED_FB_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE
-        /* 141 纯无感：速度环吃观测 ω（未发布 HFI pll_int，ss≥1 用 SMO）。
-         * enc PLL 只留 VOFA ch5。smo_rpm 是上一拍 pub_step。
-         * REV141 有感对照段：保持上面的 enc PLL，勿盖掉。 */
-        if (observer_sensed_fb_active() == 0u) {
+        /* 速度反馈跟当前角度源。无感源给观测转速，有感源给编码器 PLL。 */
+        if (motor_angle_active() != NULL) {
+            s_speed_fb_rpm = motor_angle_active()->get_omega_rpm(&s_m1_ctx);
+        } else if (observer_sensed_fb_active() == 0u) {
             const float rpm_scale =
                 60.0f / (2.0f * 3.14159265f * (float)s_m1_ctx.pole_pairs);
 
@@ -768,7 +770,29 @@ void motor_current_tick(bsp_axis_t *axis)
      * 无感：始终 pre_park（含 inj_off），与 6059/141 一致；Park=发布角。
      * 交接省 ISR 的 hand_keep 先收回，避免无感交接角路径与冻结点不一致。
      */
-    if (observer_sensed_fb_active() != 0u) {
+    if (motor_angle_active() != NULL) {
+        const angle_ops_t *ang = motor_angle_active();
+
+        motor_angle_note_enc(theta_enc_park);
+        if (ang->update != NULL) {
+            ang->update(&s_m1_ctx, M1_CTRL_TS_S);
+        }
+        theta_park = ang->get_theta(&s_m1_ctx);
+        if (ang->post_park != NULL) {
+#if M1_HFI_MOTION_BYPASS_ENABLE
+            if (observer_get_stage() == OBS_STAGE_RUN) {
+                s_hfi_recon_theta = theta_park;
+                s_hfi_recon_theta_ok = 1u;
+            }
+#endif
+#if M1_HFI_QKICK_AFTER_LOCK_ENABLE
+            if (observer_consume_pi_reset() != 0u) {
+                foc_pi_reset(&ctx->pi_iq);
+                ctx->uq_pi = 0.0f;
+            }
+#endif
+        }
+    } else if (observer_sensed_fb_active() != 0u) {
         observer_sensed_keep(theta_enc_park, M1_CTRL_TS_S);
         theta_park = theta_enc_park;
     } else {
@@ -822,19 +846,15 @@ void motor_current_tick(bsp_axis_t *axis)
             const float rpm_cmd = observer_get_speed_ref_rpm();
 
             if (exp_owns_drive() == 0u) {
-                if (exp_owns_drive() == 0u) {
-                    ctx->omega_ref = rpm_cmd;
-                }
+                ctx->omega_ref = rpm_cmd;
             }
             if (ctx->outer_mode != M1_OUTER_SPEED) {
-                /* ω* 已写成目标。bumpless 若看见它，积分会预成 -Kp·目标。冷启动。0 交接。*/
+                /* ω* 先写 0 再切速度模式，避免 bumpless 把积分预成 -Kp·目标。 */
                 ctx->omega_ref = 0.0f;
                 motor_outer_set_mode(ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
                 if (exp_owns_drive() == 0u) {
-                if (exp_owns_drive() == 0u) {
                     ctx->omega_ref = rpm_cmd;
                 }
-            }
             }
         } else {
             /* 速度环关：由 QKICK/HFI 写 id_ref/iq_ref/omega_ref */
@@ -847,7 +867,7 @@ void motor_current_tick(bsp_axis_t *axis)
                 motor_outer_set_mode(ctx, M1_OUTER_DISABLED, 0.0f, 0.0f);
             }
         }
-        /* 141：OMEGA_FF_SRC=0，禁止 enc/指令转速进 HFI 前馈 */
+        /* 段表在写转速。前馈保持 0，编码器转速和指令转速不进 HFI。 */
         observer_set_omega_ff_el(0.0f);
 #endif
     }
@@ -864,10 +884,11 @@ void motor_current_tick(bsp_axis_t *axis)
         theta_park = exp_act_theta_get_rad();
         dbg.foc_theta_el = theta_park;
     }
-    else if ((exp_runner_active_id() == EXP_ID_REV141) &&
+    else if ((motor_angle_active() == NULL) &&
+             (exp_runner_active_id() == EXP_ID_REV141) &&
              (exp_act_angle_src_is_active() != 0u) &&
              (exp_act_angle_src() != 0u)) {
-        theta_park = theta_enc_park;   /* sensored round: encoder angle */
+        theta_park = theta_enc_park;
         dbg.foc_theta_el = theta_park;
     }
 #endif
@@ -878,7 +899,13 @@ void motor_current_tick(bsp_axis_t *axis)
 
 #if M1_HFI_ENABLE
     /* 有感对照不解调。无感始终 post_park；inj_off 时内部 hat_hold 走 coast。 */
-    if (observer_sensed_fb_active() == 0u) {
+    if (motor_angle_active() != NULL) {
+        const angle_ops_t *ang = motor_angle_active();
+
+        if (ang->post_park != NULL) {
+            ang->post_park(&s_m1_ctx, id, iq, i_alpha, i_beta);
+        }
+    } else if (observer_sensed_fb_active() == 0u) {
         s_m1_obs->post_park(id, iq, i_alpha, i_beta);
     }
 #if M1_HFI_IQ_AUTH_ENABLE
@@ -1016,8 +1043,11 @@ void motor_current_tick(bsp_axis_t *axis)
                     dbg.foc_uq_pi = 0.0f;
                 }
             } else if ((s_m1_inj != 0) &&
-                       (observer_sensed_fb_active() == 0u) &&
-                       (observer_hfi_inj_off() == 0u)) {
+                       (observer_hfi_inj_off() == 0u) &&
+                       (((motor_angle_active() != NULL) &&
+                         (motor_angle_sensorless() != 0u)) ||
+                        ((motor_angle_active() == NULL) &&
+                         (observer_sensed_fb_active() == 0u)))) {
                 /* 有感不叠注入。交接后幅值为 0 也不叠。 */
                 s_m1_inj->get_inj(&ud_inj, &uq_inj);
                 ud_out += ud_inj;
@@ -1061,41 +1091,10 @@ void motor_current_tick(bsp_axis_t *axis)
     dbg.foc_ud_out = ud_out;
 
 #if M1_HFI_ENABLE
-#if M1_DBG_ISR_MIRROR_HFI
-    {
-        observer_view_t tv;
-        const float rpm_scale =
-            60.0f / (2.0f * 3.14159265f * (float)s_m1_ctx.pole_pairs);
-
-        /* T3：此处 harvest snap；其后至 observer_telem_publish 勿再改 snap 源 */
-        observer_read_view(&tv);
-        dbg.hfi_theta_cmd = tv.theta_cmd;
-        dbg.hfi_theta_hat = tv.theta_hat;
-        dbg.hfi_theta_err = tv.theta_err;
-        dbg.hfi_eps = tv.eps;
-        dbg.hfi_di_q = tv.di_q;
-        dbg.hfi_di_d = tv.di_d;
-        dbg.hfi_x_raw = tv.x_raw;
-        dbg.hfi_y_raw = tv.y_raw;
-        dbg.hfi_vh_sign = tv.vh_sign;
-        dbg.hfi_stage = (float)tv.stage + tv.eps_dead;
-        dbg.hfi_lock = (float)tv.lock;
-        dbg.hfi_omega_rpm = tv.pll_int_el * rpm_scale;
-        dbg.hfi_omega_trim_rpm =
-            tv.eps_d + 0.1f * tv.axis_flip_n +
-            ((tv.axis_ok != 0u) ? 0.01f : 0.0f);
-        dbg.hfi_qkick_verdict = tv.pll_int_el * rpm_scale;
-        dbg.hfi_ipd_phase = (float)tv.qkick_phase;
-        dbg.hfi_ipd_pulse_ud = tv.ipd_pulse_ud;
-        dbg.hfi_qkick_seed = tv.qkick_seed;
-        dbg.hfi_qkick_dth_deg = tv.qkick_dth * (180.0f / 3.14159265f);
-    }
-#else
     /* 瘦路径：只 harvest + OPT12 需要的 hfi_stage（勿再满拷 read_view） */
     observer_telem_harvest();
     dbg.hfi_stage =
         (float)observer_get_stage() + observer_get_eps_dead();
-#endif
 #if (M1_OUTER_THETA_FB_SRC == 2) && M1_OUTER_NEST_ENABLE && \
     (M1_OUTER_EXPT == M1_OUTER_EXPT_SIGNOFF)
     /*
@@ -1115,7 +1114,8 @@ void motor_current_tick(bsp_axis_t *axis)
 #if M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE || M1_EMF_PLL_ENABLE
     /* REV141 有感对照：跳过 SMO/EMF-PLL/pub；阶梯仍由 HFI on_angle + ω* 推进。 */
 #if M1_HFI_ENABLE
-    if (observer_sensed_fb_active() != 0u) {
+    if (((motor_angle_active() != NULL) && (motor_angle_sensorless() == 0u)) ||
+        ((motor_angle_active() == NULL) && (observer_sensed_fb_active() != 0u))) {
         /* 有感段：观测器热路径空转。 */
     } else
 #endif
@@ -1151,11 +1151,7 @@ void motor_current_tick(bsp_axis_t *axis)
 
 #if M1_EMF_SMO_ENABLE
         {
-#if M1_DBG_ISR_MIRROR_OBS
-            const uint8_t lpf_band = emf_smo_lpf_sched_update(omega_mech_rpm);
-#else
             (void)emf_smo_lpf_sched_update(omega_mech_rpm);
-#endif
 
             emf_smo_update(&s_emf_smo, i_alpha, i_beta, u_alpha, u_beta,
                            theta_obs_ref, omega_mech_rpm);

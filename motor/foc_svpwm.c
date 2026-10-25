@@ -261,43 +261,6 @@ static void setPhaseVoltage_core(pwm_port_t *port,
         deadband_apply_duty(ia, ib, ic, angle_el, id_dq, iq_dq, &Ta, &Tb, &Tc);
     }
 
-#if M1_DBG_ISR_MIRROR_SVPWM
-    DBG.foc_duty_ta = Ta;
-    DBG.foc_duty_tb = Tb;
-    DBG.foc_duty_tc = Tc;
-    {
-        float ua = ma;
-        float ub = mb;
-
-        if (ua < 0.0f) {
-            ua = -ua;
-        }
-        if (ub < 0.0f) {
-            ub = -ub;
-        }
-        DBG.foc_svpwm_uref = (ua > ub) ? ua : ub;
-    }
-    DBG.foc_svpwm_duty_dev = svpwm_duty_dev(Ta, Tb, Tc);
-    {
-        float dab = Ta - Tb;
-
-        if (dab < 0.0f) {
-            dab = -dab;
-        }
-        DBG.foc_svpwm_duty_ab = dab;
-    }
-    DBG.foc_svpwm_sector = (uint8_t)sector;
-    {
-        float va = (Ta - HALF_F) * vbus;
-        float vb = (Tb - HALF_F) * vbus;
-        float vc = (Tc - HALF_F) * vbus;
-        float valpha = va;
-        float vbeta = (vb - vc) * INV_SQRT3;
-
-        DBG.foc_vd_est = valpha * cos_el + vbeta * sin_el;
-        DBG.foc_vq_est = -valpha * sin_el + vbeta * cos_el;
-    }
-#endif
 
     svpwm_write_ccr(port, Ta, Tb, Tc);
 }

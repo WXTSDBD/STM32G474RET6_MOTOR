@@ -13,9 +13,7 @@
 #define MOTOR_PARAMS_M1_H
 
 /** N5065 极对。profile 可覆盖；运行时副本见 g_m1_motor_cfg。 */
-#ifndef M1_POLE_PAIRS
 #define M1_POLE_PAIRS       7u
-#endif
 
 /** VDDA / ADC 参考（V。*/
 #define M1_ADC_VREF_V       3.3f
@@ -30,27 +28,15 @@
 #define M1_ADC_SCALE_A_LSB  (M1_ADC_VREF_V / (4096.0f * M1_ADC_SHUNT_OHM * M1_ADC_AMP_GAIN))
 
 /** 物理 JDR rank0/1/2 per-channel gain；统一 1.0（扇区采。KCL 修后再标定，勿用 run RMS 凑） */
-#ifndef M1_ADC_GAIN_CH0
 #define M1_ADC_GAIN_CH0     1.00f
-#endif
-#ifndef M1_ADC_GAIN_CH1
 #define M1_ADC_GAIN_CH1     1.00f
-#endif
-#ifndef M1_ADC_GAIN_CH2
 #define M1_ADC_GAIN_CH2     1.00f
-#endif
 
 /* --- 电气参数（LCR @ 1 kHz，AB 线；Rs 多轮 VASI 辨识 ~0.122 Ω。--- */
 /* 铭牌：#ifndef 守卫；热路径优先读 g_m1_motor_cfg（包 8.3）。 */
-#ifndef M1_RS_OHM
 #define M1_RS_OHM           0.122f
-#endif
-#ifndef M1_LD_H
 #define M1_LD_H             59e-6f
-#endif
-#ifndef M1_LQ_H
 #define M1_LQ_H             87e-6f
-#endif
 
 /** JEOC 电流环节拍（s。*/
 #define M1_CTRL_TS_S        50e-6f
@@ -64,37 +50,17 @@
  *   fn。0~80  速度切换 / 手拨加减速（推荐 bringup。
  *   fn。00+ 更跟手，20 kHz 。ω 噪声会变。
  */
-#ifndef M1_PLL_ENABLE
 #define M1_PLL_ENABLE                   1
-#endif
-#ifndef M1_PLL_FN_HZ
 #define M1_PLL_FN_HZ                    80.0f
-#endif
-#ifndef M1_PLL_ZETA
 #define M1_PLL_ZETA                     0.707106781f
-#endif
-#ifndef M1_PLL_WN_RAD_S
 #define M1_PLL_WN_RAD_S                 (6.28318530718f * M1_PLL_FN_HZ)
-#endif
-#ifndef M1_PLL_KP
 #define M1_PLL_KP                       (2.0f * M1_PLL_ZETA * M1_PLL_WN_RAD_S)
-#endif
-#ifndef M1_PLL_KI
 #define M1_PLL_KI                       (M1_PLL_WN_RAD_S * M1_PLL_WN_RAD_S)
-#endif
-#ifndef M1_PLL_OMEGA_LIMIT_RAD_S
 #define M1_PLL_OMEGA_LIMIT_RAD_S        650.0f   /* ~6200 rpm mech */
-#endif
-#ifndef M1_PLL_INTEGRATOR_LIMIT_RAD_S
 #define M1_PLL_INTEGRATOR_LIMIT_RAD_S   M1_PLL_OMEGA_LIMIT_RAD_S
-#endif
-#ifndef M1_PLL_THETA_PARK_ENABLE
 #define M1_PLL_THETA_PARK_ENABLE        0
-#endif
 /** 1=VOFA ch8。1 输出 PLL（ch8 ω_pll ch9 ω_diff ch10 θ_err ch11 Δω）；0=Id_ref/Iq_ref/duty_dev/open_seq */
-#ifndef M1_VOFA_PLL_CH8_11
 #define M1_VOFA_PLL_CH8_11              M1_PLL_ENABLE
-#endif
 
 /* ==========================================================================
  * 死区 LUT 三步联调 。只改 M1_DEADBAND_BRINGUP_PHASE 。Rebuild
@@ -115,9 +81,7 @@
 #define M1_DB_BRINGUP_ONE_SHOT          3
 /** 上电 deadband OFF 。速度环阶跃（。Bode，带载测。*/
 #define M1_DB_BRINGUP_SPEED_IDENT       4
-#ifndef M1_DEADBAND_BRINGUP_PHASE
 #define M1_DEADBAND_BRINGUP_PHASE       M1_DB_BRINGUP_SPEED_OFF
-#endif
 #if M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_ONE_SHOT
 #define M1_DEADBAND_FLOW_ONE_SHOT         1
 #else
@@ -177,9 +141,6 @@
 #ifndef M1_USE_SENSORLESS_POS_MIT_PROFILE
 #define M1_USE_SENSORLESS_POS_MIT_PROFILE 0
 #endif
-#ifndef M1_HFI_GATE
-#define M1_HFI_GATE                     0
-#endif
 #if ((M1_USE_FLUX_ID_PROFILE != 0) + (M1_USE_OBS_VEQ_PROFILE != 0) + \
      (M1_USE_SPEED_1000_PROFILE != 0) + (M1_USE_IF_100_PROFILE != 0) + \
      (M1_USE_HFI_STANDSTILL_PROFILE != 0) + (M1_USE_SENSED_POS_MIT_PROFILE != 0) + \
@@ -188,7 +149,6 @@
 #endif
 
 #define M1_OUTER_EXPT_NONE              0
-#define M1_OUTER_EXPT_SPEED300          1
 #define M1_OUTER_EXPT_POS_STEP          2
 #define M1_OUTER_EXPT_POS_REV           3
 #define M1_OUTER_EXPT_MIT_HOLD          4
@@ -214,25 +174,13 @@
 #define M1_OUTER_EXPT_SIGNOFF           6
 
 /** 超速门：|ω| > 本值 × ω_max 即停环。位置档与 MIT 档共用。 */
-#ifndef M1_OUTER_VEL_LIMIT_TOLERANCE
-#define M1_OUTER_VEL_LIMIT_TOLERANCE    1.2f
-#endif
 /** 1=超速守卫使能。无感冒烟可关，避免中途 seq=252 掐死。 */
 #ifndef M1_OUTER_OVERSPEED_GUARD_ENABLE
 #define M1_OUTER_OVERSPEED_GUARD_ENABLE 1
 #endif
 
 /** 签收档轨迹巡航速度上限，单位 rpm。 */
-#ifndef M1_OUTER_TRAJ_VMAX_RPM
-#define M1_OUTER_TRAJ_VMAX_RPM          250.0f
-#endif
 /** 签收档轨迹加/减速度，单位 rad/s^2。行程 90° 时峰速约 sqrt(A·Δθ)。 */
-#ifndef M1_OUTER_TRAJ_AMAX_RAD_S2
-#define M1_OUTER_TRAJ_AMAX_RAD_S2       300.0f
-#endif
-#ifndef M1_OUTER_TRAJ_DMAX_RAD_S2
-#define M1_OUTER_TRAJ_DMAX_RAD_S2       M1_OUTER_TRAJ_AMAX_RAD_S2
-#endif
 
 /** 1=速度 PI 的积分当拍为 0，即参数级关 Ki。MIT 档用，位置档保持 0。 */
 #ifndef M1_MIT_KI_DISABLE
@@ -289,24 +237,12 @@
 #define M1_FRIC_FF_ENABLE               0
 #endif
 /** 前馈饱和幅值，单位 A。实测静摩擦约 0.43 A，取略小，避免单独推得动转子。 */
-#ifndef M1_FRIC_FF_A
-#define M1_FRIC_FF_A                    0.35f
-#endif
 /**
  * 线性带半宽，单位 rad。iq_fric = A * sat(θ_err / 此值)。
  * 默认 2°：带内等效多约 10 A/rad，带外才满幅。不要用符号滞回。
  */
-#ifndef M1_FRIC_FF_SAT_RAD
-#define M1_FRIC_FF_SAT_RAD              (2.0f * 0.01745329252f)
-#endif
 /** 1=签收时间表只跑位置保持 + MIT 正反切 + 推-放。 */
-#ifndef M1_OUTER_SIGNOFF_PACK1
-#define M1_OUTER_SIGNOFF_PACK1          0
-#endif
 /** 1=上电先爬一圈记速度积分，再关饱和前馈、用表跑 MIT。 */
-#ifndef M1_OUTER_SIGNOFF_PACK2
-#define M1_OUTER_SIGNOFF_PACK2          0
-#endif
 /**
  * 1=只跑 MIT 刚度 A/B：多档 iq_ff × Kp_scale∈{1,2,3,4,6}（一包自动）。
  * 与 PACK1/PACK2/PACK_BW 互斥；推-放另包。×6 可用高档阻尼。
@@ -318,17 +254,8 @@
  * 1=位置/MIT 带宽签收：小阶跃 + 密扫频（目标约 10 Hz）。
  * 与 PACK1/PACK2/PACK_MK 互斥。
  */
-#ifndef M1_OUTER_SIGNOFF_PACK_BW
-#define M1_OUTER_SIGNOFF_PACK_BW        0
-#endif
 /** PACK_MK：每档 iq_ff 保持时间，单位 s。 */
-#ifndef M1_OUTER_MK_HOLD_S
-#define M1_OUTER_MK_HOLD_S              5.0f
-#endif
 /** PACK_MK：档间回零间隙，单位 s。 */
-#ifndef M1_OUTER_MK_GAP_S
-#define M1_OUTER_MK_GAP_S               2.5f
-#endif
 /**
  * 1=外环实验走 motor/experiment 注册表（E0）。
  * 签收档打开后由 exp_runner SCRIPT 调现网 signoff tick，行为逐拍等价。
@@ -344,27 +271,15 @@
 #ifndef M1_EXP_BOOT_UD_CAL
 #define M1_EXP_BOOT_UD_CAL              0
 #endif
-/** 阶段2 pilot：上电跑表驱动 ±2000（EXP_ID_REV141），HFI 141 脚本让位。 */
+/** 1=上电跑 ±2000 段表。默认关，静置 profile 打开。 */
 #ifndef M1_EXP_BOOT_REV141
 #define M1_EXP_BOOT_REV141              0
 #endif
 
 /** 1=有感解耦前馈同电 A/B（0→500→0）；需 M1_EXP_FRAMEWORK_ENABLE 与 ROTATION_FF。 */
-#ifndef M1_EXP_FF_AB_ENABLE
-#define M1_EXP_FF_AB_ENABLE             0
-#endif
 /** 摩擦表点数。PACK2 用。 */
-#ifndef M1_FRIC_MAP_N
-#define M1_FRIC_MAP_N                   64u
-#endif
 /** 爬表每点停留，单位 s。含到位后采样。 */
-#ifndef M1_FRIC_MAP_DWELL_S
-#define M1_FRIC_MAP_DWELL_S             0.55f
-#endif
 /** 每点末尾用来平均积分器的窗口，单位 s。 */
-#ifndef M1_FRIC_MAP_SAMP_S
-#define M1_FRIC_MAP_SAMP_S              0.15f
-#endif
 
 /**
  * 位置环位置反馈源：
@@ -378,14 +293,19 @@
 #ifndef M1_VOFA_SIGNOFF_CH
 #define M1_VOFA_SIGNOFF_CH              0
 #endif
+/** 1=OPT12 遥测布局。默认关，静置 profile 打开。 */
+#ifndef M1_VOFA_OPT12
+#define M1_VOFA_OPT12                   0
+#endif
+/** 1=签收布局里 ch7=iq_ref、ch10=isr_delta。默认关。 */
+#ifndef M1_VOFA_KTH_SPEED_DIAG
+#define M1_VOFA_KTH_SPEED_DIAG          0
+#endif
 /** 1=编进 HFI 与 Composite。默认 0；profile 可覆盖。关掉时 Composite 走空桩。 */
 #ifndef M1_HFI_ENABLE
 #define M1_HFI_ENABLE                   0
 #endif
 /** 1=Park 用 HFI 估计角。默认 0；profile 可覆盖。 */
-#ifndef M1_HFI_PARK_ENABLE
-#define M1_HFI_PARK_ENABLE              0
-#endif
 /** 1=无感运动旁路：速度环用观测转速。默认 0；profile 可覆盖。 */
 #ifndef M1_HFI_MOTION_BYPASS_ENABLE
 #define M1_HFI_MOTION_BYPASS_ENABLE     0
@@ -398,10 +318,6 @@
 #define M1_VOFA_HFI_12CH                0
 #endif
 /** 1=HFI 12ch 的 ch10 发 isr_delta（DWT cycle）；0=发 hfi_stage。 */
-#ifndef M1_VOFA_HFI_ISR_CH
-#define M1_VOFA_HFI_ISR_CH              0
-#endif
-/** GATE141 实验参数已迁到 motor/observer/hfi_sqwave.c 的 static const（阶段2 表化）。 */
 #ifndef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               0
 #endif
@@ -410,9 +326,6 @@
 #endif
 #ifndef M1_EMF_PLL_ENABLE
 #define M1_EMF_PLL_ENABLE               0
-#endif
-#ifndef M1_EMF_SMO_LPF_SCHED_ENABLE
-#define M1_EMF_SMO_LPF_SCHED_ENABLE     0
 #endif
 #ifndef M1_EMF_SMO_LPF_LINEAR_ENABLE
 #define M1_EMF_SMO_LPF_LINEAR_ENABLE    0
@@ -430,53 +343,8 @@
 #ifndef M1_OBS_SS_SPD_DEFER_ENABLE
 #define M1_OBS_SS_SPD_DEFER_ENABLE      0
 #endif
-#ifndef M1_OBS_SS_SPD_DWELL_S
-#define M1_OBS_SS_SPD_DWELL_S           1.5f /* 。OBS 后最短等待再武装切。*/
-#endif
-#ifndef M1_OBS_SS_SPD_HOLD_S
-#define M1_OBS_SS_SPD_HOLD_S            0.4f /* 切速门限连续保。*/
-#endif
-#ifndef M1_OBS_SS_SPD_RPM_ERR_FRAC
-#define M1_OBS_SS_SPD_RPM_ERR_FRAC      0.08f /* |ω̂−ω_ref|/ω_ref */
-#endif
-#ifndef M1_OBS_SS_SPD_ERR_RAD
-#define M1_OBS_SS_SPD_ERR_RAD           0.2617994f /* 15°，切速时角仍须好 */
-#endif
-#ifndef M1_OBS_SS_SPD_DOMEGA_MAX
-#define M1_OBS_SS_SPD_DOMEGA_MAX        2500.0f /* 长窗 |Δω̂|/Δt [rpm/s]，抑真猎。*/
-#endif
-#ifndef M1_OBS_SS_SPD_DOMEGA_WIN_S
-#define M1_OBS_SS_SPD_DOMEGA_WIN_S      0.10f /* 加速度估计窗；勿用单拍 SPEED_TS */
-#endif
-#ifndef M1_OBS_SS_SPD_ENC_MATCH_ENABLE
-#define M1_OBS_SS_SPD_ENC_MATCH_ENABLE  0 /* 1=另要。|ω̂−ω_enc|≤MATCH（联调） */
-#endif
-#ifndef M1_OBS_SS_SPD_ENC_MATCH_RPM
-#define M1_OBS_SS_SPD_ENC_MATCH_RPM     50.0f
-#endif
-#ifndef M1_OBS_SS_SPD_REQUIRE_EMAG
-#define M1_OBS_SS_SPD_REQUIRE_EMAG      0
-#endif
-#ifndef M1_OBS_SS_SPD_REQUIRE_ERR
-#define M1_OBS_SS_SPD_REQUIRE_ERR       0
-#endif
-#ifndef M1_OBS_SS_FALLBACK_ON_ERR_ENABLE
-#define M1_OBS_SS_FALLBACK_ON_ERR_ENABLE 1 /* 0=角差仅监督，不回切编码器 */
-#endif
-#ifndef M1_OBS_SS_FALLBACK_ENABLE
-#define M1_OBS_SS_FALLBACK_ENABLE       1 /* 0=禁用全部回退（掉。过流亦不踢） */
-#endif
 #ifndef M1_OBS_SPD_PLL_ENABLE
 #define M1_OBS_SPD_PLL_ENABLE           0
-#endif
-#ifndef M1_OBS_SPD_PLL_FN_HZ
-#define M1_OBS_SPD_PLL_FN_HZ            12.0f
-#endif
-#ifndef M1_OBS_SPD_PLL_ZETA
-#define M1_OBS_SPD_PLL_ZETA             0.707106781f
-#endif
-#ifndef M1_OBS_SPD_FB_LPF_HZ
-#define M1_OBS_SPD_FB_LPF_HZ            0 /* [Hz] 0=off；观测速进速度环前一。LPF */
 #endif
 #ifndef M1_VOFA_OBS_VEQ_12CH
 #define M1_VOFA_OBS_VEQ_12CH            0
@@ -548,13 +416,6 @@
 #define M1_SPEED_DECIM                  10u
 #endif
 #define M1_SPEED_TS_S                   (M1_CTRL_TS_S * (float)M1_SPEED_DECIM)
-#ifndef M1_SPEED_PI_FN_HZ
-#define M1_SPEED_PI_FN_HZ               20.0f
-#endif
-#ifndef M1_SPEED_PI_ZETA
-#define M1_SPEED_PI_ZETA                0.707106781f
-#endif
-#define M1_SPEED_PI_WN_RAD_S            (6.28318530718f * M1_SPEED_PI_FN_HZ)
 #ifndef M1_SPEED_PI_KP
 #define M1_SPEED_PI_KP                  0.015f
 #endif
@@ -596,27 +457,6 @@
  * 至少施加 ±I_BRAKE（与转速反向）。默认关；profile 按台架打开。
  * TODO(factory)：I_BRAKE / margin 出厂整定，勿随 VBUS 臆改。
  */
-#ifndef M1_SPEED_DECEL_BRAKE_ENABLE
-#define M1_SPEED_DECEL_BRAKE_ENABLE     0
-#endif
-#ifndef M1_SPEED_DECEL_BRAKE_A
-#define M1_SPEED_DECEL_BRAKE_A          3.0f
-#endif
-#ifndef M1_SPEED_DECEL_BRAKE_MARGIN_RPM
-#define M1_SPEED_DECEL_BRAKE_MARGIN_RPM 80.0f
-#endif
-#ifndef M1_SPEED_DECEL_BRAKE_MIN_RPM
-#define M1_SPEED_DECEL_BRAKE_MIN_RPM    100.0f
-#endif
-#ifndef M1_FOC_ROTATION_FF_ENABLE
-#define M1_FOC_ROTATION_FF_ENABLE       0
-#endif
-#ifndef M1_SPEED_REF_RPM_DEFAULT
-#define M1_SPEED_REF_RPM_DEFAULT        300.0f
-#endif
-#ifndef M1_SPEED_LOOP_BOOT
-#define M1_SPEED_LOOP_BOOT              1
-#endif
 #ifndef M1_VOFA_SPEED_CH8_11
 #define M1_VOFA_SPEED_CH8_11            1
 #endif
@@ -659,11 +499,7 @@
 #if M1_POS_DECIM < 1u
 #error "M1_POS_DECIM must be >= 1"
 #endif
-#define M1_POS_TS_S                       (M1_SPEED_TS_S * (float)M1_POS_DECIM)
 /** 1=上电 POSITION 并保。θ_ref=θ_mech(0)。=沿用 SPEED / ident 启动 */
-#ifndef M1_POS_LOOP_BOOT
-#define M1_POS_LOOP_BOOT                0
-#endif
 /** 1=位置 26 。+ MIT 同轨迹联测（NORMAL+SPEED_OFF 默认开。*/
 #ifndef M1_POS_MIT_COMBO_ENABLE
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && \
@@ -700,24 +536,6 @@
 #endif
 #endif
 #if M1_POS_STEP_TEST_ENABLE
-#ifndef M1_POS_STEP_HOLD_S
-#define M1_POS_STEP_HOLD_S              1.0f    /* 初始 hold @ θ(0) */
-#endif
-#ifndef M1_POS_STEP_DWELL_S
-#define M1_POS_STEP_DWELL_S             1.5f    /* |Δθ| < 180° */
-#endif
-#ifndef M1_POS_STEP_DWELL_WIDE_S
-#define M1_POS_STEP_DWELL_WIDE_S        2.0f    /* 180° 。|Δθ| < 360° */
-#endif
-#ifndef M1_POS_STEP_DWELL_MULT_S
-#define M1_POS_STEP_DWELL_MULT_S        3.0f    /* 360° 。|Δθ| < 720° */
-#endif
-#ifndef M1_POS_STEP_DWELL_LONG_S
-#define M1_POS_STEP_DWELL_LONG_S        4.0f    /* |Δθ| 。720° */
-#endif
-#ifndef M1_POS_STEP_SEQ_BASE
-#define M1_POS_STEP_SEQ_BASE            229u    /* uint8。29..254=各档。6 档）。55=done */
-#endif
 /** 阶跃联调：Kp 30。5 。P+滞环抖；ω_max 暂保。250 rpm */
 #ifndef M1_POS_STEP_KP_RPM_PER_RAD
 #define M1_POS_STEP_KP_RPM_PER_RAD      15.0f
@@ -729,9 +547,6 @@
 #define M1_POS_KP_RPM_PER_RAD           M1_POS_STEP_KP_RPM_PER_RAD
 #undef M1_POS_OMEGA_MAX_RPM
 #define M1_POS_OMEGA_MAX_RPM            M1_POS_STEP_OMEGA_MAX_RPM
-#ifndef M1_POS_BOOT_SETTLE_S
-#define M1_POS_BOOT_SETTLE_S            0.0f    /* 0=关；settle 曾致 ω_ramp 。P 脱节 */
-#endif
 #endif /* M1_POS_STEP_TEST_ENABLE */
 
 #if M1_POS_MIT_COMBO_ENABLE
@@ -740,26 +555,8 @@
 #define M1_MIT_STEP_SEQ_BASE            130u
 #endif
 /** τ = Kp·(θ_des−。 + Kd·(ω_des−。 + τ_ff；ω_des=τ_ff=0 */
-#ifndef M1_MIT_KP_NM_PER_RAD
-#define M1_MIT_KP_NM_PER_RAD            10.0f
-#endif
-#ifndef M1_MIT_KD_NM_S_PER_RAD
-#define M1_MIT_KD_NM_S_PER_RAD          1.0f
-#endif
-#ifndef M1_MIT_OMEGA_DES_RAD_S
-#define M1_MIT_OMEGA_DES_RAD_S          0.0f
-#endif
-#ifndef M1_MIT_TAU_FF_NM
-#define M1_MIT_TAU_FF_NM                0.0f
-#endif
 /** |τ| 限幅后再 /Kt，避。Kp 过大。iq_ref 。±I_max 振荡 */
-#ifndef M1_MIT_TAU_ABS_MAX_NM
-#define M1_MIT_TAU_ABS_MAX_NM           0.12f
-#endif
 /** MIT iq_cmd 斜坡 [A/s]；POS→MIT 切换时抑 ±I_max 硬阶。*/
-#ifndef M1_MIT_IQ_SLEW_A_PER_S
-#define M1_MIT_IQ_SLEW_A_PER_S          40.0f
-#endif
 /**
  * 力矩→电流：τ [Nm] = Kt·Iq。
  * 取值 0.063：反电势实测约 0.0633（tools/offline_emf_angle.py / 规划_位置与MIT §9）；
@@ -798,9 +595,7 @@
 
 /** @deprecated 。M1_SPEED_DEADBAND_TEST 推导，勿手改 */
 #if M1_SPEED_DEADBAND_TEST == M1_SPEED_DEADBAND_TEST_OFF
-#define M1_SPEED_LOOP_DEADBAND_OFF        1
 #else
-#define M1_SPEED_LOOP_DEADBAND_OFF        0
 #endif
 
 /** 1=上电自动阶梯。00。00。00。00。00 rpm，每。M1_SPEED_PROFILE_HOLD_S */
@@ -816,18 +611,6 @@
 #endif
 #endif
 #if M1_SPEED_PROFILE_ENABLE
-#ifndef M1_SPEED_PROFILE_HOLD_S
-#define M1_SPEED_PROFILE_HOLD_S           10.0f
-#endif
-#ifndef M1_SPEED_PROFILE_RPM_START
-#define M1_SPEED_PROFILE_RPM_START        100.0f
-#endif
-#ifndef M1_SPEED_PROFILE_RPM_STEP
-#define M1_SPEED_PROFILE_RPM_STEP         200.0f
-#endif
-#ifndef M1_SPEED_PROFILE_RPM_END
-#define M1_SPEED_PROFILE_RPM_END          900.0f
-#endif
 #ifndef M1_SPEED_PROFILE_REPEAT
 #define M1_SPEED_PROFILE_REPEAT           1   /* 1=900 后回。100 循环 */
 #endif
@@ -843,22 +626,8 @@
 #define M1_SPEED_REVERSAL_TEST_ENABLE     0
 #endif
 #endif
-#if M1_SPEED_REVERSAL_TEST_ENABLE
-#ifndef M1_SPEED_REVERSAL_RPM
-#define M1_SPEED_REVERSAL_RPM             300.0f
-#endif
-#ifndef M1_SPEED_REVERSAL_HOLD_S
-#define M1_SPEED_REVERSAL_HOLD_S          10.0f
-#endif
-#ifndef M1_SPEED_REVERSAL_REPEAT
-#define M1_SPEED_REVERSAL_REPEAT          1   /* 1=+/- 循环。=各跑一档后保持末档 */
-#endif
-#endif /* M1_SPEED_REVERSAL_TEST_ENABLE */
 #endif /* M1_SPEED_LOOP_ENABLE */
 
-#ifndef M1_FOC_ROTATION_FF_ENABLE
-#define M1_FOC_ROTATION_FF_ENABLE       0
-#endif
 
 /** VOFA JustFloat 通道数与分频（JEOC 20kHz 基准，D=2。0kHz / D=4。kHz / D=10。kHz 帧率。*/
 #ifndef M1_TELEM_BRINGUP_K
@@ -872,21 +641,6 @@
  * ISR dbg 瘦身（默认关 = 省 foc 窗 cycles；Watch 深挖时单开）。
  * OPT12 无感只需 hfi_stage；满拷 read_view 曾把 foc 从 ~6100 抬回 ~7200。
  */
-#ifndef M1_DBG_ISR_MIRROR_HFI
-#define M1_DBG_ISR_MIRROR_HFI           0
-#endif
-#ifndef M1_DBG_ISR_MIRROR_OBS
-#define M1_DBG_ISR_MIRROR_OBS           0
-#endif
-#ifndef M1_DBG_ISR_MIRROR_SVPWM
-#define M1_DBG_ISR_MIRROR_SVPWM         0
-#endif
-#ifndef M1_DBG_ISR_MIRROR_ACDC
-#define M1_DBG_ISR_MIRROR_ACDC          0
-#endif
-#ifndef M1_DBG_ISR_MIRROR_PLL_DIAG
-#define M1_DBG_ISR_MIRROR_PLL_DIAG      0
-#endif
 #if M1_POS_MIT_COMBO_ENABLE
 #undef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     4u    /* MIT。kHz。0kHz/4。*/
@@ -924,22 +678,13 @@
 #define M1_VBUS_V           24.0f
 #endif
 #define M1_PI_V_MAX         (M1_VBUS_V * 0.577350269f)
-#define M1_PI_V_MIN         (-M1_PI_V_MAX)
 
 /** PI 带宽（Hz）；M1_PI_USE_FIXED_GAIN=0 时用。L×ωc 整定（阶跃验收参。1000 Hz。*/
 #define M1_PI_FC_HZ         1000.0f
 #define M1_PI_WC_RADS       (2.0f * 3.14159265359f * M1_PI_FC_HZ)
 
 /** 联调。=固定 Kp/Ki（试凑）。=。fc 整定 */
-#ifndef M1_PI_USE_FIXED_GAIN
-#define M1_PI_USE_FIXED_GAIN  0
-#endif
 
-#if M1_PI_USE_FIXED_GAIN
-#define M1_PI_KP_ID         2.0f
-#define M1_PI_KP_IQ         2.0f
-#define M1_PI_KI            0.0002f
-#else
 #define M1_PI_KP_ID         (M1_LD_H * M1_PI_WC_RADS)
 #define M1_PI_KP_IQ         (M1_LQ_H * M1_PI_WC_RADS)
 #define M1_PI_KI_NOMINAL    (M1_RS_OHM * M1_PI_WC_RADS * M1_CTRL_TS_S)
@@ -947,7 +692,6 @@
 #define M1_PI_KI_SCALE      1.0f
 #endif
 #define M1_PI_KI            (M1_PI_KI_NOMINAL * M1_PI_KI_SCALE)
-#endif
 
 /**
  * 首次闭环联调。4V/0.8A 电源）：降低 dq 电压限幅，ref 硬钳位。
@@ -1056,38 +800,14 @@
 #ifndef M1_ENC_OPTIONAL_ENABLE
 #define M1_ENC_OPTIONAL_ENABLE          0
 #endif
-#ifndef M1_IF_OBS_SPEED_REF_RPM
-#define M1_IF_OBS_SPEED_REF_RPM         1000.0f
-#endif
 /** 1=交接。ω_ref 钉当前测速；0=再抬。M1_IF_OBS_SPEED_REF_RPM */
-#ifndef M1_IF_OBS_HOLD_SPEED_ENABLE
-#define M1_IF_OBS_HOLD_SPEED_ENABLE     0
-#endif
 /** 1=HOLD 时钉 I/F 指令速（防认飞车）；须同。HOLD_SPEED=1 */
-#ifndef M1_IF_OBS_HOLD_IF_CMD_ENABLE
-#define M1_IF_OBS_HOLD_IF_CMD_ENABLE    0
-#endif
 /** 1=只切角：。OBS 后固。Iq、不跑速度环（角切泡开验收。*/
-#ifndef M1_IF_OBS_ANGLE_ONLY_ENABLE
-#define M1_IF_OBS_ANGLE_ONLY_ENABLE     0
-#endif
 /** 1=BLEND 期间保持 M1_IF_IQ_A（不收到 HANDOFF。*/
-#ifndef M1_IF_OBS_BLEND_KEEP_IF_IQ
-#define M1_IF_OBS_BLEND_KEEP_IF_IQ      0
-#endif
 /** 1=进入 BLEND 即弱速度环（ω_ref=ω_IF），抑角融阶段飞。*/
-#ifndef M1_IF_OBS_BLEND_SPEED_ENABLE
-#define M1_IF_OBS_BLEND_SPEED_ENABLE    0
-#endif
 /** 1=。OBS 后短时限幅速度 PI 。|e_ω|（抑 enc 测速尖峰） */
 #ifndef M1_IF_OBS_EW_CLAMP_ENABLE
 #define M1_IF_OBS_EW_CLAMP_ENABLE       0
-#endif
-#ifndef M1_IF_OBS_EW_CLAMP_RPM
-#define M1_IF_OBS_EW_CLAMP_RPM          40.0f
-#endif
-#ifndef M1_IF_OBS_EW_CLAMP_S
-#define M1_IF_OBS_EW_CLAMP_S            0.20f
 #endif
 /**
  * 交接短时「浅刹车」：。iq_ref 下限，防 1240 式大负电流砸停失锁。
@@ -1101,9 +821,6 @@
 #endif
 #ifndef M1_IF_OBS_SOFT_REGEN_IQ_A
 #define M1_IF_OBS_SOFT_REGEN_IQ_A       (-M1_IF_OBS_IQ_MIN_A) /* |regen| 浅刹 */
-#endif
-#ifndef M1_IF_OBS_SOFT_BRAKE_S
-#define M1_IF_OBS_SOFT_BRAKE_S          2.0f
 #endif
 /**
  * 机械转向。1 正转 / -1 反转。profile 只改此符号与 |转速| 目标。
@@ -1125,18 +842,6 @@
 #ifndef M1_IF_OBS_CRUISE_ENABLE
 #define M1_IF_OBS_CRUISE_ENABLE         0
 #endif
-#ifndef M1_IF_OBS_CRUISE_SETTLE_S
-#define M1_IF_OBS_CRUISE_SETTLE_S       1.5f /* spd_on 。。*/
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE1_S
-#define M1_IF_OBS_CRUISE_STAGE1_S       2.5f /* 。持续时间 */
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE2_S
-#define M1_IF_OBS_CRUISE_STAGE2_S       1.5f /* 。持续时间 */
-#endif
-#ifndef M1_IF_OBS_CRUISE_RPM
-#define M1_IF_OBS_CRUISE_RPM            M1_IF_OBS_SPEED_REF_RPM
-#endif
 /**
  * 正→滑行停→反：。正转巡航 soak 。Iq=0 不管。。|ω|。 。。I/F 反转。−|ω|。
  * @note 开后应。STEP/S3；LOCK_STAGE1=1 避免正转段进②。
@@ -1144,195 +849,48 @@
 #ifndef M1_IF_OBS_DIR_SEQ_ENABLE
 #define M1_IF_OBS_DIR_SEQ_ENABLE        0
 #endif
-#ifndef M1_IF_OBS_DIR_SEQ_FWD_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_FWD_HOLD_S    3.0f /* 正转巡航站稳后再松手 */
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_ZERO_RPM
-#define M1_IF_OBS_DIR_SEQ_ZERO_RPM      80.0f /* |ω_fb| 低于此算近零 */
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S   0.5f /* 近零再保持片刻再反起 */
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_COAST_MIN_S
-#define M1_IF_OBS_DIR_SEQ_COAST_MIN_S   2.0f /* 松手后再开近零判定，防 enc 假零 */
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_COAST_MAX_S
-#define M1_IF_OBS_DIR_SEQ_COAST_MAX_S   8.0f /* ω̂ 假挂时超时强制反起（2144。*/
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_EMAG_STOP
-#define M1_IF_OBS_DIR_SEQ_EMAG_STOP     0.55f /* Iq=0 。emag 掉到噪声≈已停；勿信。ω̂ */
-#endif
-#ifndef M1_IF_OBS_DIR_SEQ_REV_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_REV_HOLD_S    3.0f /* 反转巡航后结束（不再二次反） */
-#endif
 /**
  * 。。站稳后自。ω_ref 阶跃（验 SMO 可变速）。权威仍。LOCK_STAGE* 管。
  * 无弱磁：目标夹在 LO..HI（默。900..1300）。
  * 序列：soak@CRUISE 。HI 。CRUISE 。LO 。HI 。LO 。CRUISE。
  */
-#ifndef M1_IF_OBS_CRUISE_STEP_ENABLE
-#define M1_IF_OBS_CRUISE_STEP_ENABLE    0
-#endif
-#ifndef M1_IF_OBS_CRUISE_STEP_SOAK_S
-#define M1_IF_OBS_CRUISE_STEP_SOAK_S    2.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_STEP_HOLD_S
-#define M1_IF_OBS_CRUISE_STEP_HOLD_S    4.0f /* 大阶。减速靠 regen 需更长 */
-#endif
-#ifndef M1_IF_OBS_CRUISE_STEP_LO_RPM
-#define M1_IF_OBS_CRUISE_STEP_LO_RPM    900.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_STEP_HI_RPM
-#define M1_IF_OBS_CRUISE_STEP_HI_RPM    1300.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_STEP_RPM
-#define M1_IF_OBS_CRUISE_STEP_RPM       100.0f /* 旧Δ；表驱后仅兼容保留 */
-#endif
 /**
  * 。iq_min 到位后同向硬减速探针：基→HI→LO→基，。Iq 。STAGE3 地板。
  * 须在阶跃表完成且已进③之后跑（与 STEP 表错开）。
  */
-#ifndef M1_IF_OBS_CRUISE_S3_PROBE_ENABLE
-#define M1_IF_OBS_CRUISE_S3_PROBE_ENABLE 0
-#endif
-#ifndef M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S
-#define M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S 1.5f
-#endif
-#ifndef M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S
-#define M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S 4.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_PI_KP
-#define M1_IF_OBS_CRUISE_PI_KP          M1_SPEED_PI_KP
-#endif
-#ifndef M1_IF_OBS_CRUISE_PI_KI
-#define M1_IF_OBS_CRUISE_PI_KI          M1_SPEED_PI_KI
-#endif
-#ifndef M1_IF_OBS_CRUISE_IQ_ABS_MAX
-#define M1_IF_OBS_CRUISE_IQ_ABS_MAX     8.0f
-#endif
 /**
  * 1=巡航锁在①（open_seq=246）：不进。③，并持续续期浅刹车。
  * B0/B1 验收用；放开权威前必须为 0。
  */
-#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE 0
-#endif
 /**
  * 1=进②后不再升档（停在 iq_min=STAGE2）。
  */
-#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE 0
-#endif
 /**
  * 1=进③（第二档 iq_min）后不再进正。PI。
  */
-#ifndef M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE 0
-#endif
 /**
  * ①→。/ ②→。门控（时间只。T_min；不满足则永不硬升）。
  */
-#ifndef M1_IF_OBS_CRUISE_GATE_ENABLE
-#define M1_IF_OBS_CRUISE_GATE_ENABLE    0
-#endif
-#ifndef M1_IF_OBS_CRUISE_GATE_T_MIN_S
-#define M1_IF_OBS_CRUISE_GATE_T_MIN_S   2.0f
-#endif
 /** 。内最短停留再门控升③ */
-#ifndef M1_IF_OBS_CRUISE_GATE_T_MIN2_S
-#define M1_IF_OBS_CRUISE_GATE_T_MIN2_S  1.5f
-#endif
-#ifndef M1_IF_OBS_CRUISE_GATE_HOLD_S
-#define M1_IF_OBS_CRUISE_GATE_HOLD_S    0.5f
-#endif
-#ifndef M1_IF_OBS_CRUISE_GATE_ERR_RPM
-#define M1_IF_OBS_CRUISE_GATE_ERR_RPM   60.0f /* 1442。0 。20kHz 单拍易抖。*/
-#endif
-#ifndef M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX
-#define M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX 1200.0f /* rpm/s，长。*/
-#endif
-#ifndef M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S
-#define M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S 0.10f
-#endif
 /** 门控。|eω| 一阶滤波截止；。20 kHz 单拍尖峰 */
-#ifndef M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ
-#define M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ  20.0f
-#endif
 /**
  * 不合格时 hold 泄漏倍率（相。dt）：hold -= LEAK*dt，而非清零。
  * 1=对称减；3=掉得比涨快，仍抗单拍毛刺。
  */
-#ifndef M1_IF_OBS_CRUISE_GATE_FAIL_LEAK
-#define M1_IF_OBS_CRUISE_GATE_FAIL_LEAK  2.0f
-#endif
 /**
  * 晃幅门控（离。1453/1503）：升权威前要求 std / 近似峰峰 / |eω| 达标。
  * 1503 证明。|eω| 均值不够。
  */
-#ifndef M1_IF_OBS_CRUISE_AMP_GATE_ENABLE
-#define M1_IF_OBS_CRUISE_AMP_GATE_ENABLE 0
-#endif
-#ifndef M1_IF_OBS_CRUISE_AMP_STD_MAX
-#define M1_IF_OBS_CRUISE_AMP_STD_MAX     38.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_AMP_PTP_MAX
-#define M1_IF_OBS_CRUISE_AMP_PTP_MAX     98.0f /* ≈p5–p95 代理。.5·std */
-#endif
-#ifndef M1_IF_OBS_CRUISE_AMP_EW_MAX
-#define M1_IF_OBS_CRUISE_AMP_EW_MAX      58.0f
-#endif
-#ifndef M1_IF_OBS_CRUISE_AMP_EMA_HZ
-#define M1_IF_OBS_CRUISE_AMP_EMA_HZ      2.0f
-#endif
 /** iq_min 斜坡 [A/s]：权威禁止阶。*/
-#ifndef M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S
-#define M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S 0.2f /* 。.25→−0.6 。1.75s */
-#endif
 /** 驱动 |Iq| 与分。|regen|（符号由 M1_IF_DIR_SIGN 映射。*/
-#ifndef M1_IF_OBS_CRUISE_DRIVE_IQ_A
-#define M1_IF_OBS_CRUISE_DRIVE_IQ_A     3.5f
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A
-#define M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A 0.6f
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A
-#define M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A 0.9f
-#endif
 /** 兼容旧名（按正向语义）；运行时请。DRIVE/REGEN + DIR */
-#ifndef M1_IF_OBS_CRUISE_STAGE2_IQ_MIN_A
-#define M1_IF_OBS_CRUISE_STAGE2_IQ_MIN_A (-M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A)
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE2_IQ_MAX_A
-#define M1_IF_OBS_CRUISE_STAGE2_IQ_MAX_A M1_IF_OBS_CRUISE_DRIVE_IQ_A
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE3_IQ_MIN_A
-#define M1_IF_OBS_CRUISE_STAGE3_IQ_MIN_A (-M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A)
-#endif
-#ifndef M1_IF_OBS_CRUISE_STAGE3_IQ_MAX_A
-#define M1_IF_OBS_CRUISE_STAGE3_IQ_MAX_A M1_IF_OBS_CRUISE_DRIVE_IQ_A
-#endif
 /**
  * 速度环主动阻尼（空载收晃）。
  * HP=1：iq -= Bd·(ω−ω_lpf)——只阻尼交流，不与浅刹车抢欠速半周（1422 绝对粘滞。Fail）。
  * HP=0：iq -= Bd·ω_lpf——绝对粘滞；非对。iq_min 下勿用。
  * LPF 截止须明显低于猎振频率（~1 Hz 。建议 0.3 Hz）。
  */
-#ifndef M1_IF_OBS_DAMP_ENABLE
-#define M1_IF_OBS_DAMP_ENABLE           0
-#endif
-#ifndef M1_IF_OBS_DAMP_HP_ENABLE
-#define M1_IF_OBS_DAMP_HP_ENABLE        1
-#endif
-#ifndef M1_IF_OBS_DAMP_BD
-#define M1_IF_OBS_DAMP_BD               0.002f /* A/rpm；HP 时乘。(ω−ω_lpf) 。*/
-#endif
-#ifndef M1_IF_OBS_DAMP_LPF_HZ
-#define M1_IF_OBS_DAMP_LPF_HZ           0.35f /* 提均值；。<< 猎振。*/
-#endif
 /** BLEND 。/ 交接 bumpless 目标 Iq（从 M1_IF_IQ_A 线性收到此值） */
-#ifndef M1_IF_HANDOFF_IQ_A
-#define M1_IF_HANDOFF_IQ_A              0.8f
-#endif
 #ifndef M1_VOFA_IF_12CH
 #define M1_VOFA_IF_12CH                 0
 #endif
@@ -1427,39 +985,21 @@
 #undef M1_RS_IDENT_USE_FIXED_NOMINAL
 #define M1_RS_IDENT_USE_FIXED_NOMINAL   1
 #define M1_LD_LQ_IDENT_ENABLE           1
-#undef M1_LD_LQ_PRE_DECAY_S
-#define M1_LD_LQ_PRE_DECAY_S            1.0f
 #undef M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
 #define M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE   1
 #undef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
 #define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  1
 /** 15 。+ 500 Hz coarse 。1 kHz fine（关 F2 / FINE_ONLY。*/
-#undef M1_LD_LQ_IDENT_F_COARSE_HZ
-#define M1_LD_LQ_IDENT_F_COARSE_HZ        500.0f
-#undef M1_LD_LQ_IDENT_F_FINE_HZ
-#define M1_LD_LQ_IDENT_F_FINE_HZ        1000.0f
 #undef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
 #define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  1
-#undef M1_LD_LQ_IDENT_L_NOM_H
-#define M1_LD_LQ_IDENT_L_NOM_H            85e-6f
-#undef M1_LD_LQ_IDENT_SETTLE_S
-#define M1_LD_LQ_IDENT_SETTLE_S           1.0f
-#undef M1_LD_LQ_IDENT_CYCLES_PER_AMP
-#define M1_LD_LQ_IDENT_CYCLES_PER_AMP     15u
 #undef M1_VOFA_IDENT_DUMP_ENABLE
 #define M1_VOFA_IDENT_DUMP_ENABLE         1
 #undef M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
 #define M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD  1
 #undef M1_ID_CAL_AMP_TABLE_LEN
 #define M1_ID_CAL_AMP_TABLE_LEN         30u
-#undef M1_ID_CAL_I_MAX_A
-#define M1_ID_CAL_I_MAX_A               1.5f
 #undef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S            0.5f
-#undef M1_ID_CAL_ID_DWELL_LOW_S
-#define M1_ID_CAL_ID_DWELL_LOW_S        0.5f
-#undef M1_ID_CAL_I_REF_ABS_MAX
-#define M1_ID_CAL_I_REF_ABS_MAX         3.5f
 #undef M1_VOFA_LUT_DUMP_ENABLE
 #if M1_DEADBAND_FLOW_ONE_SHOT
 #define M1_VOFA_LUT_DUMP_ENABLE         0
@@ -1468,7 +1008,6 @@
 #endif
 #undef M1_DEADBAND_I_ZERO_DISABLE
 #define M1_DEADBAND_I_ZERO_DISABLE      1
-#define M1_DEADBAND_RUNTIME_GEO_ENABLE    0
 #undef M1_DEADBAND_GEO_MERGE_VAL30_ONLY
 #define M1_DEADBAND_GEO_MERGE_VAL30_ONLY    1
 #undef M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE
@@ -1512,13 +1051,9 @@
 #define M1_ID_CAL_COMMIT_LUT            1
 #undef M1_ID_CAL_AMP_TABLE_LEN
 #define M1_ID_CAL_AMP_TABLE_LEN         30u
-#undef M1_ID_CAL_I_MAX_A
-#define M1_ID_CAL_I_MAX_A               1.5f
 /** Pass0 单角 30°。.05~1.5 A @50 mA/档，0.5 s/档（。5 s。*/
 #undef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S            0.5f
-#undef M1_ID_CAL_ID_DWELL_LOW_S
-#define M1_ID_CAL_ID_DWELL_LOW_S        0.5f
 #define M1_IDENT_IQ_STEP_ENABLE         1
 #define M1_IDENT_IQ_BODE_ENABLE         1
 /** 阶跃：低 4 。0 起点 + 。4 。1 A 基线（OFF/LUT 。2）；每轮 6 。× 1 s */
@@ -1546,19 +1081,9 @@
 #define M1_IDENT_BODE_FIXED_ROUNDS      0u
 #undef M1_IDENT_BODE_I_BIAS_HI_A
 #define M1_IDENT_BODE_I_BIAS_HI_A       1.25f  /* 。I 。Bode（不。1.0 A。*/
-#undef M1_IDENT_BODE_F1_HZ
-#define M1_IDENT_BODE_F1_HZ             1500.0f
-#undef M1_IDENT_BODE_F_RATIO
-#define M1_IDENT_BODE_F_RATIO           1.15f   /* 10 ~ F_SPLIT 以下 */
 #undef M1_IDENT_BODE_F_SPLIT_HZ
 #define M1_IDENT_BODE_F_SPLIT_HZ        200.0f
-#undef M1_IDENT_BODE_F_RATIO_HI
-#define M1_IDENT_BODE_F_RATIO_HI        1.06f   /* F_SPLIT ~ F1，方。D 密扫 crossover 。*/
 /** 阶跃/Bode 。Pass0 。30° 锁轴（Iq@30°，非编码器旋转） */
-#undef M1_IDENT_FIX_THETA_ENABLE
-#define M1_IDENT_FIX_THETA_ENABLE       1
-#undef M1_IDENT_THETA_EL_RAD
-#define M1_IDENT_THETA_EL_RAD           M1_ID_CAL_THETA_EL_RAD
 #define M1_DEADBAND_LUT_BAKED_ENABLE    0
 #ifndef M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE
 #define M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE  0
@@ -1567,12 +1092,8 @@
 #ifndef M1_DEADBAND_LUT_COMMIT_NORMALIZE
 #define M1_DEADBAND_LUT_COMMIT_NORMALIZE  1
 #endif
-#ifndef M1_DEADBAND_NVM_COMMIT_ENABLE
-#define M1_DEADBAND_NVM_COMMIT_ENABLE   0
-#endif
 #undef M1_DEADBAND_LUT_APPLY_UD
 #define M1_DEADBAND_LUT_APPLY_UD        0
-#define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_DUAL_FULL)
 /** Pass0 三角 30/150/270° capture(138。 。commit 。Pass1 abc duty 验表（Pass1 可暂不录波） */
@@ -1595,18 +1116,13 @@
 #define M1_ID_CAL_IQ_PROBE_ID_PI_ENABLE 0
 #undef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S            0.5f
-#undef M1_ID_CAL_ID_DWELL_LOW_S
-#define M1_ID_CAL_ID_DWELL_LOW_S        0.5f
 #undef M1_ID_CAL_VERIFY_ID_DWELL_S
 #define M1_ID_CAL_VERIFY_ID_DWELL_S     0.5f
 /** Pass0-B @0° 专用 dwell。=。Pass0-A 相同。58 。Id 欠流验证。.0 s */
-#undef M1_ID_CAL_PASS0_B_DWELL_S
-#define M1_ID_CAL_PASS0_B_DWELL_S       1.0f
 /** 标定联调：关。|i|<I_ZERO 硬切，小电流连续查表 */
 #undef M1_DEADBAND_I_ZERO_DISABLE
 #define M1_DEADBAND_I_ZERO_DISABLE      1
 /** 第一。A：d 。+ 当前 θ 。Park→abc duty。603 过补，先关回 plut+scale */
-#define M1_DEADBAND_RUNTIME_GEO_ENABLE    0
 /** 论文式单。merge plut。010 双角 median 。I 。。val 仅用 30° */
 #undef M1_DEADBAND_GEO_MERGE_VAL30_ONLY
 #define M1_DEADBAND_GEO_MERGE_VAL30_ONLY    1
@@ -1617,9 +1133,6 @@
 #undef M1_DEADBAND_LUT_COMMIT_NORMALIZE
 #define M1_DEADBAND_LUT_COMMIT_NORMALIZE  0
 /** commit 后写 Flash（与 FOC 互斥，后续加状态机再开）；完整标定测试阶段。*/
-#ifndef M1_DEADBAND_NVM_COMMIT_ENABLE
-#define M1_DEADBAND_NVM_COMMIT_ENABLE   0
-#endif
 /** 0=归一化在 commit。=旧路。runtime AUTO scale */
 #ifndef M1_DEADBAND_LUT_RUNTIME_SCALE_AUTO
 #define M1_DEADBAND_LUT_RUNTIME_SCALE_AUTO  0
@@ -1631,7 +1144,6 @@
 #define M1_IDENT_ENABLE                     0
 #define M1_ID_CAL_IQ_PROBE_ONLY_ENABLE      1
 #define M1_ID_CAL_IQ_PROBE_ENABLE           1
-#define M1_ID_CAL_IQ_PROBE_LUT_AFTER_OFF    0
 #define M1_ID_CAL_IQ_PROBE_A                0.4f
 #define M1_ID_CAL_IQ_PROBE_OFF_S            0.0f   /* 0=一。OFF，手动停。*/
 #define M1_ID_CAL_IQ_PROBE_FIXED_S          0.0f
@@ -1660,27 +1172,15 @@
 #define M1_ID_CAL_IQ_PROBE_ENABLE       0
 #define M1_RS_IDENT_ENABLE              1
 #define M1_LD_LQ_IDENT_ENABLE           1
-#undef M1_LD_LQ_IDENT_ABORT_ON_THETA_DRIFT
 /** 0=θ 漂移只记 dbg。 。VASI 强制跑完（离线再筛）。=超限 ld_lq_abort */
-#define M1_LD_LQ_IDENT_ABORT_ON_THETA_DRIFT  0
-#undef M1_LD_LQ_ALIGN_S
-#define M1_LD_LQ_ALIGN_S                1.0f
-#undef M1_LD_LQ_PRE_DECAY_S
-#define M1_LD_LQ_PRE_DECAY_S            1.0f
 #define M1_ID_CAL_DUAL_ANGLE_ENABLE     0
 #define M1_ID_CAL_FIX_THETA_ENABLE      1
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            1
 #undef M1_ID_CAL_AMP_TABLE_LEN
 #define M1_ID_CAL_AMP_TABLE_LEN         30u
-#undef M1_ID_CAL_I_MAX_A
-#define M1_ID_CAL_I_MAX_A               1.5f
 #undef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S            0.5f
-#undef M1_ID_CAL_ID_DWELL_LOW_S
-#define M1_ID_CAL_ID_DWELL_LOW_S        0.5f
-#undef M1_ID_CAL_I_REF_ABS_MAX
-#define M1_ID_CAL_I_REF_ABS_MAX         3.5f
 /** 0=。OFF 。Rs+VASI。=commit 后再。LUT 轮对照（open_seq +100。*/
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_RS_LD_LQ_ONLY)
@@ -1696,8 +1196,6 @@
 #define M1_RS_IDENT_USE_FIXED_NOMINAL   1
 #define M1_RS_IDENT_ENABLE              0
 #define M1_LD_LQ_IDENT_ENABLE           1
-#undef M1_LD_LQ_PRE_DECAY_S
-#define M1_LD_LQ_PRE_DECAY_S            1.0f
 #define M1_ID_CAL_DUAL_ANGLE_ENABLE     0
 #define M1_ID_CAL_FIX_THETA_ENABLE      1
 #define M1_ID_CAL_ALIGN_ENABLE          1
@@ -1715,10 +1213,6 @@
 #undef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
 #define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  1
 /** 15 。+ 500 Hz coarse 。1 kHz fine（关 F2 / FINE_ONLY。*/
-#undef M1_LD_LQ_IDENT_F_COARSE_HZ
-#define M1_LD_LQ_IDENT_F_COARSE_HZ        500.0f
-#undef M1_LD_LQ_IDENT_F_FINE_HZ
-#define M1_LD_LQ_IDENT_F_FINE_HZ        1000.0f
 /** INJECT 开环段 abc duty LUT；SETTLE/PRE_DECAY 。OFF（PI 自补偿） */
 #undef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
 #define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  1
@@ -1784,14 +1278,8 @@
 #define M1_IDENT_BODE_I_BIAS_HI_A       1.25f
 #undef M1_IDENT_BODE_CYCLES_HI
 #define M1_IDENT_BODE_CYCLES_HI         50.0f  /* T_OBS_HI 优先；此。fallback */
-#undef M1_IDENT_BODE_F1_HZ
-#define M1_IDENT_BODE_F1_HZ             2500.0f
 #undef M1_IDENT_BODE_T_OBS_HI_S
 #define M1_IDENT_BODE_T_OBS_HI_S        0.1f
-#undef M1_IDENT_FIX_THETA_ENABLE
-#define M1_IDENT_FIX_THETA_ENABLE       1
-#undef M1_IDENT_THETA_EL_RAD
-#define M1_IDENT_THETA_EL_RAD           M1_ID_CAL_THETA_EL_RAD
 #define M1_DEADBAND_LUT_BAKED_ENABLE    0
 #define M1_DEADBAND_ENABLE              1
 #undef M1_VOFA_UNIFIED_12CH
@@ -1804,7 +1292,6 @@
 #define M1_VOFA_LUT_DUMP_ENABLE         0
 #undef M1_CLOSURE_BRINGUP
 #define M1_CLOSURE_BRINGUP              0
-#define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
 /** Id Bode 签收：参数见 profiles/m1_bode_id_fc1000.profile.h（fc=1000。*/
@@ -1902,12 +1389,6 @@
  * 1=低速互斥：|ω| 低于 MUX_LO_RPM 时跳过 SMO/EMF-PLL（只跑 HFI）。
  * 须在 profile 之后。
  */
-#ifndef M1_HFI_MUX_LO_ENABLE
-#define M1_HFI_MUX_LO_ENABLE            0
-#endif
-#ifndef M1_HFI_MUX_LO_RPM
-#define M1_HFI_MUX_LO_RPM               200.0f
-#endif
 #if (M1_VOFA_OBS_PLL_12CH + M1_VOFA_OBS_SMO_12CH + M1_VOFA_OBS_VEQ_12CH + \
      M1_VOFA_OBS_SMO_RAW_12CH + M1_VOFA_HFI_12CH + M1_VOFA_IF_12CH) > 1
 #error "Only one VOFA 12ch layout (OBS/IF/HFI) after profile include"
@@ -1915,38 +1396,8 @@
 #if M1_USE_HFI_STANDSTILL_PROFILE && !M1_HFI_ENABLE
 #error "M1_USE_HFI_STANDSTILL_PROFILE requires M1_HFI_ENABLE=1"
 #endif
-#if M1_USE_HFI_STANDSTILL_PROFILE && (M1_HFI_GATE != 141)
-#error "M1_HFI_GATE must be 141 (HFI standstill delivery)"
-#endif
-#ifndef M1_HFI_ID_PI_SOFT_N
-#define M1_HFI_ID_PI_SOFT_N             20000u /* 放行 Ud 软开 1.0 s @ 20 kHz */
-#endif
-#ifndef M1_HFI_VESC_HANDOFF_N
-#define M1_HFI_VESC_HANDOFF_N          10000u /* 0.5 s @20 kHz */
-#endif
-#ifndef M1_HFI_ID_ON_FROM_RUN_ENABLE
-#define M1_HFI_ID_ON_FROM_RUN_ENABLE   0 /* 1：进 RUN 即 Id*=0 常开（无 soft） */
-#endif
-#ifndef M1_HFI_ID_PI_LPF_ENABLE
-#define M1_HFI_ID_PI_LPF_ENABLE         0 /* 1：Id PI 反馈用 LPF(Id)，解调仍裸 Id */
-#endif
-#ifndef M1_HFI_ID_PI_LPF_A
-#define M1_HFI_ID_PI_LPF_A              (0.05f)
-#endif
-#ifndef M1_HFI_DEMOD_HP_ENABLE
-#define M1_HFI_DEMOD_HP_ENABLE          0 /* 1：半周 di 用高通 Id/Iq */
-#endif
 #ifndef M1_HFI_DEMOD_HP_A
 #define M1_HFI_DEMOD_HP_A               (0.05f)
-#endif
-#ifndef M1_HFI_DEMOD_SKIP_Y_ABS
-#define M1_HFI_DEMOD_SKIP_Y_ABS         (0.08f)
-#endif
-#ifndef M1_HFI_DEMOD_SKIP_X_ABS
-#define M1_HFI_DEMOD_SKIP_X_ABS         (0.36f)
-#endif
-#ifndef M1_HFI_DEMOD_SKIP_DI_Q_ABS
-#define M1_HFI_DEMOD_SKIP_DI_Q_ABS      (0.12f)
 #endif
 #ifndef M1_HFI_PLL_VESC_ERR_ENABLE
 #define M1_HFI_PLL_VESC_ERR_ENABLE      0 /* 1：PLL 吃 V4 的 di_q/Vh/Δ(1/L)，再限幅 */
@@ -1957,47 +1408,14 @@
 #ifndef M1_HFI_PLL_VESC_ERR_SIGN
 #define M1_HFI_PLL_VESC_ERR_SIGN        (1.0f)
 #endif
-#ifndef M1_HFI_LQ_WELL_X_MAX
-#define M1_HFI_LQ_WELL_X_MAX            (0.185f)
-#endif
-#ifndef M1_HFI_LQ_WELL_Y_ABS
-#define M1_HFI_LQ_WELL_Y_ABS            (0.015f)
-#endif
-#ifndef M1_HFI_LQ_WELL_HOLD_N
-#define M1_HFI_LQ_WELL_HOLD_N           20u
-#endif
-#ifndef M1_HFI_LQ_WELL_IQ_MIN
-#define M1_HFI_LQ_WELL_IQ_MIN           (0.0f)
-#endif
-#ifndef M1_HFI_DEMOD_AB_ENABLE
-#define M1_HFI_DEMOD_AB_ENABLE          0 /* 1：αβ 半周差分再 Park(θ̂) */
-#endif
-#ifndef M1_HFI_DEMOD_AB_MID_ENABLE
-#define M1_HFI_DEMOD_AB_MID_ENABLE      0 /* 1：αβ 三端点中点差分再 Park(中点 θ̂) */
-#endif
-#ifndef M1_HFI_INJECT_POST_LOOP
-#define M1_HFI_INJECT_POST_LOOP         0 /* 1：环后沿 θ̂ 叠 Vh（用 s_vh_sign） */
-#endif
 #ifndef M1_HFI_DEMOD_INJ_AXIS
 #define M1_HFI_DEMOD_INJ_AXIS           0 /* 1：注入轴 αβ 电流解调 */
-#endif
-#ifndef M1_HFI_SMO_SUB_VH_ENABLE
-#define M1_HFI_SMO_SUB_VH_ENABLE        0 /* 1：SMO 用 u−u_hfi，HFI 段不停观测 */
-#endif
-#ifndef M1_HFI_QKICK_FORCE_PI
-#define M1_HFI_QKICK_FORCE_PI           0
 #endif
 #ifndef M1_HFI_IQ_AUTH_ENABLE
 #define M1_HFI_IQ_AUTH_ENABLE           0
 #endif
 #ifndef M1_HFI_IQ_AUTH_CLEAR_N
 #define M1_HFI_IQ_AUTH_CLEAR_N          1u
-#endif
-#ifndef M1_HFI_IQ_AUTH_FEED_ENABLE
-#define M1_HFI_IQ_AUTH_FEED_ENABLE      0
-#endif
-#if M1_VOFA_HFI_12CH && !M1_HFI_ENABLE
-#error "M1_VOFA_HFI_12CH requires M1_HFI_ENABLE=1"
 #endif
 #if M1_OBS_SOFT_SWITCH_ENABLE && !M1_EMF_PLL_ENABLE
 #error "M1_OBS_SOFT_SWITCH_ENABLE requires M1_EMF_PLL_ENABLE after profile include"
@@ -2049,51 +1467,32 @@
 
 /* 当前模式名（调试/VOFA 备注用；勿用 #pragma message，Keil 。TU 重复告警。*/
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_MULTI_ANGLE_PASS0)
-#define M1_BRINGUP_MODE_NAME  "MULTI_ANGLE_PASS0"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_IDENT_IQ_STEP)
-#define M1_BRINGUP_MODE_NAME  "IDENT_IQ_STEP"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_DUAL_FULL)
-#define M1_BRINGUP_MODE_NAME  "ID_CAL_DUAL_FULL"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_RS)
-#define M1_BRINGUP_MODE_NAME  "ID_CAL_PASS0_RS"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_RS_LD_LQ_ONLY)
-#define M1_BRINGUP_MODE_NAME  "RS_LD_LQ_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_OPEN_UD_LUT_VERIFY)
-#define M1_BRINGUP_MODE_NAME  "OPEN_UD_LUT_VERIFY"
 #elif M1_DEADBAND_FLOW_ONE_SHOT
-#define M1_BRINGUP_MODE_NAME  "ONE_SHOT"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_BUILD)
-#define M1_BRINGUP_MODE_NAME  "ID_CAL_PASS0_BUILD"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_ONLY)
-#define M1_BRINGUP_MODE_NAME  "ID_CAL_PASS0_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_IQ_PROBE_OFF_ONLY)
-#define M1_BRINGUP_MODE_NAME  "IQ_PROBE_OFF_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_OFF_ONLY)
-#define M1_BRINGUP_MODE_NAME  "BODE_OFF_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
-#define M1_BRINGUP_MODE_NAME  "BODE_ID_OFF_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
-#define M1_BRINGUP_MODE_NAME  "SPEED_IDENT"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_LUT)
-#define M1_BRINGUP_MODE_NAME  "NORMAL_SPEED_DB_LUT"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
       M1_SPEED_REVERSAL_TEST_ENABLE
-#define M1_BRINGUP_MODE_NAME  "NORMAL_SPEED_REV_TEST"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
       M1_POS_MIT_COMBO_ENABLE && !M1_POS_MIT_COMBO_POS_ENABLE
-#define M1_BRINGUP_MODE_NAME  "NORMAL_MIT_ONLY"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF) && \
       M1_POS_MIT_COMBO_ENABLE
-#define M1_BRINGUP_MODE_NAME  "NORMAL_POS_MIT"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL) && M1_SPEED_LOOP_ENABLE && \
       (M1_DEADBAND_BRINGUP_PHASE == M1_DB_BRINGUP_SPEED_OFF)
-#define M1_BRINGUP_MODE_NAME  "NORMAL_SPEED_DB_OFF"
 #else
-#define M1_BRINGUP_MODE_NAME  "NORMAL"
 #endif
 
 /**
@@ -2125,10 +1524,16 @@
 #define M1_ID_LOCK_CAL_SWEEP  0
 #endif
 
-#if M1_ID_LOCK_CAL_SWEEP
-#if M1_OPEN_UQ_DEADBAND_AB_SWEEP
-#error "M1_ID_LOCK_CAL_SWEEP and M1_OPEN_UQ_DEADBAND_AB_SWEEP are mutually exclusive"
+/** capture：|Id-Id_ref| 门限，单位 A。几何合并在标定关着时也要读。 */
+#ifndef M1_ID_CAL_CAPTURE_EPS_A
+#define M1_ID_CAL_CAPTURE_EPS_A     0.03f
 #endif
+/** LUT 去重的电流间隔，单位 A。几何合并在标定关着时也要读。 */
+#ifndef M1_ID_CAL_LUT_DEDUP_AMP_EPS_A
+#define M1_ID_CAL_LUT_DEDUP_AMP_EPS_A  0.005f
+#endif
+
+#if M1_ID_LOCK_CAL_SWEEP
 
 /** 标定态临时放。I_ref / PI 限幅（与 M1_CLOSURE_BRINGUP 日常 0.5 A 解耦） */
 #ifndef M1_ID_CAL_OVERRIDE_LIMITS
@@ -2136,13 +1541,9 @@
 #endif
 
 #if M1_ID_CAL_OVERRIDE_LIMITS
-#ifndef M1_ID_CAL_I_REF_ABS_MAX
-#define M1_ID_CAL_I_REF_ABS_MAX    3.0f
-#endif
 /** 。2347 电流环一致（M1_CLOSURE_BRINGUP 6 V），Pass0/Pass1/第三段共。*/
 #define M1_ID_CAL_PI_V_LIMIT_V     M1_PI_V_LIMIT_V
 #else
-#define M1_ID_CAL_I_REF_ABS_MAX    M1_I_REF_ABS_MAX
 #define M1_ID_CAL_PI_V_LIMIT_V     M1_PI_V_LIMIT_V
 #endif
 
@@ -2157,52 +1558,23 @@
 #define M1_ID_CAL_AMP_TABLE_LEN     138u
 #endif
 /** 。I 加密区上界（A）；。amp 。0.40 A 末档、ID_DWELL_LOW_ID_A 对齐 */
-#ifndef M1_ID_CAL_LOW_I_DENSE_END_A
-#define M1_ID_CAL_LOW_I_DENSE_END_A 0.40f
-#endif
-#ifndef M1_ID_CAL_LOW_I_STEP_A
-#define M1_ID_CAL_LOW_I_STEP_A      0.003125f
-#endif
-#ifndef M1_ID_CAL_I_MAX_A
-#define M1_ID_CAL_I_MAX_A           3.0f
-#endif
 /**
  * Pass1 LUT 验收：默认与 Pass0 同表（EXT_LEN=0）；>0 时在 Pass0 表后追加续扫档。
  * 各档 dwell 统一 M1_ID_CAL_VERIFY_ID_DWELL_S（联调万用表时可改为 3 s）。
  */
-#ifndef M1_ID_CAL_VERIFY_I_MAX_A
-#define M1_ID_CAL_VERIFY_I_MAX_A    3.0f
-#endif
-#ifndef M1_ID_CAL_VERIFY_EXT_LEN
-#define M1_ID_CAL_VERIFY_EXT_LEN    0u
-#endif
-#define M1_ID_CAL_VERIFY_AMP_TABLE_LEN  (M1_ID_CAL_AMP_TABLE_LEN + M1_ID_CAL_VERIFY_EXT_LEN)
 #ifndef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S        3.0f
 #endif
 /** Id_ref 。此值时。M1_ID_CAL_ID_DWELL_LOW_S（与 M1_ID_CAL_ID_DWELL_S 同），否则用 M1_ID_CAL_ID_DWELL_S */
-#ifndef M1_ID_CAL_ID_DWELL_LOW_ID_A
-#define M1_ID_CAL_ID_DWELL_LOW_ID_A  0.40f
-#endif
-#ifndef M1_ID_CAL_ID_DWELL_LOW_S
-#define M1_ID_CAL_ID_DWELL_LOW_S     M1_ID_CAL_ID_DWELL_S
-#endif
 /** Pass1 LUT 验收：各 Id 。dwell 统一（s），不再。LOW_S 加长 */
 #ifndef M1_ID_CAL_VERIFY_ID_DWELL_S
 #define M1_ID_CAL_VERIFY_ID_DWELL_S  M1_ID_CAL_ID_DWELL_S
 #endif
 /** 上电 Id=0 稳定（s）；240125 已验。*/
-#define M1_ID_CAL_INIT_HOLD_S       0.5f
 /**
  * Pass0 末档→Pass1：Id_ref=0 衰减 (s)，LUT 。OFF，再 commit；仅 LUT_VERIFY 双扫生效。
  */
-#ifndef M1_ID_CAL_PASS0_DECAY_S
-#define M1_ID_CAL_PASS0_DECAY_S     0.8f
-#endif
 /** Pass1 LUT 验收扫表 init hold (s)，commit 后略长以。settle */
-#ifndef M1_ID_CAL_VERIFY_INIT_HOLD_S
-#define M1_ID_CAL_VERIFY_INIT_HOLD_S  1.0f
-#endif
 
 /** capture：|Id-Id_ref| 门限 (A) */
 #ifndef M1_ID_CAL_CAPTURE_EPS_A
@@ -2218,9 +1590,6 @@
  * commit 。capture 表处理：sort 始终开启；dedupe 默认关。
  * 2045：dedupe 32。1 后低 Id Pass1 劣于 0827，待 A/B 验证；高 Id 不受影响。
  */
-#ifndef M1_ID_CAL_LUT_DEDUP_ENABLE
-#define M1_ID_CAL_LUT_DEDUP_ENABLE  0
-#endif
 #ifndef M1_ID_CAL_LUT_DEDUP_AMP_EPS_A
 #define M1_ID_CAL_LUT_DEDUP_AMP_EPS_A  0.005f
 #endif
@@ -2298,9 +1667,6 @@
 #define M1_ID_CAL_IQ_PROBE_ID_PI_ENABLE  0
 #endif
 /** @deprecated 已由 OFF→ON 双段取代；保留宏避免旧配置编译失。*/
-#ifndef M1_ID_CAL_IQ_PROBE_DEADBAND_LUT
-#define M1_ID_CAL_IQ_PROBE_DEADBAND_LUT  1
-#endif
 
 /**
  * Pass0 commit 。Id 。ramp Rs 辨识（论。2.5 累加 LS；LUT abc duty；只上报）。
@@ -2357,51 +1723,17 @@
 #ifndef M1_LD_LQ_IDENT_ENABLE
 #define M1_LD_LQ_IDENT_ENABLE           0
 #endif
-#ifndef M1_LD_LQ_PRE_DECAY_S
-#define M1_LD_LQ_PRE_DECAY_S            0.8f
-#endif
-#ifndef M1_LD_LQ_IDENT_BIAS_RAMP_S
-/** leg 入口 G0 SETTLE 。Id/Iq 线。ramp（Rs decay 。0→首格）；格点间阶跃 */
-#define M1_LD_LQ_IDENT_BIAS_RAMP_S      0.12f
-#endif
-#ifndef M1_LD_LQ_OPEN_SEQ_VASI_BASE
-#define M1_LD_LQ_OPEN_SEQ_VASI_BASE     170u
-#endif
-#ifndef M1_LD_LQ_OPEN_SEQ_VASI_STRIDE
-#define M1_LD_LQ_OPEN_SEQ_VASI_STRIDE   40u
-#endif
-#ifndef M1_LD_LQ_OPEN_SEQ_PRE_DECAY
-#define M1_LD_LQ_OPEN_SEQ_PRE_DECAY     163u
-#endif
 #ifndef M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
 /** 1=VASI 注入段冻。SETTLE 。Ud/Uq（论。§2.3 开。HF 注入）；0=闭环 PI+。u_inj（旧。*/
 #define M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE  0
-#endif
-#ifndef M1_LD_LQ_IDENT_BODE_BIAS_GRID_ENABLE
-/** 1=2 。Id=0,Iq=0.25/1.25 A（对。BODE_OFF）；0=9/15 格曲。*/
-#define M1_LD_LQ_IDENT_BODE_BIAS_GRID_ENABLE  0
 #endif
 #ifndef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
 /** 1=方案 A：Id 0.5/0.75/1.0 × Iq 0/0.25/0.5/0.75/1.0。5 格，0。 A 加密。*/
 #define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  0
 #endif
-#if M1_LD_LQ_IDENT_BODE_BIAS_GRID_ENABLE && M1_LD_LQ_IDENT_FINE_GRID_ENABLE
-#error "M1_LD_LQ_IDENT_BODE_BIAS_GRID_ENABLE and FINE_GRID_ENABLE are mutually exclusive"
-#endif
-#if M1_LD_LQ_IDENT_BODE_BIAS_GRID_ENABLE
-#undef M1_LD_LQ_ID_BIAS_N
-#define M1_LD_LQ_ID_BIAS_N              1u
-#undef M1_LD_LQ_IQ_BIAS_N
-#define M1_LD_LQ_IQ_BIAS_N              2u
-#elif M1_LD_LQ_IDENT_FINE_GRID_ENABLE
+#if M1_LD_LQ_IDENT_FINE_GRID_ENABLE
 #undef M1_LD_LQ_IQ_BIAS_N
 #define M1_LD_LQ_IQ_BIAS_N              5u
-#endif
-#ifndef M1_LD_LQ_IDENT_FINE_ONLY
-/** 1=。1 kHz fine（跳。500 Hz coarse 。2 kHz f2）；telem 仍为 proto 2.0，coarse 列无。*/
-#define M1_LD_LQ_IDENT_FINE_ONLY         0
-#endif
-#if M1_LD_LQ_IDENT_FINE_ONLY
 #endif
 #ifndef M1_LD_LQ_ID_BIAS_N
 #define M1_LD_LQ_ID_BIAS_N              3u
@@ -2409,85 +1741,11 @@
 #ifndef M1_LD_LQ_IQ_BIAS_N
 #define M1_LD_LQ_IQ_BIAS_N              3u
 #endif
-#ifndef M1_LD_LQ_IDENT_F_COARSE_HZ
-#define M1_LD_LQ_IDENT_F_COARSE_HZ      2000.0f
-#endif
-#ifndef M1_LD_LQ_IDENT_F_FINE_HZ
-#define M1_LD_LQ_IDENT_F_FINE_HZ        5000.0f
-#endif
 /** 1=每轴 coarse→fine→f2 三档。=。500 Hz+1 kHz（proto 2.0。*/
-#ifndef M1_LD_LQ_IDENT_F2_ENABLE
-#define M1_LD_LQ_IDENT_F2_ENABLE        0
-#endif
-#if M1_LD_LQ_IDENT_F2_ENABLE
-#ifndef M1_LD_LQ_IDENT_F_F2_HZ
-#define M1_LD_LQ_IDENT_F_F2_HZ          2000.0f
-#endif
-#endif
 /** @deprecated 兼容旧脚本；等同 F_FINE */
-#ifndef M1_LD_LQ_IDENT_F_HZ
-#define M1_LD_LQ_IDENT_F_HZ             M1_LD_LQ_IDENT_F_FINE_HZ
-#endif
-#ifndef M1_LD_LQ_IDENT_L_NOM_H
-/** VASI U_inj 标定用名义电。(Ld+Lq)/2 */
-#define M1_LD_LQ_IDENT_L_NOM_H          70e-6f
-#endif
-#ifndef M1_LD_LQ_IDENT_DI_TARGET_A
-/** 目标 HF 纹波 ΔI（叠在偏置上，避免过零） */
-#define M1_LD_LQ_IDENT_DI_TARGET_A      0.12f
-#endif
-#ifndef M1_LD_LQ_IDENT_I_RIPPLE_MARGIN_A
-/** 偏置轴电流与零的最小距。|I_bias|−|ΔI| 。此。*/
-#define M1_LD_LQ_IDENT_I_RIPPLE_MARGIN_A  0.15f
-#endif
-#ifndef M1_LD_LQ_IDENT_U_INJ_MIN_V
-#define M1_LD_LQ_IDENT_U_INJ_MIN_V      0.12f
-#endif
-#ifndef M1_LD_LQ_IDENT_U_INJ_MAX_V
-#define M1_LD_LQ_IDENT_U_INJ_MAX_V      0.50f
-#endif
-#ifndef M1_LD_LQ_IDENT_SETTLE_S
-#define M1_LD_LQ_IDENT_SETTLE_S         0.5f
-#endif
 /** @deprecated 变幅。U_INJ_MIN/MAX + L 自适应；保。0 以兼。*/
-#ifndef M1_LD_LQ_IDENT_V_FRAC_MIN
-#define M1_LD_LQ_IDENT_V_FRAC_MIN       0.0f
-#endif
-#ifndef M1_LD_LQ_IDENT_V_FRAC_MAX
-#define M1_LD_LQ_IDENT_V_FRAC_MAX       0.0f
-#endif
-#ifndef M1_LD_LQ_IDENT_AMP_STEPS
-#define M1_LD_LQ_IDENT_AMP_STEPS        7u
-#endif
-#ifndef M1_LD_LQ_IDENT_CYCLES_PER_AMP
-#define M1_LD_LQ_IDENT_CYCLES_PER_AMP   10u
-#endif
-#ifndef M1_LD_LQ_IDENT_THETA_DRIFT_MECH_DEG
-#define M1_LD_LQ_IDENT_THETA_DRIFT_MECH_DEG  8.0f
-#endif
 /** 1=编码器漂移超限时 ld_lq_abort()。=只记 dbg。 。grid 强制跑完（离线分析用。*/
-#ifndef M1_LD_LQ_IDENT_ABORT_ON_THETA_DRIFT
-#define M1_LD_LQ_IDENT_ABORT_ON_THETA_DRIFT  0
-#endif
-#ifndef M1_LD_LQ_IDENT_L_MIN_H
-#define M1_LD_LQ_IDENT_L_MIN_H          20e-6f
-#endif
-#ifndef M1_LD_LQ_IDENT_EPS_TRACK_A
-#define M1_LD_LQ_IDENT_EPS_TRACK_A      0.10f
-#endif
-#ifndef M1_LD_LQ_IDENT_ZERO_BIAS_SUM_A
-#define M1_LD_LQ_IDENT_ZERO_BIAS_SUM_A  0.15f
-#endif
-#ifndef M1_LD_LQ_IDENT_SETTLE_MAX_S
-#define M1_LD_LQ_IDENT_SETTLE_MAX_S       2.0f
-#endif
-#ifndef M1_LD_LQ_IDENT_MIN_DI_A
-#define M1_LD_LQ_IDENT_MIN_DI_A         0.05f
-#endif
 /** 1=ψ 积分。(U−U_bias) 去掉偏置 DC，对齐论文对。± 注入 */
-#ifndef M1_LD_LQ_IDENT_PSI_USE_U_AC
-#define M1_LD_LQ_IDENT_PSI_USE_U_AC     1
-#endif
 /** 1=VASI INJ_LD/LQ 。deadband LUT runtime；SETTLE/PRE_DECAY 。OFF */
 #ifndef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
 #define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  0
@@ -2506,52 +1764,10 @@
      M1_OPEN_UD_PRE_ID_CAL_ENABLE || M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
 #endif
 /** 正负半周 |u_ac| 最小比值，低于此丢弃该 cycle */
-#ifndef M1_LD_LQ_IDENT_U_SYM_RATIO_MIN
-#define M1_LD_LQ_IDENT_U_SYM_RATIO_MIN  0.65f
-#endif
 /** 半周平均 |u_ac| 低于此视为无效注。*/
-#ifndef M1_LD_LQ_IDENT_U_SYM_MIN_DV_V
-#define M1_LD_LQ_IDENT_U_SYM_MIN_DV_V  0.015f
-#endif
 /** fine(1 kHz) 额外 v_inj 上限，避免大幅值非线。*/
-#ifndef M1_LD_LQ_IDENT_FINE_V_INJ_MAX_V
-#define M1_LD_LQ_IDENT_FINE_V_INJ_MAX_V 0.20f
-#endif
-#ifndef M1_LD_LQ_IDENT_L_MAX_H
-#define M1_LD_LQ_IDENT_L_MAX_H          0.001f
-#endif
-#ifndef M1_LD_LQ_IDENT_MIN_LD_OK
-#define M1_LD_LQ_IDENT_MIN_LD_OK        7u
-#endif
-#ifndef M1_LD_LQ_IDENT_MIN_LQ_OK
-#define M1_LD_LQ_IDENT_MIN_LQ_OK        7u
-#endif
 /** 1=Rs 。30/150/270° 各跑一。9 。VASI（ALIGN Ud 换角，同 Pass0 三角。*/
-#ifndef M1_LD_LQ_MULTI_ANGLE_ENABLE
-#define M1_LD_LQ_MULTI_ANGLE_ENABLE   0
-#endif
-#ifndef M1_LD_LQ_IDENT_ANGLE_COUNT
-#define M1_LD_LQ_IDENT_ANGLE_COUNT      3u
-#endif
-#ifndef M1_LD_LQ_ALIGN_S
-#define M1_LD_LQ_ALIGN_S                M1_ID_CAL_ALIGN_S
-#endif
 /** L 辨识多角度电角（默认。Pass0 三角 30/150/270°。*/
-#ifndef M1_LD_LQ_THETA0_EL_RAD
-#define M1_LD_LQ_THETA0_EL_RAD          M1_ID_CAL_THETA_EL_RAD
-#endif
-#ifndef M1_LD_LQ_THETA1_EL_RAD
-#define M1_LD_LQ_THETA1_EL_RAD          2.6179938779914940f  /* 150° */
-#endif
-#ifndef M1_LD_LQ_THETA2_EL_RAD
-#define M1_LD_LQ_THETA2_EL_RAD          4.7123889803846900f  /* 270° */
-#endif
-#if M1_LD_LQ_MULTI_ANGLE_ENABLE && !M1_ID_CAL_FIX_THETA_ENABLE
-#error "M1_LD_LQ_MULTI_ANGLE_ENABLE requires M1_ID_CAL_FIX_THETA_ENABLE=1"
-#endif
-#if M1_LD_LQ_MULTI_ANGLE_ENABLE && (M1_LD_LQ_IDENT_ANGLE_COUNT < 1u)
-#error "M1_LD_LQ_IDENT_ANGLE_COUNT must be >= 1"
-#endif
 
 #if M1_LD_LQ_IDENT_ENABLE && !M1_RS_IDENT_ENABLE && !M1_RS_IDENT_USE_FIXED_NOMINAL
 #error "M1_LD_LQ_IDENT_ENABLE requires M1_RS_IDENT_ENABLE=1 or M1_RS_IDENT_USE_FIXED_NOMINAL=1"
@@ -2563,12 +1779,6 @@
  */
 #ifndef M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE
 #define M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE  0
-#endif
-#ifndef M1_RS_L_IDENT_LUT_ROUND_OPEN_SEQ_OFFSET
-#define M1_RS_L_IDENT_LUT_ROUND_OPEN_SEQ_OFFSET  100u
-#endif
-#if M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE && (!M1_RS_IDENT_ENABLE || !M1_LD_LQ_IDENT_ENABLE)
-#error "M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE requires M1_RS_IDENT_ENABLE and M1_LD_LQ_IDENT_ENABLE"
 #endif
 
 #ifndef M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
@@ -2584,9 +1794,6 @@
 
 #ifndef M1_ID_CAL_IQ_PROBE_ONLY_ENABLE
 #define M1_ID_CAL_IQ_PROBE_ONLY_ENABLE  0
-#endif
-#ifndef M1_ID_CAL_IQ_PROBE_LUT_AFTER_OFF
-#define M1_ID_CAL_IQ_PROBE_LUT_AFTER_OFF  1
 #endif
 #if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE && !M1_ID_CAL_IQ_PROBE_ENABLE
 #error "M1_ID_CAL_IQ_PROBE_ONLY_ENABLE requires M1_ID_CAL_IQ_PROBE_ENABLE=1"
@@ -2657,19 +1864,10 @@
 #ifndef M1_ID_CAL_THETA_PASS0_B_RAD
 #define M1_ID_CAL_THETA_PASS0_B_RAD  0.0f                    /* 0° 位置 2 */
 #endif
-#ifndef M1_ID_CAL_ALIGN_B_UD_V
-#define M1_ID_CAL_ALIGN_B_UD_V       M1_ID_CAL_ALIGN_UD_V
-#endif
-#ifndef M1_ID_CAL_ALIGN_B_S
-#define M1_ID_CAL_ALIGN_B_S          M1_ID_CAL_ALIGN_S
-#endif
 /**
  * Pass0-B @0° 各档 dwell (s)。0 时覆。ID_DWELL_*。=。Pass0-A 相同。
  * 058 录波 0° 。Id 欠流 7。0% 时，可试 1.0。.0 s 再验。capture。
  */
-#ifndef M1_ID_CAL_PASS0_B_DWELL_S
-#define M1_ID_CAL_PASS0_B_DWELL_S    0.0f
-#endif
 
 /**
  * =1：Pass0 多电角扫 Id（deadband OFF + capture）。
@@ -2684,24 +1882,6 @@
 #if M1_ID_CAL_MULTI_ANGLE_ENABLE
 #ifndef M1_ID_CAL_PASS0_ANGLE_COUNT
 #define M1_ID_CAL_PASS0_ANGLE_COUNT   5
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_0_RAD
-#define M1_ID_CAL_THETA_PASS0_0_RAD   0.0f
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_150_RAD
-#define M1_ID_CAL_THETA_PASS0_150_RAD 2.6179938779914940f  /* 5pi/6, 150° */
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_270_RAD
-#define M1_ID_CAL_THETA_PASS0_270_RAD 4.7123889803846900f  /* 3pi/2, 270° */
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_60_RAD
-#define M1_ID_CAL_THETA_PASS0_60_RAD  1.0471975511965976f  /* pi/3, 60° */
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_90_RAD
-#define M1_ID_CAL_THETA_PASS0_90_RAD  1.5707963267948966f  /* pi/2, 90° */
-#endif
-#ifndef M1_ID_CAL_THETA_PASS0_120_RAD
-#define M1_ID_CAL_THETA_PASS0_120_RAD 2.0943951023931953f  /* 2pi/3, 120° */
 #endif
 #undef M1_DEADBAND_GEO_SAMPLE_MAX
 #define M1_DEADBAND_GEO_SAMPLE_MAX    \
@@ -2725,9 +1905,7 @@
 #if M1_ID_CAL_PASS0_ONLY_ENABLE || \
     (M1_ID_CAL_COMMIT_LUT && (M1_ID_CAL_LUT_VERIFY_SWEEP || M1_ID_CAL_IQ_PROBE_ENABLE || \
                               M1_RS_IDENT_ENABLE || M1_IDENT_ID_CAL_BEFORE_STEP))
-#define M1_ID_CAL_PASS0_DECAY_ENABLE  1
 #else
-#define M1_ID_CAL_PASS0_DECAY_ENABLE  0
 #endif
 
 #if M1_ID_CAL_ALIGN_ENABLE && !M1_ID_CAL_FIX_THETA_ENABLE
@@ -2831,9 +2009,6 @@
  * 硬切会在 ~0.4 A 形成补偿阶跃，污。dq 。保持 0。
  * 低电流区。LOW_FLAT 。capture 曲线本身，勿用本开关。
  */
-#ifndef M1_DEADBAND_LUT_APPLY_MIN_ENABLE
-#define M1_DEADBAND_LUT_APPLY_MIN_ENABLE   0
-#endif
 #ifndef M1_DEADBAND_LUT_APPLY_MIN_A
 #define M1_DEADBAND_LUT_APPLY_MIN_A        0.40f
 #endif
@@ -2854,13 +2029,7 @@
 #define M1_DEADBAND_LUT_COMMIT_NORMALIZE    0
 #endif
 
-#if M1_DEADBAND_LUT_COMMIT_NORMALIZE && M1_DEADBAND_LUT_RUNTIME_SCALE_AUTO
-#error "M1_DEADBAND_LUT_COMMIT_NORMALIZE and M1_DEADBAND_LUT_RUNTIME_SCALE_AUTO are mutually exclusive"
-#endif
 
-#ifndef M1_DEADBAND_RUNTIME_GEO_ENABLE
-#define M1_DEADBAND_RUNTIME_GEO_ENABLE      0
-#endif
 
 #ifndef M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE
 #define M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE  0
@@ -2880,18 +2049,12 @@
 #define M1_ID_CAL_THETA_MATCH_RAD    0.02f
 #endif
 
-#if M1_DEADBAND_RUNTIME_GEO_ENABLE && !M1_DEADBAND_LUT_APPLY_UD
-#error "M1_DEADBAND_RUNTIME_GEO_ENABLE requires M1_DEADBAND_LUT_APPLY_UD=1 (d-table at commit)"
-#endif
 
 /**
  * commit 时把 phase LUT 。Id 区改为线性（去掉 0.15~0.2 A 陡升）。
  * 0=保留 capture 曲线。308 对照）；1=平坦。Id∈[首点, M1_DEADBAND_LUT_LOW_FLAT_ID_A]。
  * Phase 1 对照。026-06-27）：0=关平坦化，验。2015 。Id 失败是否。LOW_FLAT 放大。
  */
-#ifndef M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-#define M1_DEADBAND_LUT_LOW_FLAT_ENABLE   0
-#endif
 #ifndef M1_DEADBAND_LUT_LOW_FLAT_ID_A
 #define M1_DEADBAND_LUT_LOW_FLAT_ID_A     0.30f
 #endif
@@ -2921,9 +2084,6 @@
  * commit 。=1 。fa/fb/fc 三表。0 。proposed 共享 plut。0° amp + 双角 median val）。
  * P0 签收先用 0（离线金标准 ~1.47 V/相）。146 triplet val。.95 V 暂不启用。
  */
-#ifndef M1_DEADBAND_GEO_TRIPLET_ENABLE
-#define M1_DEADBAND_GEO_TRIPLET_ENABLE    0
-#endif
 
 /** GEO_BUILD=0 时旁路对。geo vs ×0.866，更。deadband_geo_diff_* */
 #ifndef M1_DEADBAND_GEO_DIFF_LOG_ENABLE
@@ -2960,9 +2120,6 @@
 #if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && !M1_OPEN_UD_AFTER_ID_CAL
 #error "M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD requires M1_OPEN_UD_AFTER_ID_CAL=1"
 #endif
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE && M1_OPEN_UD_PRE_ID_CAL_ENABLE
-#error "M1_OPEN_UQ_PRE_ID_CAL_ENABLE and M1_OPEN_UD_PRE_ID_CAL_ENABLE are mutually exclusive"
-#endif
 #if M1_IF_ENABLE && (M1_STARTUP_ENABLE || M1_OPEN_UD_PRE_ID_CAL_ENABLE || \
                      M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
 #error "M1_IF_ENABLE mutually exclusive with Uq/Ud open-loop drag (STARTUP / OPEN_UD / OPEN_UQ)"
@@ -2988,9 +2145,6 @@
 #if M1_IF_OBS_DIR_SEQ_ENABLE && !M1_IF_TO_OBS_ENABLE
 #error "M1_IF_OBS_DIR_SEQ_ENABLE requires M1_IF_TO_OBS_ENABLE=1"
 #endif
-#if M1_IF_OBS_DIR_SEQ_ENABLE && (M1_IF_OBS_CRUISE_STEP_ENABLE || M1_IF_OBS_CRUISE_S3_PROBE_ENABLE)
-#error "M1_IF_OBS_DIR_SEQ_ENABLE: disable CRUISE_STEP and S3_PROBE"
-#endif
 /** 1=Ud/Uq 开。ladder 。LUT runtime abc（Pass0 后验表）。=deadband OFF */
 #ifndef M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME
 #define M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME  0
@@ -3006,9 +2160,6 @@
 #endif
 #ifndef M1_OPEN_PRE_ID_LADDER_FIX_THETA_ENABLE
 #define M1_OPEN_PRE_ID_LADDER_FIX_THETA_ENABLE  1
-#endif
-#ifndef M1_OPEN_PRE_ID_LADDER_THETA_EL_RAD
-#define M1_OPEN_PRE_ID_LADDER_THETA_EL_RAD      M1_ID_CAL_THETA_EL_RAD  /* 30° */
 #endif
 #ifndef M1_OPEN_PRE_ID_LADDER_ALIGN_UD_V
 #define M1_OPEN_PRE_ID_LADDER_ALIGN_UD_V        M1_ID_CAL_ALIGN_UD_V    /* 3 V */
@@ -3040,15 +2191,6 @@
 #define M1_OPEN_PRE_ID_LADDER_PHASE_ON_BASE     (M1_OPEN_PRE_ID_LADDER_PHASE_BASE + 10u)
 #define M1_OPEN_PRE_ID_LADDER_DONE_ON_PHASE     (M1_OPEN_PRE_ID_LADDER_PHASE_ON_BASE + M1_OPEN_PRE_ID_LADDER_N + 1u)
 /** @deprecated 实验 A 别名 */
-#define M1_OPEN_UQ_LADDER_ALIGN_ENABLE      M1_OPEN_PRE_ID_LADDER_ALIGN_ENABLE
-#define M1_OPEN_UQ_LADDER_FIX_THETA_ENABLE  M1_OPEN_PRE_ID_LADDER_FIX_THETA_ENABLE
-#define M1_OPEN_UQ_LADDER_THETA_EL_RAD      M1_OPEN_PRE_ID_LADDER_THETA_EL_RAD
-#define M1_OPEN_UQ_LADDER_ALIGN_UD_V        M1_OPEN_PRE_ID_LADDER_ALIGN_UD_V
-#define M1_OPEN_UQ_LADDER_ALIGN_S           M1_OPEN_PRE_ID_LADDER_ALIGN_S
-#define M1_OPEN_UQ_LADDER_ALIGN_PHASE       M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE
-#define M1_OPEN_UQ_LADDER_DWELL_S           M1_OPEN_PRE_ID_LADDER_DWELL_S
-#define M1_OPEN_UQ_LADDER_PHASE_BASE        M1_OPEN_PRE_ID_LADDER_PHASE_BASE
-#define M1_OPEN_UQ_LADDER_DONE_PHASE        M1_OPEN_PRE_ID_LADDER_DONE_PHASE
 #endif
 
 /**
@@ -3070,7 +2212,6 @@
 #endif
 
 /** A/B  sweep 每半段时长（s）；6 段合。15 s */
-#define M1_OPEN_UQ_HALF_STEP_S        2.5f
 
 #define M1_OPEN_UQ_SWEEP_STEP_S       5.0f
 #define M1_OPEN_UQ_SWEEP_V0           2.0f
@@ -3078,7 +2219,6 @@
 #define M1_OPEN_UQ_SWEEP_V2           3.0f
 
 /** @deprecated 。M1_OPEN_UQ_SWEEP_V0 */
-#define M1_OPEN_UQ_RUN_V          M1_OPEN_UQ_SWEEP_V0
 
 /**
  * ADC2 注入 rank 交换试验（须。binding 同步，见 docs/VOFA联调记录_20260617_扇区诊断全CSV.md §6）：
@@ -3112,15 +2252,6 @@
 #define M1_IDENT_ENABLE             0
 #endif
 
-#ifndef M1_IDENT_POST_BODE_OPEN_UQ_ENABLE
-#define M1_IDENT_POST_BODE_OPEN_UQ_ENABLE  0
-#endif
-#ifndef M1_IDENT_POST_BODE_OPEN_UQ_V
-#define M1_IDENT_POST_BODE_OPEN_UQ_V         M1_OPEN_UQ_SWEEP_V0
-#endif
-#ifndef M1_IDENT_POST_BODE_OPEN_UQ_S
-#define M1_IDENT_POST_BODE_OPEN_UQ_S         5.0f
-#endif
 
 #if M1_IDENT_ENABLE
 #if M1_ID_LOCK_CAL_SWEEP && !M1_IDENT_ID_CAL_BEFORE_STEP
@@ -3141,12 +2272,6 @@
 #error "M1_IDENT_ENABLE requires M1_IDENT_IQ_STEP_ENABLE and/or M1_IDENT_IQ_BODE_ENABLE"
 #endif
 
-#ifndef M1_IDENT_FIX_THETA_ENABLE
-#define M1_IDENT_FIX_THETA_ENABLE   0   /* 0=编码。θ（堵转默认）。=写死 30° */
-#endif
-#ifndef M1_IDENT_THETA_EL_RAD
-#define M1_IDENT_THETA_EL_RAD       0.5235987755982988f  /* 。FIX_THETA=1 时用 */
-#endif
 
 /** 制动器加载后稳定等待 (s) */
 #ifndef M1_IDENT_HOLD_S
@@ -3163,9 +2288,6 @@
 #define M1_IDENT_STEP_FIXED_ROUNDS    6u
 #endif
 /** 1 。FIXED_ROUNDS=0：OFF 之后全用 LUT；FIXED_ROUNDS>0 时第三段恒为 LUT */
-#ifndef M1_IDENT_STEP_LUT_AFTER_OFF
-#define M1_IDENT_STEP_LUT_AFTER_OFF   0
-#endif
 #if M1_IDENT_IQ_STEP_ENABLE
 #if (M1_IDENT_STEP_OFF_ROUNDS > M1_IDENT_STEP_ROUNDS)
 #error "M1_IDENT_STEP_OFF_ROUNDS must be <= M1_IDENT_STEP_ROUNDS"
@@ -3266,21 +2388,8 @@
 #error "OFF-only Bode: M1_IDENT_BODE_ROUNDS must equal M1_IDENT_BODE_BANDS"
 #endif
 #endif
-#ifndef M1_IDENT_BODE_F0_HZ
-#define M1_IDENT_BODE_F0_HZ           10.0f
-#endif
-#ifndef M1_IDENT_BODE_F1_HZ
-/** legacy 兜底：仅文档/脚本参考；运行时频表以 ident_bode_freq_table.h 为准（F1=800 。38 。846 Hz。*/
-#define M1_IDENT_BODE_F1_HZ           800.0f
-#endif
-#ifndef M1_IDENT_BODE_F_RATIO
-#define M1_IDENT_BODE_F_RATIO         1.15f
-#endif
 #ifndef M1_IDENT_BODE_F_SPLIT_HZ
 #define M1_IDENT_BODE_F_SPLIT_HZ      500.0f
-#endif
-#ifndef M1_IDENT_BODE_F_RATIO_HI
-#define M1_IDENT_BODE_F_RATIO_HI      1.06f
 #endif
 #ifndef M1_IDENT_BODE_CYCLES_PER_FREQ
 #define M1_IDENT_BODE_CYCLES_PER_FREQ 20.0f
@@ -3401,11 +2510,7 @@
  * 速度环交。bumpless 。Continuity 同号，勿。DIR（乘 DIR 会在 BLEND 。+4→−3.5 反扭矩砸速）。
  * DIR 只作用在 ω 目标；转子系若需 −Iq 保负速，。PI 在限权内自行斜过去。
  */
-#undef M1_IF_OBS_SPEED_IQ_SIGN
-#define M1_IF_OBS_SPEED_IQ_SIGN         (1.0f)
 #undef M1_IF_OBS_SPEED_IQ_BOOT_A
 #define M1_IF_OBS_SPEED_IQ_BOOT_A       (M1_IF_IQ_A)
-#undef M1_IF_OBS_HANDOFF_IQ_BOOT_A
-#define M1_IF_OBS_HANDOFF_IQ_BOOT_A     (M1_IF_HANDOFF_IQ_A)
 
 #endif

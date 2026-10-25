@@ -46,12 +46,6 @@ static uint8_t s_bode_freq_idx;
 #endif
 
 #if M1_SPEED_IDENT_STEP_ENABLE
-#ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
-#define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
-#endif
-#ifndef M1_SPEED_IDENT_OBS_FLOOR_PROBE
-#define M1_SPEED_IDENT_OBS_FLOOR_PROBE    0
-#endif
 #if M1_SPEED_IDENT_OBS_FLOOR_PROBE
 /* 1000 软切后每档 −50 rpm（dwell 由 M1_SPEED_IDENT_STEP_DWELL_S） */
 static const float s_step_seq[] = {

@@ -133,6 +133,9 @@ uint8_t hfi_sqwave_consume_pi_reset(void);
 uint8_t hfi_sqwave_consume_sens_pi_clear(void);
 uint8_t hfi_sqwave_get_sensed_cal_loop(void);
 uint8_t hfi_sqwave_sensed_fb_active(void);
+void hfi_sqwave_enter_sensed(void);
+float hfi_sqwave_rev141_meas_rpm(void);
+void hfi_sqwave_rev141_note_done(void);
 
 /**
  * ISR 末尾发布的 HFI 遥测快照。任务和 VOFA 只读这份，不要直抠 getter。

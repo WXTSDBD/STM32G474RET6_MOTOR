@@ -3,8 +3,8 @@
  * @date 2026-10-25
  * @brief ±2000 金样实验参数（原 `M1_HFI_REV141_*` 宏，阶段 2 表化）。
  *
- * 数据放在 .c 里（`config/exp_rev141_params.c`），脚本
- * `motor/observer/hfi_sqwave.c` 通过指针读取，不再有编译期宏。
+ * 数据放在 .c 里（`config/exp_rev141_params.c`）。
+ * 正反转次数和目标转速写在段表里。hfi_sqwave 只读 enc_rpm_lp_a。
  */
 #ifndef CONFIG_EXP_REV141_PARAMS_H
 #define CONFIG_EXP_REV141_PARAMS_H

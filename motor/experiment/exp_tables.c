@@ -8,15 +8,18 @@
  *  - 每张表 = 一段序列；`dur_ms=0` 表示时长由 SCRIPT 决定；
  *  - `mark` 用于遥测打点，与 PC 端判据对齐；
  *  - `cfg_idx` 留给"同一次上电 A/B"（连续两段只差本字段）；
- *  - `script=NULL` 的表只有数据，尚未接执行逻辑（标 UNVERIFIED，等台架）。
+ *  - `script=NULL` 且 `implemented=0` 的表只有数据，不许当金样。
  *
  * 参数出处（2026-10-25 基线，±2000 金样）：
- *   斜坡 500 rpm/s、每段保持 500 ms、目标 ±2000 rpm、
+ *   目标 ±2000 rpm，到速后再保持 0.5 s；刹停 |n|≤80 rpm 再停 0.3 s，超时 3 s。
+ *   无感 2 对后有感 1 对。斜坡仍是速度环 500 rpm/s，不写进段时长。
  *   Ud 标定 id=3.0 A、每步 800 ms、6 角度 60° 步进、正反各一遍。
  */
 #include "exp_tables.h"
 
 #include <stddef.h>
+
+/* ±2000 的段和脚本在 config/experiments/exp_rev141.c。 */
 
 /* 段表字段顺序：{ dur_ms, act, ops, p0, p1, p2, cfg_idx, mark, guard_mask } */
 #define SEG(dur, act, a, b, c, mark) \
@@ -25,26 +28,6 @@
 /* 空配置行（实验不改运行时 cfg 时用） */
 static const exp_cfg_t s_cfg_default[] = {
     { 0u, 0u, 0u, 0u, 0.0f, 0.0f },
-};
-
-/* ============================ 1. 正反转 ±2000 ============================
- * 2 轮无感（+2000/-2000 各两次）+ 1 轮有感（+2000/-2000）。
- * 每半程：斜坡 2000/500=4000 ms + 保持 500 ms ⇒ 4500 ms。
- * 有感/无感切换由执行器按 cfg 选（原 M1_HFI_REV141_PAIRS / SENSED_PAIRS）。
- */
-static const exp_seg_t s_rev141_segs[] = {
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x11),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x12),
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x13),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x14),
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x21),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x22),
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x23),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x24),
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x31),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x32),
-    SEG(4500u, EXP_ACT_OMEGA_REF, +2000.0f, 0.0f, 0.0f, 0x33),
-    SEG(4500u, EXP_ACT_OMEGA_REF, -2000.0f, 0.0f, 0.0f, 0x34),
 };
 
 /* ============================ 2. 编码器零偏 Ud 锁轴 ============================
@@ -142,9 +125,8 @@ static const exp_seg_t s_qkick_segs[] = {
 /* ============================ 注册项 ============================ */
 #define DEF(id_, name_, kind_, segs_) \
     { (id_), (name_), (kind_), (segs_), \
-      (uint16_t)(sizeof(segs_) / sizeof((segs_)[0])), s_cfg_default, 1u, 0u, NULL }
+      (uint16_t)(sizeof(segs_) / sizeof((segs_)[0])), s_cfg_default, 1u, 0u, NULL, 0u }
 
-const exp_def_t g_exp_rev141     = DEF(EXP_ID_REV141,      "rev141_2000rpm",  EXP_KIND_SCHEDULE, s_rev141_segs);
 const exp_def_t g_exp_ud_cal     = DEF(EXP_ID_UD_CAL,      "enc_offset_ud",   EXP_KIND_SCHEDULE, s_ud_cal_segs);
 const exp_def_t g_exp_speed_ladder = DEF(EXP_ID_SPEED_LADDER, "speed_ladder", EXP_KIND_SCHEDULE, s_speed_ladder_segs);
 const exp_def_t g_exp_pos_step   = DEF(EXP_ID_POS_STEP,    "pos_step",        EXP_KIND_SCHEDULE, s_pos_step_segs);

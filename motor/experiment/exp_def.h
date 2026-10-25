@@ -27,8 +27,13 @@ extern "C" {
 #define EXP_ACT_NONE        0xFFu
 #define EXP_ACT_HOLD        0u
 #define EXP_ACT_THETA_REF   1u
+/** 速度指令。p0=目标转速 rpm。到速与否由 script 判断，不占用 p1/p2。 */
 #define EXP_ACT_OMEGA_REF   2u
 #define EXP_ACT_IQ_FF       3u
+/** 保持上一段转速指令。p0=保持时间，单位 ms。 */
+#define EXP_ACT_WAIT        10u
+/** 转速指令写 0。p0=停转阈值 rpm，p1=停住后再保持的时间 s，dur_ms=超时 ms。 */
+#define EXP_ACT_STOP        11u
 
 /** 已注册实验 id。 */
 #define EXP_ID_NONE         0u
@@ -100,6 +105,8 @@ typedef struct {
     uint8_t cfg_n;
     uint8_t telem_layout;
     const exp_script_ops_t *script;
+    /** 1=执行已接上。0=只有数据，不许当金样。接上执行仍要台架对照后才算金样。 */
+    uint8_t implemented;
 } exp_def_t;
 
 #ifdef __cplusplus

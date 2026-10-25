@@ -22,6 +22,7 @@
 #include "motor_current.h"
 #include "motor_if.h"
 #include "motor_params_m1.h"
+#include "core/motor_route.h"
 #include "speed_ident_flow.h"
 #if M1_EXP_FRAMEWORK_ENABLE
 #include "experiment/exp_runner.h"
@@ -137,16 +138,26 @@ static float outer_clamp_iq_ref(const motor_context_t *ctx, float ref)
 static float outer_omega_ref_ramped(motor_context_t *ctx)
 {
     const float target = ctx->omega_ref;
-    const float step_up = M1_SPEED_OMEGA_RAMP_RPM_S * M1_SPEED_TS_S;
-#if defined(M1_SPEED_OMEGA_RAMP_DECEL_RPM_S)
-    const float step_dn = M1_SPEED_OMEGA_RAMP_DECEL_RPM_S * M1_SPEED_TS_S;
-#else
-    const float step_dn = step_up;
-#endif
+    const motor_route_t *route = motor_route_active();
+    float ramp_up = M1_SPEED_OMEGA_RAMP_RPM_S;
+    float ramp_dn = ramp_up;
+    float step_up;
+    float step_dn;
     const float cur = s_omega_ramped_rpm;
-    float delta = target - cur;
+    float delta;
     float step;
     const float eps_rpm = 1.0f;
+
+#if defined(M1_SPEED_OMEGA_RAMP_DECEL_RPM_S)
+    ramp_dn = M1_SPEED_OMEGA_RAMP_DECEL_RPM_S;
+#endif
+    if ((route != NULL) && (route->gains != NULL)) {
+        ramp_up = route->gains->omega_ramp_rpm_s;
+        ramp_dn = route->gains->omega_ramp_decel_rpm_s;
+    }
+    step_up = ramp_up * M1_SPEED_TS_S;
+    step_dn = ramp_dn * M1_SPEED_TS_S;
+    delta = target - cur;
 
     /* 收 |n| 或异号 → 进入减速保持，直到到达目标。 */
     if ((fabsf(target) + eps_rpm < fabsf(cur)) || ((cur * target) < 0.0f)) {
@@ -381,11 +392,6 @@ void motor_outer_mit_torque_law_apply(motor_context_t *ctx)
 #else
     ctx->iq_fric_ff = 0.0f;
 #endif
-#if M1_OUTER_SIGNOFF_PACK2
-    if ((ctx->atrb & M1_ATRB_FRIC_FF) != 0u) {
-        ctx->iq_fric_ff += outer_fric_map_lookup(theta_fb_rad);
-    }
-#endif
     iq += ctx->iq_fric_ff;
 
     ctx->omega_ref = ctx->traj_vel_rpm;
@@ -438,11 +444,6 @@ static void outer_nested_pos_mit_step(motor_context_t *ctx,
     }
 #else
     ctx->iq_fric_ff = 0.0f;
-#endif
-#if M1_OUTER_SIGNOFF_PACK2
-    if ((ctx->atrb & M1_ATRB_FRIC_FF) != 0u) {
-        ctx->iq_fric_ff += outer_fric_map_lookup(theta_mech_rad);
-    }
 #endif
     if ((ctx->iq_ff != 0.0f) || (ctx->iq_fric_ff != 0.0f)) {
         ctx->iq_ref = outer_clamp_iq_ref(ctx,
@@ -506,13 +507,6 @@ void motor_outer_loop_tick(motor_context_t *ctx)
     }
 #endif
 
-#if M1_EXP_FRAMEWORK_ENABLE && M1_EXP_FF_AB_ENABLE
-    /* 速度环解耦前馈 A/B：在 SPEED PI 之前推进段表 / 改 atrb */
-    if ((ctx->outer_mode == M1_OUTER_SPEED) &&
-        (exp_runner_active_id() == EXP_ID_FF_AB)) {
-        exp_runner_tick(ctx, theta_fb_rad, omega_mech_rpm);
-    }
-#endif
 
     switch (ctx->outer_mode) {
     case M1_OUTER_TORQUE:

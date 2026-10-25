@@ -101,9 +101,6 @@ extern "C" {
 #endif
 
 /** 1=VOFA ch0..2 输出 foc_ia/b/c(A)；0=adc_zeroed LSB。 */
-#ifndef M1_VOFA_FOC_ABC
-#define M1_VOFA_FOC_ABC                 1
-#endif
 
 #define PHASE_CAL_FAIL_NONE             0u
 #define PHASE_CAL_FAIL_OC               1u

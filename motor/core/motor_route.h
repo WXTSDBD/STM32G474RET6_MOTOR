@@ -6,9 +6,8 @@
  * 对应设计：docs/方案_宏转实验表_设计_2026-10-25.md §5.2。
  * route = plant + gains + 五张 ops 表指针 + atrb（外环模式/初始指令）。
  *
- * 本阶段只定义类型 + 声明 bind 函数，不接逻辑（hex 不变）。
- * 后续阶段：config/routes/r_*.c 各定义一个 const motor_route_t，
- * 启动时 boot 只选 route_id，不再改 profile 宏。
+ * 现网由 config/routes/r_hfi_standstill.c 提供一条 route。
+ * 角度指针的更换只允许在绑定和段边界，不在 20 kHz 里做。
  */
 #ifndef MOTOR_CORE_MOTOR_ROUTE_H
 #define MOTOR_CORE_MOTOR_ROUTE_H
@@ -52,6 +51,17 @@ typedef struct {
  * @param route 目标 route；NULL=解绑。
  */
 void motor_route_bind(motor_context_t *ctx, const motor_route_t *route);
+const motor_route_t *motor_route_active(void);
+
+void motor_angle_use(const angle_ops_t *ops);
+const angle_ops_t *motor_angle_active(void);
+void motor_angle_note_enc(float theta_el);
+float motor_angle_enc_theta(void);
+uint8_t motor_angle_sensorless(void);
+
+extern const angle_ops_t g_angle_hfi;
+extern const angle_ops_t g_angle_enc;
+extern const motor_route_t g_route_hfi_standstill;
 
 #ifdef __cplusplus
 }

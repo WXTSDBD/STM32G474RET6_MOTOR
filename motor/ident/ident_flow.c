@@ -40,8 +40,6 @@ static ident_flow_db_seg_t ident_flow_db_seg_from_layout(uint8_t round,
     }
 #if M1_DEADBAND_LUT_BAKED_ENABLE || M1_IDENT_ID_CAL_BEFORE_STEP
     return IDENT_FLOW_DB_LUT;
-#elif M1_IDENT_STEP_LUT_AFTER_OFF
-    return IDENT_FLOW_DB_LUT;
 #else
     return IDENT_FLOW_DB_FIXED;
 #endif

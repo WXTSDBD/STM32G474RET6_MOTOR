@@ -42,9 +42,7 @@ static void exp_act_omega_enter(motor_context_t *ctx, const exp_seg_t *seg)
     }
     ctx->omega_ref = seg->p0;
     motor_outer_set_omega_ramp_rpm(seg->p0);
-    /* mark >= 0x30 means sensored round (encoder angle source) */
-    s_angle_src = (seg->mark >= 0x30u) ? 1u : 0u;
-    s_angle_src_on = 1u;
+    exp_act_angle_from_mark(seg->mark);
 }
 
 /**
@@ -123,6 +121,16 @@ uint8_t exp_act_angle_src_is_active(void)
 uint8_t exp_act_angle_src(void)
 {
     return s_angle_src;
+}
+
+/**
+ * @brief 按段 mark 选择角度源。mark 不低于 0x30 用编码器，否则用观测角。
+ * @param mark 段打点号。
+ */
+void exp_act_angle_from_mark(uint8_t mark)
+{
+    s_angle_src = (mark >= 0x30u) ? 1u : 0u;
+    s_angle_src_on = 1u;
 }
 
 /**

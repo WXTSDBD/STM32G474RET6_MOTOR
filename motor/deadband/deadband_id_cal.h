@@ -72,14 +72,10 @@ static inline uint8_t deadband_id_cal_in_rs_ident(void) { return 0u; }
 uint8_t deadband_id_cal_in_ld_lq_ident(void);
 uint8_t deadband_id_cal_in_ld_lq_pre_decay(void);
 uint8_t deadband_id_cal_use_ld_lq_align_ud(void);
-#if M1_LD_LQ_MULTI_ANGLE_ENABLE
-uint8_t deadband_id_cal_in_ld_lq_sweep(void);
-#else
 static inline uint8_t deadband_id_cal_in_ld_lq_sweep(void)
 {
     return deadband_id_cal_in_ld_lq_ident();
 }
-#endif
 #else
 static inline uint8_t deadband_id_cal_in_ld_lq_ident(void) { return 0u; }
 static inline uint8_t deadband_id_cal_in_ld_lq_pre_decay(void) { return 0u; }

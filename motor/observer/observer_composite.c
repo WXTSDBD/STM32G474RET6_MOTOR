@@ -11,9 +11,6 @@
 #include "observer/observer_composite.h"
 #include "observer/obs_cfg.h"
 
-#ifndef M1_HFI_ENABLE
-#define M1_HFI_ENABLE 0
-#endif
 
 #if M1_HFI_ENABLE
 #include "observer/hfi_sqwave.h"
@@ -379,6 +376,30 @@ uint8_t observer_sensed_fb_active(void)
 }
 
 /**
+ * @brief 转发有感段交接：停注入、放开 Iq、请求清电流环 PI。
+ */
+void observer_rev141_enter_sensed(void)
+{
+    hfi_sqwave_enter_sensed();
+}
+
+/**
+ * @brief 转发到速/刹停测速，单位 rpm。
+ */
+float observer_rev141_meas_rpm(void)
+{
+    return hfi_sqwave_rev141_meas_rpm();
+}
+
+/**
+ * @brief 段表走完，通知 HFI 可以离开 RUN。
+ */
+void observer_rev141_note_done(void)
+{
+    hfi_sqwave_rev141_note_done();
+}
+
+/**
  * @brief 有感段只推阶段时钟，不走 Park 前的 HFI 角路径。
  * @param theta_enc 编码器电角，单位 rad。
  * @param dt 节拍，单位 s。
@@ -397,7 +418,7 @@ void observer_hfi_hand_keep(float theta_enc, float dt)
 }
 
 /**
- * @brief 读 HFI 速度指令，单位 rpm。
+ * @brief 读 HFI 速度指令，单位 rpm。段表在写转速，这里固定是 0。
  */
 float observer_get_speed_ref_rpm(void)
 {
@@ -501,222 +522,13 @@ uint8_t observer_take_polarity_flip(void)
     return hfi_sqwave_take_polarity_flip();
 }
 
-#else /* !M1_HFI_ENABLE */
 
-#include "observer/obs_angle.h"
-#include "observer/emf_pll.h"
 
-static void obs_stub_init(void) {}
-static void obs_stub_reset(void) {}
-static void obs_stub_pre_park(float theta_enc, float dt)
-{
-    (void)theta_enc;
-    (void)dt;
-}
-static float obs_stub_get_theta(void) { return 0.0f; }
-static void obs_stub_post_park(float id, float iq, float ia, float ib)
-{
-    (void)id;
-    (void)iq;
-    (void)ia;
-    (void)ib;
-}
-static float obs_stub_get_omega(void) { return 0.0f; }
-static uint8_t obs_stub_is_converged(void) { return 0u; }
 
-static const observer_ops_t s_stub_ops = {
-    obs_stub_init,
-    obs_stub_reset,
-    obs_stub_pre_park,
-    obs_stub_get_theta,
-    obs_stub_post_park,
-    obs_stub_get_omega,
-    obs_stub_is_converged,
-};
 
-static const observer_ops_t *s_obs = &s_stub_ops;
-static const observer_inj_ops_t *s_inj;
-static emf_pll_t *s_bound_emf_pll;
 
-static const observer_src_slot_t s_lo_src = {
-    observer_get_theta_hat,
-    obs_stub_get_omega,
-    observer_speed_run_active,
-};
 
-void observer_composite_init(void)
-{
-    s_obs = &s_stub_ops;
-    s_inj = 0;
-}
 
-void observer_bringup(void *emf_pll)
-{
-    observer_composite_init();
-    observer_bind_emf_pll(emf_pll);
-}
 
-void observer_bind_emf_pll(void *pll)
-{
-    s_bound_emf_pll = (emf_pll_t *)pll;
-    obs_angle_bind_pll(pll);
-}
-
-float observer_emf_theta_hat(void)
-{
-    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_hat : 0.0f;
-}
-
-float observer_emf_omega_el(void)
-{
-    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->omega_el : 0.0f;
-}
-
-float observer_emf_theta_err(void)
-{
-    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->theta_err : 0.0f;
-}
-
-float observer_emf_last_pd(void)
-{
-    return (s_bound_emf_pll != 0) ? s_bound_emf_pll->last_pd : 0.0f;
-}
-
-void observer_emf_reset(void)
-{
-    if (s_bound_emf_pll != 0) {
-        emf_pll_reset(s_bound_emf_pll);
-    }
-}
-
-void observer_emf_update(float e_alpha, float e_beta, float theta_enc, float dt)
-{
-    if (s_bound_emf_pll != 0) {
-        emf_pll_update(s_bound_emf_pll, e_alpha, e_beta, theta_enc, dt);
-    }
-}
-
-const observer_src_slot_t *observer_lo_src(void)
-{
-    return &s_lo_src;
-}
-
-void observer_lo_set_inj_scale(float scale)
-{
-    (void)scale;
-}
-
-void observer_lo_set_iq_auth_hold(uint8_t hold)
-{
-    (void)hold;
-}
-
-void observer_lo_set_hat_hold(uint8_t hold)
-{
-    (void)hold;
-}
-
-uint8_t observer_hfi_inj_off(void)
-{
-    return 1u;
-}
-
-void observer_lo_seed_hat(float theta_el, float omega_el)
-{
-    (void)theta_el;
-    (void)omega_el;
-}
-
-void observer_lo_seed_speed(float omega_el)
-{
-    (void)omega_el;
-}
-
-const observer_ops_t *observer_ops(void)
-{
-    return s_obs;
-}
-
-const observer_inj_ops_t *observer_inj_ops(void)
-{
-    return s_inj;
-}
-
-void observer_telem_publish(void) {}
-void observer_telem_harvest(void) {}
-void observer_pub_step(float theta_smo, float omega_el, float dth)
-{
-    (void)theta_smo;
-    (void)omega_el;
-    (void)dth;
-}
-void observer_pub_force_lo(void) {}
-float observer_pub_ss(void) { return 0.0f; }
-float observer_pub_smo_rpm(void) { return 0.0f; }
-void observer_smo_w_ma_reset(void) {}
-float observer_smo_w_ma_step(float rpm)
-{
-    (void)rpm;
-    return 0.0f;
-}
-uint8_t observer_get_stage(void) { return OBS_STAGE_IDLE; }
-float observer_get_eps_dead(void) { return 0.0f; }
-uint8_t observer_get_lock(void) { return OBS_LOCK_CAPTURE; }
-float observer_get_pll_int_el(void) { return 0.0f; }
-float observer_get_omega_el(void) { return 0.0f; }
-uint8_t observer_consume_pi_reset(void) { return 0u; }
-uint8_t observer_consume_sens_pi_clear(void) { return 0u; }
-uint8_t observer_speed_run_active(void) { return 0u; }
-uint8_t observer_sensed_fb_active(void) { return 0u; }
-void observer_sensed_keep(float theta_enc, float dt)
-{
-    (void)theta_enc;
-    (void)dt;
-}
-void observer_hfi_hand_keep(float theta_enc, float dt)
-{
-    (void)theta_enc;
-    (void)dt;
-}
-float observer_get_speed_ref_rpm(void) { return 0.0f; }
-float observer_get_id_ref(void) { return 0.0f; }
-float observer_get_iq_ref(void) { return 0.0f; }
-uint8_t observer_if_leave_active(void) { return 0u; }
-void observer_set_omega_ff_el(float omega_el_rad_s) { (void)omega_el_rad_s; }
-float observer_get_iq_auth_abs(void) { return 0.0f; }
-uint8_t observer_id_pi_bypass(void) { return 0u; }
-float observer_id_pi_soft_scale(void) { return 1.0f; }
-float observer_get_theta_hat(void) { return 0.0f; }
-void observer_read_view(observer_view_t *v)
-{
-    if (v == 0) {
-        return;
-    }
-    v->stage = OBS_STAGE_IDLE;
-    v->lock = OBS_LOCK_CAPTURE;
-    v->theta_cmd = 0.0f;
-    v->theta_hat = 0.0f;
-    v->theta_err = 0.0f;
-    v->eps = 0.0f;
-    v->di_q = 0.0f;
-    v->di_d = 0.0f;
-    v->x_raw = 0.0f;
-    v->y_raw = 0.0f;
-    v->vh_sign = 0.0f;
-    v->eps_dead = 0.0f;
-    v->pll_int_el = 0.0f;
-    v->omega_el = 0.0f;
-    v->omega_trim_el = 0.0f;
-    v->ipd_phase = 0u;
-    v->ipd_pulse_ud = 0.0f;
-    v->eps_d = 0.0f;
-    v->qkick_verdict = 0.0f;
-    v->axis_flip_n = 0.0f;
-    v->axis_ok = 0u;
-    v->qkick_phase = 0u;
-    v->qkick_seed = 0.0f;
-    v->qkick_dth = 0.0f;
-}
-uint8_t observer_take_polarity_flip(void) { return 0u; }
 
 #endif /* M1_HFI_ENABLE */

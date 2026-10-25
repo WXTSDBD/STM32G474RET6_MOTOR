@@ -31,10 +31,4 @@
 #undef M1_USE_OBS_VEQ_PROFILE
 #define M1_USE_OBS_VEQ_PROFILE          0
 
-/*
- * 交付 GATE=141。旧 1…140 关卡表已废。
- */
-#undef M1_HFI_GATE
-#define M1_HFI_GATE                     141
-
 #endif /* CONFIG_BRINGUP_ACTIVE_H */

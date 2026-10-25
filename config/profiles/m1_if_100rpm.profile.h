@@ -69,26 +69,8 @@
 #define M1_IF_IQ_MID_RPM_HI             520.0f
 #undef M1_IF_HOLD_S
 #define M1_IF_HOLD_S                    0.0f
-#undef M1_IF_OBS_SPEED_REF_RPM
-#define M1_IF_OBS_SPEED_REF_RPM         (M1_IF_DIR_SIGN * 1000.0f) /* HOLD_IF_CMD 钉 ω_IF */
-#undef M1_IF_OBS_ANGLE_ONLY_ENABLE
-#define M1_IF_OBS_ANGLE_ONLY_ENABLE     0 /* 开弱速度环 */
-#undef M1_IF_OBS_HOLD_SPEED_ENABLE
-#define M1_IF_OBS_HOLD_SPEED_ENABLE     1
-#undef M1_IF_OBS_HOLD_IF_CMD_ENABLE
-#define M1_IF_OBS_HOLD_IF_CMD_ENABLE    1 /* ω_ref 钉 I/F 指令，不认飞车测速 */
-#undef M1_IF_HANDOFF_IQ_A
-#define M1_IF_HANDOFF_IQ_A              4.0f  /* |Iq|；速度环交接 × DIR */
-#undef M1_IF_OBS_BLEND_SPEED_ENABLE
-#define M1_IF_OBS_BLEND_SPEED_ENABLE    1 /* BLEND 起弱速度环，抑融角飞车 */
-#undef M1_IF_OBS_BLEND_KEEP_IF_IQ
-#define M1_IF_OBS_BLEND_KEEP_IF_IQ      0 /* 与 BLEND_SPEED 互斥：Iq 交给外环 */
 #undef M1_IF_OBS_EW_CLAMP_ENABLE
 #define M1_IF_OBS_EW_CLAMP_ENABLE       1 /* 仅挡 enc 尖峰，勿长期捂住真过速 */
-#undef M1_IF_OBS_EW_CLAMP_RPM
-#define M1_IF_OBS_EW_CLAMP_RPM          80.0f
-#undef M1_IF_OBS_EW_CLAMP_S
-#define M1_IF_OBS_EW_CLAMP_S            0.08f /* 短窗；过速交给弱 PI + 浅刹车 */
 /* 交接浅刹车：① 阶段保持；② 起解除 */
 #undef M1_IF_OBS_SOFT_BRAKE_ENABLE
 #define M1_IF_OBS_SOFT_BRAKE_ENABLE     1
@@ -96,111 +78,15 @@
 #define M1_IF_OBS_SOFT_REGEN_IQ_A       0.25f /* 浅刹 |regen|；驱动侧仍开 */
 #undef M1_IF_OBS_IQ_MIN_A
 #define M1_IF_OBS_IQ_MIN_A              (-M1_IF_OBS_SOFT_REGEN_IQ_A) /* 兼容旧名 */
-#undef M1_IF_OBS_SOFT_BRAKE_S
-#define M1_IF_OBS_SOFT_BRAKE_S          12.0f /* 兜底；① 会续期 */
 /* 三步巡航（1347 禁止一步放开） */
 #undef M1_IF_OBS_CRUISE_ENABLE
 #define M1_IF_OBS_CRUISE_ENABLE         1
-#undef M1_IF_OBS_CRUISE_SETTLE_S
-#define M1_IF_OBS_CRUISE_SETTLE_S       1.5f /* spd_on → ① */
-#undef M1_IF_OBS_CRUISE_STAGE1_S
-#define M1_IF_OBS_CRUISE_STAGE1_S       2.5f /* ① 只改 ω_ref */
-#undef M1_IF_OBS_CRUISE_STAGE2_S
-#define M1_IF_OBS_CRUISE_STAGE2_S       1.5f /* ② 对称 Iq */
-#undef M1_IF_OBS_CRUISE_RPM
-#define M1_IF_OBS_CRUISE_RPM            (M1_IF_DIR_SIGN * 1000.0f)
 /* 正→不管停→反：关阶跃/探针，锁①；零速后再 I/F −1000 */
 #undef M1_IF_OBS_DIR_SEQ_ENABLE
 #define M1_IF_OBS_DIR_SEQ_ENABLE        1
-#undef M1_IF_OBS_DIR_SEQ_FWD_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_FWD_HOLD_S    3.0f
-#undef M1_IF_OBS_DIR_SEQ_ZERO_RPM
-#define M1_IF_OBS_DIR_SEQ_ZERO_RPM      80.0f
-#undef M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_ZERO_HOLD_S   0.5f
-#undef M1_IF_OBS_DIR_SEQ_COAST_MIN_S
-#define M1_IF_OBS_DIR_SEQ_COAST_MIN_S   2.0f
-#undef M1_IF_OBS_DIR_SEQ_COAST_MAX_S
-#define M1_IF_OBS_DIR_SEQ_COAST_MAX_S   8.0f
-#undef M1_IF_OBS_DIR_SEQ_EMAG_STOP
-#define M1_IF_OBS_DIR_SEQ_EMAG_STOP     0.55f
-#undef M1_IF_OBS_DIR_SEQ_REV_HOLD_S
-#define M1_IF_OBS_DIR_SEQ_REV_HOLD_S    3.0f
 /* 巡航后硬阶跃：DIR_SEQ 时关 */
-#undef M1_IF_OBS_CRUISE_STEP_ENABLE
-#define M1_IF_OBS_CRUISE_STEP_ENABLE    0
-#undef M1_IF_OBS_CRUISE_STEP_SOAK_S
-#define M1_IF_OBS_CRUISE_STEP_SOAK_S    2.0f
-#undef M1_IF_OBS_CRUISE_STEP_HOLD_S
-#define M1_IF_OBS_CRUISE_STEP_HOLD_S    4.0f
-#undef M1_IF_OBS_CRUISE_STEP_LO_RPM
-#define M1_IF_OBS_CRUISE_STEP_LO_RPM    (M1_IF_DIR_SIGN * 900.0f)
-#undef M1_IF_OBS_CRUISE_STEP_HI_RPM
-#define M1_IF_OBS_CRUISE_STEP_HI_RPM    (M1_IF_DIR_SIGN * 1300.0f)
 /* ③ 探针：DIR_SEQ 时关 */
-#undef M1_IF_OBS_CRUISE_S3_PROBE_ENABLE
-#define M1_IF_OBS_CRUISE_S3_PROBE_ENABLE 0
-#undef M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S
-#define M1_IF_OBS_CRUISE_S3_PROBE_SOAK_S 1.5f
-#undef M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S
-#define M1_IF_OBS_CRUISE_S3_PROBE_HOLD_S 4.0f /* 与大阶跃表同 hold */
-#undef M1_IF_OBS_CRUISE_PI_KP
-#define M1_IF_OBS_CRUISE_PI_KP          0.008f
-#undef M1_IF_OBS_CRUISE_PI_KI
-#define M1_IF_OBS_CRUISE_PI_KI          0.001f
-#undef M1_IF_OBS_CRUISE_IQ_ABS_MAX
-#define M1_IF_OBS_CRUISE_IQ_ABS_MAX     8.0f
 /* DIR_SEQ：正/反巡航都锁①（浅刹），勿进②/③ */
-#undef M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE1_ENABLE 1
-#undef M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE2_ENABLE 0
-#undef M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE
-#define M1_IF_OBS_CRUISE_LOCK_STAGE3_ENABLE 1
-#undef M1_IF_OBS_CRUISE_GATE_ENABLE
-#define M1_IF_OBS_CRUISE_GATE_ENABLE    1
-#undef M1_IF_OBS_CRUISE_GATE_T_MIN_S
-#define M1_IF_OBS_CRUISE_GATE_T_MIN_S   2.0f
-#undef M1_IF_OBS_CRUISE_GATE_T_MIN2_S
-#define M1_IF_OBS_CRUISE_GATE_T_MIN2_S  1.5f
-#undef M1_IF_OBS_CRUISE_GATE_HOLD_S
-#define M1_IF_OBS_CRUISE_GATE_HOLD_S    1.0f /* 离线：连续 ≥1s */
-#undef M1_IF_OBS_CRUISE_GATE_ERR_RPM
-#define M1_IF_OBS_CRUISE_GATE_ERR_RPM   60.0f
-#undef M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX
-#define M1_IF_OBS_CRUISE_GATE_DOMEGA_MAX 1200.0f
-#undef M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S
-#define M1_IF_OBS_CRUISE_GATE_DOMEGA_WIN_S 0.10f
-#undef M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ
-#define M1_IF_OBS_CRUISE_GATE_EW_LPF_HZ  20.0f
-#undef M1_IF_OBS_CRUISE_GATE_FAIL_LEAK
-#define M1_IF_OBS_CRUISE_GATE_FAIL_LEAK  2.0f
-#undef M1_IF_OBS_CRUISE_AMP_GATE_ENABLE
-#define M1_IF_OBS_CRUISE_AMP_GATE_ENABLE 1
-#undef M1_IF_OBS_CRUISE_AMP_STD_MAX
-#define M1_IF_OBS_CRUISE_AMP_STD_MAX     38.0f
-#undef M1_IF_OBS_CRUISE_AMP_PTP_MAX
-#define M1_IF_OBS_CRUISE_AMP_PTP_MAX     98.0f
-#undef M1_IF_OBS_CRUISE_AMP_EW_MAX
-#define M1_IF_OBS_CRUISE_AMP_EW_MAX      58.0f
-#undef M1_IF_OBS_CRUISE_AMP_EMA_HZ
-#define M1_IF_OBS_CRUISE_AMP_EMA_HZ      2.0f
-#undef M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S
-#define M1_IF_OBS_CRUISE_IQ_MIN_SLEW_A_S 0.15f /* |regen| 斜坡 0.6→0.9 ≈2s */
-#undef M1_IF_OBS_CRUISE_DRIVE_IQ_A
-#define M1_IF_OBS_CRUISE_DRIVE_IQ_A     3.5f /* 驱动 |Iq|；符号 = DIR */
-#undef M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A
-#define M1_IF_OBS_CRUISE_STAGE2_REGEN_IQ_A 0.6f
-#undef M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A
-#define M1_IF_OBS_CRUISE_STAGE3_REGEN_IQ_A 0.9f
-#undef M1_IF_OBS_DAMP_ENABLE
-#define M1_IF_OBS_DAMP_ENABLE           1
-#undef M1_IF_OBS_DAMP_HP_ENABLE
-#define M1_IF_OBS_DAMP_HP_ENABLE        1
-#undef M1_IF_OBS_DAMP_BD
-#define M1_IF_OBS_DAMP_BD               0.003f /* 1652：0.002→0.003，抑 −0.9 极限环 */
-#undef M1_IF_OBS_DAMP_LPF_HZ
-#define M1_IF_OBS_DAMP_LPF_HZ           0.35f
 /* 交接后 ω 斜坡：巡航时 200 rpm/s 爬向 1000 */
 #undef M1_SPEED_OMEGA_RAMP_ENABLE
 #define M1_SPEED_OMEGA_RAMP_ENABLE      1
@@ -239,8 +125,6 @@
 #define M1_EMF_SMO_LPF_ENABLE           1
 #undef M1_EMF_SMO_LPF_HZ
 #define M1_EMF_SMO_LPF_HZ               200.0f
-#undef M1_EMF_SMO_LPF_SCHED_ENABLE
-#define M1_EMF_SMO_LPF_SCHED_ENABLE     0
 #undef M1_EMF_SMO_LPF_LINEAR_ENABLE
 #define M1_EMF_SMO_LPF_LINEAR_ENABLE    1
 #undef M1_EMF_SMO_LPF_LINEAR_K
@@ -270,51 +154,11 @@
 #define M1_OBS_SS_SPEED_SWITCH_ENABLE   1
 #undef M1_OBS_SS_SPD_DEFER_ENABLE
 #define M1_OBS_SS_SPD_DEFER_ENABLE      1
-#undef M1_OBS_SS_SPD_DWELL_S
-#define M1_OBS_SS_SPD_DWELL_S           2.0f /* 进 OBS 后再等 2s */
-#undef M1_OBS_SS_SPD_HOLD_S
-#define M1_OBS_SS_SPD_HOLD_S            0.25f /* 1330：10% 门限在晃速下凑不满 0.5s */
-#undef M1_OBS_SS_SPD_RPM_ERR_FRAC
-#define M1_OBS_SS_SPD_RPM_ERR_FRAC      0.20f /* |ω̂−ω_ref|；空载残余摆动约 ±150 */
-#undef M1_OBS_SS_SPD_DOMEGA_MAX
-#define M1_OBS_SS_SPD_DOMEGA_MAX        2500.0f /* 100ms 窗真加速度量级 */
-#undef M1_OBS_SS_SPD_DOMEGA_WIN_S
-#define M1_OBS_SS_SPD_DOMEGA_WIN_S      0.10f
-#undef M1_OBS_SS_SPD_ENC_MATCH_ENABLE
-#define M1_OBS_SS_SPD_ENC_MATCH_ENABLE  0 /* 门限纯无感：不看 ω_enc */
 /* 切入后不回退 */
-#undef M1_OBS_SS_FALLBACK_ENABLE
-#define M1_OBS_SS_FALLBACK_ENABLE       0
-#undef M1_OBS_SS_FALLBACK_ON_ERR_ENABLE
-#define M1_OBS_SS_FALLBACK_ON_ERR_ENABLE 0
-#undef M1_OBS_SS_RPM_ENTER
-#define M1_OBS_SS_RPM_ENTER             920.0f /* ≥920 即可武装；I/F 仍在爬向 1000 */
-#undef M1_OBS_SS_RPM_EXIT
-#define M1_OBS_SS_RPM_EXIT              350.0f
-#undef M1_OBS_SS_ERR_ENTER_RAD
-#define M1_OBS_SS_ERR_ENTER_RAD         0.34906585f /* 有感路径仍用；I/F 切角已不依赖 */
-#undef M1_OBS_SS_ERR_EXIT_RAD
-#define M1_OBS_SS_ERR_EXIT_RAD          0.5235988f
-#undef M1_OBS_SS_EMAG_MIN
-#define M1_OBS_SS_EMAG_MIN              0.9f
-#undef M1_OBS_SS_IQ_ABS_MAX
-#define M1_OBS_SS_IQ_ABS_MAX            12.0f
 /* ARM：转速+emag 攒满即 BLEND（不再等 θ_if） */
-#undef M1_OBS_SS_ARM_S
-#define M1_OBS_SS_ARM_S                 0.20f
-#undef M1_OBS_SS_ARM_GRACE_S
-#define M1_OBS_SS_ARM_GRACE_S           0.10f
-#undef M1_OBS_SS_BLEND_S
-#define M1_OBS_SS_BLEND_S               0.20f
 
 #undef M1_OBS_SPD_PLL_ENABLE
 #define M1_OBS_SPD_PLL_ENABLE           1
-#undef M1_OBS_SPD_PLL_FN_HZ
-#define M1_OBS_SPD_PLL_FN_HZ            12.0f
-#undef M1_OBS_SPD_PLL_ZETA
-#define M1_OBS_SPD_PLL_ZETA             0.707106781f
-#undef M1_OBS_SPD_FB_LPF_HZ
-#define M1_OBS_SPD_FB_LPF_HZ            25
 
 #undef M1_SPEED_PI_KP
 #define M1_SPEED_PI_KP                  0.0008f /* 再弱：抑 ~1Hz 大摆 */
@@ -335,8 +179,6 @@
 #define M1_VOFA_OBS_PLL_12CH            0
 #undef M1_VOFA_OBS_VEQ_12CH
 #define M1_VOFA_OBS_VEQ_12CH            0
-#undef M1_VOFA_FLUX_ID_6CH
-#define M1_VOFA_FLUX_ID_6CH             0
 
 #undef M1_CLOSURE_BRINGUP
 #define M1_CLOSURE_BRINGUP              0

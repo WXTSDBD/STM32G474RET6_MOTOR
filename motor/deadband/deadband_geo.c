@@ -16,14 +16,6 @@
 #include "motor_params_m1.h"
 #include "foc_svpwm.h"
 
-#ifndef M1_ID_CAL_D_TO_PHASE_COS
-#define M1_ID_CAL_D_TO_PHASE_COS     0.8660254037844386f
-#endif
-
-#ifndef M1_ID_CAL_THETA_EL_RAD
-#define M1_ID_CAL_THETA_EL_RAD       0.5235987755982988f
-#endif
-
 #define DEADBAND_GEO_HALF_F            0.5f
 #define DEADBAND_GEO_SQRT3_2           0.8660254037844386f
 
@@ -32,24 +24,12 @@ static float s_geo_diff_amp_max;
 static float s_geo_diff_val_max;
 #endif
 
-#ifndef M1_ID_CAL_CAPTURE_EPS_A
-#define M1_ID_CAL_CAPTURE_EPS_A    0.03f
-#endif
-
 #define DEADBAND_GEO_MERGE_U_MAX     6u
 
 static float deadband_geo_fabsf(float x)
 {
     return (x >= 0.0f) ? x : -x;
 }
-
-#ifndef M1_ID_CAL_THETA_PASS0_A_RAD
-#define M1_ID_CAL_THETA_PASS0_A_RAD  M1_ID_CAL_THETA_EL_RAD
-#endif
-
-#ifndef M1_ID_CAL_THETA_MATCH_RAD
-#define M1_ID_CAL_THETA_MATCH_RAD    0.02f
-#endif
 
 /** Pass0-A（30°）样本，用于 merge amp 定标（式 4-21） */
 static uint8_t deadband_geo_theta_is_pass0_a(float theta_el)
@@ -126,10 +106,6 @@ static void deadband_geo_sort_samples(deadband_geo_sample_t *samples, uint16_t n
         samples[j] = key;
     }
 }
-
-#ifndef M1_ID_CAL_LUT_DEDUP_AMP_EPS_A
-#define M1_ID_CAL_LUT_DEDUP_AMP_EPS_A  0.005f
-#endif
 
 static float deadband_geo_median_u(float *vals, uint8_t n)
 {

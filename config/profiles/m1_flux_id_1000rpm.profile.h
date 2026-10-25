@@ -62,10 +62,6 @@
 #define M1_TELEM_BRINGUP_K              12u
 #undef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     5u
-#undef M1_VOFA_FLUX_ID_6CH
-#define M1_VOFA_FLUX_ID_6CH             0
-#undef M1_VOFA_CH11_ENC_RAW
-#define M1_VOFA_CH11_ENC_RAW            1
 
 #undef M1_CLOSURE_BRINGUP
 #define M1_CLOSURE_BRINGUP              0

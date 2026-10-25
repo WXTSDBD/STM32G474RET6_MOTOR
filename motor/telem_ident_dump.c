@@ -52,14 +52,6 @@ static float telem_ident_dump_checksum(void)
         if (s_ld_lq_snap.lq_valid_fine[i] != 0u) {
             sum += s_ld_lq_snap.lq_h_fine[i] * 1e6f;
         }
-#if M1_LD_LQ_IDENT_F2_ENABLE
-        if (s_ld_lq_snap.ld_valid_f2[i] != 0u) {
-            sum += s_ld_lq_snap.ld_h_f2[i] * 1e6f;
-        }
-        if (s_ld_lq_snap.lq_valid_f2[i] != 0u) {
-            sum += s_ld_lq_snap.lq_h_f2[i] * 1e6f;
-        }
-#endif
     }
     return sum;
 }
@@ -134,18 +126,9 @@ int telem_ident_dump_next(float vals[], uint8_t ident_dump_ch)
         if (ident_dump_ch > 10u) {
             vals[10] = s_ld_lq_snap.ok_fine ? 1.0f : 0.0f;
         }
-#if M1_LD_LQ_IDENT_F2_ENABLE
-        if (ident_dump_ch > 11u) {
-            vals[11] = (float)s_ld_lq_snap.n_ld_ok_f2;
-        }
-        for (k = 12u; k < ident_dump_ch; k++) {
-            vals[k] = 0.0f;
-        }
-#else
         for (k = 11u; k < ident_dump_ch; k++) {
             vals[k] = 0.0f;
         }
-#endif
         if (s_grid_n > 0u) {
             s_dump_state = TELEM_IDENT_DUMP_DATA;
             s_data_frame_idx = 0u;
@@ -166,17 +149,9 @@ int telem_ident_dump_next(float vals[], uint8_t ident_dump_ch)
         vals[7] = s_ld_lq_snap.lq_valid[gi] ? 1.0f : 0.0f;
         vals[8] = s_ld_lq_snap.ld_valid_fine[gi] ? 1.0f : 0.0f;
         vals[9] = s_ld_lq_snap.lq_valid_fine[gi] ? 1.0f : 0.0f;
-#if M1_LD_LQ_IDENT_F2_ENABLE
-        vals[10] = s_ld_lq_snap.ld_h_f2[gi] * 1e6f;
-        vals[11] = s_ld_lq_snap.lq_h_f2[gi] * 1e6f;
-        for (k = 12u; k < ident_dump_ch; k++) {
-            vals[k] = 0.0f;
-        }
-#else
         for (k = 10u; k < ident_dump_ch; k++) {
             vals[k] = 0.0f;
         }
-#endif
         s_data_frame_idx++;
         if (s_data_frame_idx >= s_grid_n) {
             s_dump_state = TELEM_IDENT_DUMP_TAIL;
@@ -188,19 +163,11 @@ int telem_ident_dump_next(float vals[], uint8_t ident_dump_ch)
         vals[1] = (float)s_grid_n;
         vals[2] = telem_ident_dump_checksum();
         vals[3] = s_ld_lq_snap.rs_used_ohm;
-#if M1_LD_LQ_IDENT_F2_ENABLE
-        vals[4] = (float)s_ld_lq_snap.n_lq_ok_f2;
-        vals[5] = s_ld_lq_snap.ok_f2 ? 1.0f : 0.0f;
-        for (k = 6u; k < ident_dump_ch; k++) {
-            vals[k] = 0.0f;
-        }
-#else
         vals[4] = 0.0f;
         vals[5] = 0.0f;
         for (k = 6u; k < ident_dump_ch; k++) {
             vals[k] = 0.0f;
         }
-#endif
         s_dump_state = TELEM_IDENT_DUMP_DONE;
         return 1;
 

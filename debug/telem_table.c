@@ -31,38 +31,6 @@
 #include "observer/observer_composite.h"
 #include "app_axis_jeoc.h"
 
-#ifndef M1_VOFA_SIGNOFF_CH
-#define M1_VOFA_SIGNOFF_CH 0
-#endif
-#ifndef M1_VOFA_SIGNOFF_ENC_RAW
-#define M1_VOFA_SIGNOFF_ENC_RAW 0
-#endif
-#ifndef M1_VOFA_KTH_SPEED_DIAG
-#define M1_VOFA_KTH_SPEED_DIAG 0
-#endif
-#ifndef M1_VOFA_OPT12
-#define M1_VOFA_OPT12 0
-#endif
-
-#ifndef M1_VOFA_IDENT_DUTY_12CH
-#define M1_VOFA_IDENT_DUTY_12CH 0
-#endif
-#ifndef M1_VOFA_SPEED_CH8_11
-#define M1_VOFA_SPEED_CH8_11 0
-#endif
-#ifndef M1_VOFA_SPEED_ISR_CH
-#define M1_VOFA_SPEED_ISR_CH 0
-#endif
-#ifndef M1_POS_MIT_COMBO_ENABLE
-#define M1_POS_MIT_COMBO_ENABLE 0
-#endif
-#ifndef M1_SPEED_LOOP_ENABLE
-#define M1_SPEED_LOOP_ENABLE 0
-#endif
-#ifndef M1_PLL_ENABLE
-#define M1_PLL_ENABLE 0
-#endif
-
 static uint8_t s_layout = TELEM_LAYOUT_LEGACY;
 
 /* ---- getters：A 类直读状态；D 类 mark 仍读 dbg ---- */
@@ -324,23 +292,6 @@ static float tl_opt_omega_fb(const motor_context_t *ctx)
 }
 
 #if M1_VOFA_SIGNOFF_ENC_RAW
-#if M1_VOFA_KTH_SPEED_DIAG
-/** KTH 速度对照：… iq_ref pll_ω_err ω ω* isr_delta enc_raw；kick_skip 看 Watch */
-static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
-    { "ia",              tl_ia },
-    { "ib",              tl_ib },
-    { "ic",              tl_ic },
-    { "iq",              tl_iq },
-    { "theta_mech",      tl_theta_mech },
-    { "theta_el",        tl_theta_el },
-    { "iq_ref",          tl_iq_ref_outer },
-    { "pll_omega_err",   tl_pll_omega_err },
-    { "omega_pll",       tl_omega_pll },
-    { "omega_ref",       tl_omega_ref },
-    { "isr_delta",       tl_isr_delta },
-    { "enc_raw",         tl_enc_raw },
-};
-#else
 /** 编码器冒烟/标定：… ω_pll ω_ref enc_cal_add enc_raw */
 static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
     { "ia",          tl_ia },
@@ -356,7 +307,6 @@ static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {
     { "enc_cal_add", tl_enc_cal_add },
     { "enc_raw",     tl_enc_raw },
 };
-#endif
 #else
 /** 签收：ia ib ic iq θ_fb θ_mech θ_ref θ_err ω_pll ω_ref iq_ref mark */
 static const telem_ch_t s_layout_signoff[TELEM_TABLE_CH_N] = {

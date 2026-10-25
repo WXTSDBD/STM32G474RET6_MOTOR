@@ -54,9 +54,6 @@ static pre_id_axis_t s_pre_id_axis;
 static uint8_t s_ladder_ab_round;
 #endif
 #endif
-#if M1_OPEN_UQ_DEADBAND_AB_SWEEP
-static uint32_t s_ab_last_phase;
-#endif
 
 static void motor_open_sweep_clear_open_voltages(motor_context_t *ctx)
 {
@@ -165,9 +162,6 @@ void motor_open_sweep_init(motor_context_t *ctx)
     s_ladder_ab_round = 0u;
 #endif
 #endif
-#if M1_OPEN_UQ_DEADBAND_AB_SWEEP
-    s_ab_last_phase = 0xffffffffu;
-#endif
 }
 
 void motor_open_sweep_arm_v012(motor_context_t *ctx)
@@ -180,12 +174,7 @@ void motor_open_sweep_arm_v012(motor_context_t *ctx)
     ctx->ud_open = 0.0f;
     s_tick = 0u;
     s_armed = 1u;
-#if M1_OPEN_UQ_DEADBAND_AB_SWEEP
-    s_kind = SWEEP_KIND_AB;
-    s_ab_last_phase = 0xffffffffu;
-#else
     s_kind = SWEEP_KIND_V012;
-#endif
 }
 
 void motor_open_sweep_begin_fixed(motor_context_t *ctx, float uq_v, float duration_s)
@@ -206,13 +195,6 @@ void motor_open_sweep_begin_fixed(motor_context_t *ctx, float uq_v, float durati
     }
 }
 
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-void motor_open_sweep_begin_pre_id_uq_ladder(motor_context_t *ctx)
-{
-    s_pre_id_axis = PRE_ID_AXIS_UQ;
-    motor_open_sweep_begin_pre_id_ladder_common(ctx);
-}
-#endif
 
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
 void motor_open_sweep_begin_pre_id_ud_ladder(motor_context_t *ctx)
@@ -354,49 +336,6 @@ void motor_open_sweep_tick(motor_context_t *ctx)
         return;
     }
 
-#if M1_OPEN_UQ_DEADBAND_AB_SWEEP
-    if (s_kind == SWEEP_KIND_AB) {
-        const uint32_t half_ticks =
-            (uint32_t)(M1_OPEN_UQ_HALF_STEP_S / M1_CTRL_TS_S + 0.5f);
-        const uint32_t t = s_tick++;
-        uint32_t phase = (half_ticks > 0u) ? (t / half_ticks) : 0u;
-
-        if (phase >= 6u) {
-            phase = 5u;
-            s_armed = 0u;
-            s_kind = SWEEP_KIND_NONE;
-        }
-
-        DBG.open_seq_phase = (uint8_t)phase;
-
-        switch (phase / 2u) {
-        case 0u:
-            ctx->uq_open = M1_OPEN_UQ_SWEEP_V0;
-            break;
-        case 1u:
-            ctx->uq_open = M1_OPEN_UQ_SWEEP_V1;
-            break;
-        default:
-            ctx->uq_open = M1_OPEN_UQ_SWEEP_V2;
-            break;
-        }
-        ctx->ud_open = 0.0f;
-
-        if (phase != s_ab_last_phase) {
-            s_ab_last_phase = phase;
-            if ((phase & 1u) != 0u) {
-#if M1_DEADBAND_ENABLE
-                deadband_service_apply_profile(DEADBAND_PROFILE_FIXED);
-#else
-                deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-#endif
-            } else {
-                deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-            }
-        }
-        return;
-    }
-#endif
 
     if (s_kind == SWEEP_KIND_V012) {
         const uint32_t step_ticks =

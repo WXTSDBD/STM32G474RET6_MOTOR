@@ -68,10 +68,6 @@
 #define M1_TELEM_BRINGUP_K              12u
 #undef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     2u
-#undef M1_VOFA_FLUX_ID_6CH
-#define M1_VOFA_FLUX_ID_6CH             0
-#undef M1_VOFA_CH11_ENC_RAW
-#define M1_VOFA_CH11_ENC_RAW            0
 
 #undef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               0
@@ -98,8 +94,6 @@
 #define M1_EMF_SMO_LPF_ENABLE           1
 #undef M1_EMF_SMO_LPF_HZ
 #define M1_EMF_SMO_LPF_HZ               200.0f
-#undef M1_EMF_SMO_LPF_SCHED_ENABLE
-#define M1_EMF_SMO_LPF_SCHED_ENABLE     0
 #undef M1_EMF_SMO_LPF_LINEAR_ENABLE
 #define M1_EMF_SMO_LPF_LINEAR_ENABLE    1
 #undef M1_EMF_SMO_LPF_LINEAR_K
@@ -129,37 +123,11 @@
 #undef M1_OBS_SS_SPEED_SWITCH_ENABLE
 #define M1_OBS_SS_SPEED_SWITCH_ENABLE   1
 /* 编码器监督：角差只上 VOFA，不因超差回切（过流/掉速仍可踢） */
-#undef M1_OBS_SS_FALLBACK_ON_ERR_ENABLE
-#define M1_OBS_SS_FALLBACK_ON_ERR_ENABLE 0
-#undef M1_OBS_SS_RPM_ENTER
-#define M1_OBS_SS_RPM_ENTER             900.0f
-#undef M1_OBS_SS_RPM_EXIT
-#define M1_OBS_SS_RPM_EXIT              350.0f /* 低于探底末档 400，避免未测完就掉速踢 */
-#undef M1_OBS_SS_ERR_ENTER_RAD
-#define M1_OBS_SS_ERR_ENTER_RAD         0.2617994f /* 15° @1000 切入 */
-#undef M1_OBS_SS_ERR_EXIT_RAD
-#define M1_OBS_SS_ERR_EXIT_RAD          0.5235988f
-#undef M1_OBS_SS_EMAG_MIN
-#define M1_OBS_SS_EMAG_MIN              0.8f
-#undef M1_OBS_SS_IQ_ABS_MAX
-#define M1_OBS_SS_IQ_ABS_MAX            10.0f
-#undef M1_OBS_SS_ARM_S
-#define M1_OBS_SS_ARM_S                 1.0f
-#undef M1_OBS_SS_ARM_GRACE_S
-#define M1_OBS_SS_ARM_GRACE_S           0.05f
-#undef M1_OBS_SS_BLEND_S
-#define M1_OBS_SS_BLEND_S               0.20f
 
 /* θ̂→motor_pll @ 速度环节拍；离线扫参建议 Fn=12 */
 #undef M1_OBS_SPD_PLL_ENABLE
 #define M1_OBS_SPD_PLL_ENABLE           1
-#undef M1_OBS_SPD_PLL_FN_HZ
-#define M1_OBS_SPD_PLL_FN_HZ            12.0f
-#undef M1_OBS_SPD_PLL_ZETA
-#define M1_OBS_SPD_PLL_ZETA             0.707106781f
 /* 观测速进 PI 前 LPF：回 25 Hz（15 Hz 试验更差：~8.5 Hz 狩猎） */
-#undef M1_OBS_SPD_FB_LPF_HZ
-#define M1_OBS_SPD_FB_LPF_HZ            25
 
 /* 速度环 KI：探底用基线 0.002（异响试验的 ×0.6 先关掉） */
 #undef M1_SPEED_PI_KI

@@ -6,9 +6,8 @@
  * 对应设计：docs/方案_宏转实验表_设计_2026-10-25.md §4/§5.3。
  * 目标：函数**总是编译**，"选谁"由表指针决定，不由 `#if M1_*` 决定。
  *
- * 本阶段只定义类型：没有文件 include 它，固件 hex 不变。
- * 后续阶段：各个实现文件导出 `const xxx_ops_t g_xxx_ops`，
- * 由 config/routes/r_*.c 的 route 结构体挑一个指针挂上去。
+ * 现网 ±2000：config/routes 在绑定时装上 angle，段边界再换指针。
+ * 20 kHz 只解引用，不在热路径里选择角度源。
  */
 #ifndef MOTOR_CORE_MOTOR_OPS_H
 #define MOTOR_CORE_MOTOR_OPS_H
@@ -29,6 +28,11 @@ typedef struct {
     float (*get_theta)(motor_context_t *ctx);
     /** 取速度反馈（机端 rpm）。 */
     float (*get_omega_rpm)(motor_context_t *ctx);
+    /**
+     * Park 后解调。有感源填 NULL，20 kHz 看到 NULL 就不跑无感解调。
+     */
+    void (*post_park)(motor_context_t *ctx, float id, float iq,
+                      float i_alpha, float i_beta);
     /** 源切换时的软交接（可为空）。 */
     void (*handoff)(motor_context_t *ctx, uint8_t from_ops_id);
 } angle_ops_t;

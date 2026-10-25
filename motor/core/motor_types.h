@@ -52,6 +52,8 @@ typedef struct {
     pi_cfg_t spd;       /**< 速度环。 */
     pi_cfg_t pos;       /**< 位置环。 */
     float theta_lim;    /**< 角度误差保护门限，单位 rad。 */
+    float omega_ramp_rpm_s;       /**< 同向加速，单位 rpm/s。 */
+    float omega_ramp_decel_rpm_s; /**< 减速和反向，单位 rpm/s。 */
 } motor_gains_t;
 
 #ifdef __cplusplus

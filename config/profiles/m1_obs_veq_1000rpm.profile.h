@@ -67,10 +67,6 @@
 #undef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     2u
 
-#undef M1_VOFA_FLUX_ID_6CH
-#define M1_VOFA_FLUX_ID_6CH             0
-#undef M1_VOFA_CH11_ENC_RAW
-#define M1_VOFA_CH11_ENC_RAW            0
 
 #undef M1_EMF_VEQ_ENABLE
 #define M1_EMF_VEQ_ENABLE               1

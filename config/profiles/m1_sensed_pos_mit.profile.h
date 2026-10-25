@@ -25,11 +25,7 @@
 
 #undef M1_SPEED_LOOP_ENABLE
 #define M1_SPEED_LOOP_ENABLE            1
-#undef M1_SPEED_LOOP_BOOT
-#define M1_SPEED_LOOP_BOOT              1
-#undef M1_SPEED_REF_RPM_DEFAULT
 /** 解耦前馈 A/B：段表给 0/500；默认 0。 */
-#define M1_SPEED_REF_RPM_DEFAULT        0.0f
 #undef M1_SPEED_OMEGA_RAMP_ENABLE
 /** 500 rpm/s：0→500 约 1 s，落在 3 s 加速窗内便于看 Id。 */
 #define M1_SPEED_OMEGA_RAMP_ENABLE      1
@@ -76,8 +72,6 @@
 
 #undef M1_HFI_ENABLE
 #define M1_HFI_ENABLE                   0
-#undef M1_HFI_PARK_ENABLE
-#define M1_HFI_PARK_ENABLE              0
 #undef M1_HFI_MOTION_BYPASS_ENABLE
 #define M1_HFI_MOTION_BYPASS_ENABLE     0
 #undef M1_HFI_SPEED_FB_ENABLE
@@ -99,8 +93,6 @@
 
 #undef M1_POS_LOOP_ENABLE
 #define M1_POS_LOOP_ENABLE              1
-#undef M1_POS_LOOP_BOOT
-#define M1_POS_LOOP_BOOT                0
 #undef M1_POS_STEP_TEST_ENABLE
 #define M1_POS_STEP_TEST_ENABLE         0
 #undef M1_POS_MIT_COMBO_ENABLE
@@ -147,28 +139,10 @@
 #define M1_OUTER_THETA_FB_SRC           0
 #undef M1_FRIC_FF_ENABLE
 #define M1_FRIC_FF_ENABLE               0
-#undef M1_FRIC_FF_A
-#define M1_FRIC_FF_A                    0.35f
-#undef M1_FRIC_FF_SAT_RAD
-#define M1_FRIC_FF_SAT_RAD              (2.0f * 0.01745329252f)
-#undef M1_OUTER_SIGNOFF_PACK1
-#define M1_OUTER_SIGNOFF_PACK1          0
-#undef M1_OUTER_SIGNOFF_PACK2
-#define M1_OUTER_SIGNOFF_PACK2          0
 #undef M1_OUTER_SIGNOFF_PACK_MK
 #define M1_OUTER_SIGNOFF_PACK_MK        1
-#undef M1_OUTER_SIGNOFF_PACK_BW
-#define M1_OUTER_SIGNOFF_PACK_BW        0
-#undef M1_OUTER_MK_HOLD_S
-#define M1_OUTER_MK_HOLD_S              5.0f
-#undef M1_OUTER_MK_GAP_S
-#define M1_OUTER_MK_GAP_S               2.5f
 #undef M1_EXP_FRAMEWORK_ENABLE
 #define M1_EXP_FRAMEWORK_ENABLE         1
-#undef M1_EXP_FF_AB_ENABLE
-#define M1_EXP_FF_AB_ENABLE             0
-#undef M1_FOC_ROTATION_FF_ENABLE
-#define M1_FOC_ROTATION_FF_ENABLE       0
 
 #undef M1_VOFA_UNIFIED_12CH
 #define M1_VOFA_UNIFIED_12CH            1

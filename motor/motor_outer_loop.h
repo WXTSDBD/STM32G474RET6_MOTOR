@@ -51,9 +51,6 @@ uint8_t motor_outer_if_obs_dir_seq_consume_rearm(void);
 #endif
 #endif
 
-#if M1_SPEED_REVERSAL_TEST_ENABLE
-void motor_speed_reversal_arm(motor_context_t *ctx);
-#endif
 
 #if M1_POS_STEP_TEST_ENABLE
 void motor_pos_step_test_arm(motor_context_t *ctx);

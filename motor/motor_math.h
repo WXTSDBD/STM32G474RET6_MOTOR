@@ -17,6 +17,9 @@
 #define M_PI 3.14159265358979323846
 #endif
 
+/** 2π，单位 rad。I/F 与开环启动折角用。 */
+#define M1_TWO_PI 6.28318530718f
+
 /** Wrap to [-pi, pi] (same while-loop as former hfi_wrap_pi / hfi_*_wrap). */
 static inline float motor_wrap_pi(float x)
 {

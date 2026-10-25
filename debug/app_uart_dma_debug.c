@@ -22,31 +22,16 @@
 #include "bringup_bench.h"
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
-#if M1_ID_LOCK_CAL_SWEEP
-#include "deadband_id_cal.h"
-#endif
-#if M1_IDENT_ENABLE
-#include "ident_module.h"
-#endif
-#if M1_SPEED_IDENT_ENABLE
-#include "speed_ident_module.h"
-#endif
 #include "telem_ident_dump.h"
 #include "telem_lut_dump.h"
 #include "telem_table.h"
 #include "bsp_axes.h"
 #include "motor_math.h"
-#ifndef M1_HFI_ENABLE
-#define M1_HFI_ENABLE                   0
-#endif
 #if M1_HFI_ENABLE
 #include "observer/hfi_sqwave.h"
 #endif
 #include <string.h>
 
-#ifndef M1_TELEM_BRINGUP_K
-#define M1_TELEM_BRINGUP_K           12u
-#endif
 #define TELEM_BRINGUP_K              M1_TELEM_BRINGUP_K
 #define TELEM_BRINGUP_INCLUDE_SEQ    0u
 #define TELEM_CPU_MHZ                160u
@@ -59,32 +44,16 @@
  * D=2  。10kHz。2ch×52B 。520KB/s @ 6Mbps。
  * D=1  。20kHz；D=100 。200Hz（bringup 低压联调用）
  */
-#ifndef M1_TELEM_BRINGUP_DECIMATION
-#define M1_TELEM_BRINGUP_DECIMATION  2u
-#endif
 #ifndef TELEM_BRINGUP_DECIMATION
 #define TELEM_BRINGUP_DECIMATION     M1_TELEM_BRINGUP_DECIMATION
 #endif
 
-#if TELEM_FRAME_LAYOUT_ID
-#define TELEM_LAYOUT_ID_BYTES     4u
-#else
 #define TELEM_LAYOUT_ID_BYTES     0u
-#endif
 
-#if TELEM_BRINGUP_INCLUDE_SEQ
-#define TELEM_SMALL_FRAME_BYTES   (4u + TELEM_LAYOUT_ID_BYTES + TELEM_BRINGUP_K * 4u + 4u)
-#else
 #define TELEM_SMALL_FRAME_BYTES   (TELEM_LAYOUT_ID_BYTES + TELEM_BRINGUP_K * 4u + 4u)
-#endif
 
-#if TELEM_BRINGUP_INCLUDE_SEQ
-#define TELEM_CH1_BYTE_OFF        (8u + TELEM_LAYOUT_ID_BYTES)
-#define TELEM_CH2_BYTE_OFF        (12u + TELEM_LAYOUT_ID_BYTES)
-#else
 #define TELEM_CH1_BYTE_OFF        (4u + TELEM_LAYOUT_ID_BYTES)
 #define TELEM_CH2_BYTE_OFF        (8u + TELEM_LAYOUT_ID_BYTES)
-#endif
 
 static const uint8_t s_justfloat_tail[4] = {0x00u, 0x00u, 0x80u, 0x7fu};
 
@@ -105,9 +74,6 @@ static telem_buf_t s_bufs[2];
 static telem_buf_t *s_write_buf;
 static telem_buf_t *s_sending_buf;
 
-#if TELEM_BRINGUP_INCLUDE_SEQ
-static uint32_t s_seq;
-#endif
 
 static uint32_t s_decim_cnt;
 
@@ -270,22 +236,7 @@ static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset, const floa
 {
     uint8_t *p = &buf->data[offset];
 
-#if TELEM_BRINGUP_INCLUDE_SEQ
-    {
-        uint32_t seq = s_seq++;
-        memcpy(p, &seq, sizeof(seq));
-        p += sizeof(seq);
-    }
-#endif
 
-#if TELEM_FRAME_LAYOUT_ID
-    {
-        float layout_id = (float)telem_get_layout();
-
-        memcpy(p, &layout_id, sizeof(layout_id));
-        p += sizeof(layout_id);
-    }
-#endif
 
     memcpy(p, vals, sizeof(float) * TELEM_BRINGUP_K);
     p += sizeof(float) * TELEM_BRINGUP_K;
@@ -311,33 +262,6 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
         }
     }
 
-#if M1_VOFA_SIGNOFF_CH
-    /*
-     * 位置/MIT 签收档 12ch（LEGACY 回落；默认已走 TELEM_LAYOUT_SIGNOFF 表）。
-     * T-2：与表驱动同源（ctx / motor_current），不再读已删的 dbg 镜像。
-     */
-    {
-        const motor_context_t *c = NULL;
-        bsp_axis_t *ax2 = bsp_axis(BSP_AXIS_M1);
-
-        if ((ax2 != NULL) && (ax2->motor_ctx != NULL)) {
-            c = (const motor_context_t *)ax2->motor_ctx;
-        }
-        vals[0] = (c != NULL) ? c->ia : 0.0f;
-        vals[1] = (c != NULL) ? c->ib : 0.0f;
-        vals[2] = (c != NULL) ? c->ic : 0.0f;
-        vals[3] = (c != NULL) ? c->iq : 0.0f;
-        vals[4] = motor_current_get_theta_fb_rad();
-        vals[5] = motor_current_get_theta_mech_rad();
-        vals[6] = (c != NULL) ? c->theta_ref_rad : 0.0f;
-        vals[7] = vals[6] - vals[4];
-        vals[8] = motor_current_get_enc_pll_omega_mech_rpm();
-        vals[9] = (c != NULL) ? c->omega_ref : 0.0f;
-        vals[10] = (c != NULL) ? c->iq_ref : 0.0f;
-        vals[11] = (float)dbg.open_seq_phase;
-    }
-    return;
-#endif
     {
         const motor_context_t *c = NULL;
         bsp_axis_t *ax2 = bsp_axis(BSP_AXIS_M1);
@@ -352,57 +276,8 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
         vals[4] = (c != NULL) ? c->iq : 0.0f;
     }
     vals[5] = dbg.foc_theta_el;
-#if M1_VOFA_IDENT_DUTY_12CH && !M1_SPEED_LOOP_ENABLE
-    vals[6] = dbg.foc_vd_est;
-    vals[7] = dbg.foc_vq_est;
-#if M1_LD_LQ_IDENT_ENABLE
-    if (deadband_id_cal_in_ld_lq_ident()) {
-        vals[8] = dbg.ld_lq_proc_grid;
-        vals[9] = dbg.ld_lq_proc_code;
-        vals[10] = dbg.ld_lq_L_est_uH;
-    } else
-#endif
-    {
-        vals[8] = dbg.foc_duty_ta;
-        vals[9] = dbg.foc_duty_tb;
-        vals[10] = dbg.foc_duty_tc;
-    }
-    vals[11] = (float)dbg.open_seq_phase;
-#else
     vals[6] = dbg.foc_ud_out;
     vals[7] = dbg.foc_uq_out;
-#if M1_SPEED_IDENT_ENABLE
-    vals[8] = dbg.pll_omega_mech_rpm;
-    vals[9] = dbg.outer_omega_ref;
-#if M1_SPEED_IDENT_BODE_ENABLE
-    if (dbg.open_seq_phase == 230u) {
-        vals[10] = speed_ident_module_bode_freq_hz();
-    } else {
-        vals[10] = dbg.outer_iq_ref;
-    }
-#else
-    vals[10] = dbg.outer_iq_ref;
-#endif
-#if M1_VOFA_CH11_ENC_RAW
-    vals[11] = dbg.enc_raw;   /* AS5047 raw 0..16383；对。ch5=θ_el */
-#else
-    vals[11] = (float)dbg.open_seq_phase;
-#endif
-#elif M1_POS_MIT_COMBO_ENABLE && M1_VOFA_MIT_CH8_11 && M1_PLL_ENABLE
-    vals[8] = dbg.pll_omega_mech_rpm;
-    vals[9] = dbg.outer_theta_err_rad;
-    vals[10] = dbg.outer_iq_ref;
-    vals[11] = (float)dbg.open_seq_phase;
-#elif M1_POS_MIT_COMBO_ENABLE && M1_PLL_ENABLE
-    vals[8] = dbg.outer_theta_err_rad;
-    vals[9] = dbg.outer_theta_mech_rad;
-    if (dbg.outer_mode == (uint8_t)M1_OUTER_TORQUE) {
-        vals[10] = dbg.outer_iq_ref;
-    } else {
-        vals[10] = dbg.outer_theta_ref_rad;
-    }
-    vals[11] = (float)dbg.open_seq_phase;
-#elif M1_SPEED_LOOP_ENABLE && M1_VOFA_SPEED_CH8_11 && M1_PLL_ENABLE
     if (dbg.outer_mode == (uint8_t)M1_OUTER_POSITION ||
         dbg.outer_mode == (uint8_t)M1_OUTER_MIT) {
         vals[8] = dbg.outer_theta_err_rad;
@@ -415,91 +290,10 @@ static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
         vals[10] = dbg.outer_omega_ref;
         vals[11] = dbg.outer_omega_ref - dbg.pll_omega_mech_rpm;
     }
-#elif M1_VOFA_PLL_CH8_11 && M1_PLL_ENABLE
-    vals[8] = dbg.pll_omega_mech_rpm;
-    vals[9] = dbg.pll_omega_diff_rpm;
-    vals[10] = dbg.pll_theta_err_rad;
-    vals[11] = dbg.pll_omega_err_rpm;
-#else
-    vals[8] = dbg.foc_id_ref;
-    vals[9] = dbg.foc_iq_ref;
-#if M1_LD_LQ_IDENT_ENABLE
-    if (deadband_id_cal_in_ld_lq_ident()) {
-        /* VASI 过程 telem：ch8=grid ch9=proc_code ch10=运行 L_uH ch11=open_seq */
-        vals[8] = dbg.ld_lq_proc_grid;
-        vals[9] = dbg.ld_lq_proc_code;
-        vals[10] = dbg.ld_lq_L_est_uH;
-        vals[11] = (float)dbg.open_seq_phase;
-    } else
-#endif
-#if M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE
-    if (deadband_id_cal_in_rs_ident() || deadband_id_cal_in_ld_lq_ident() ||
-        deadband_id_cal_in_ld_lq_pre_decay()) {
-        vals[10] = dbg.rs_l_ident_lut_round;
-    } else
-#if M1_LD_LQ_MULTI_ANGLE_ENABLE
-    if (deadband_id_cal_in_ld_lq_sweep()) {
-        vals[10] = (float)dbg.ld_lq_angle_leg;
-    } else
-#endif
-    {
-        vals[10] = dbg.foc_svpwm_duty_dev;
-    }
-#elif M1_LD_LQ_MULTI_ANGLE_ENABLE
-    if (deadband_id_cal_in_ld_lq_sweep()) {
-        vals[10] = (float)dbg.ld_lq_angle_leg;
-    } else {
-        vals[10] = dbg.foc_svpwm_duty_dev;
-    }
-#else
-    vals[10] = dbg.foc_svpwm_duty_dev;
-#endif
-    vals[11] = (float)dbg.open_seq_phase;
-#endif
-#endif
 }
 #define TELEM_FOC_UNIFIED_12CH_ACTIVE  1
-#else
-#define TELEM_FOC_UNIFIED_12CH_ACTIVE  0
 #endif
 
-#if !TELEM_FOC_UNIFIED_12CH_ACTIVE
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE || M1_OPEN_UD_PRE_ID_CAL_ENABLE
-static void telem_fill_open_ladder_12ch(float vals[TELEM_BRINGUP_K])
-{
-    vals[0] = dbg.foc_ud_out;
-    vals[1] = dbg.foc_uq_out;
-    vals[2] = dbg.foc_vd_est;
-    vals[3] = dbg.foc_vq_est;
-    vals[4] = dbg.foc_id;
-    vals[5] = dbg.foc_iq;
-    vals[6] = dbg.foc_pwm_ccr1;
-    vals[7] = dbg.foc_pwm_ccr2;
-    vals[8] = dbg.foc_pwm_ccr3;
-    vals[9] = dbg.foc_svpwm_uref;
-    vals[10] = (float)dbg.foc_svpwm_sector;
-    vals[11] = (float)dbg.open_seq_phase;
-}
-#endif
-
-#if M1_ID_LOCK_CAL_SWEEP
-static void telem_fill_id_cal_12ch(float vals[TELEM_BRINGUP_K])
-{
-    vals[0] = dbg.foc_ia;
-    vals[1] = dbg.foc_ib;
-    vals[2] = dbg.foc_ic;
-    vals[3] = dbg.foc_id;
-    vals[4] = dbg.foc_iq;
-    vals[5] = dbg.foc_theta_el;
-    vals[6] = dbg.foc_ud_out;
-    vals[7] = dbg.foc_uq_out;
-    vals[8] = dbg.foc_duty_ta;
-    vals[9] = dbg.foc_duty_tb;
-    vals[10] = dbg.foc_duty_tc;
-    vals[11] = dbg.foc_svpwm_duty_dev;
-}
-#endif
-#endif /* !TELEM_FOC_UNIFIED_12CH_ACTIVE */
 
 static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
 {
@@ -509,248 +303,14 @@ static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
         vals[k] = 0.0f;
     }
 
-#ifndef M1_VOFA_FLUX_ID_6CH
-#define M1_VOFA_FLUX_ID_6CH          0
-#endif
-#ifndef M1_VOFA_CH11_ENC_RAW
-#define M1_VOFA_CH11_ENC_RAW         0
-#endif
-#ifndef M1_VOFA_OBS_VEQ_12CH
-#define M1_VOFA_OBS_VEQ_12CH         0
-#endif
-#ifndef M1_VOFA_OBS_SMO_12CH
-#define M1_VOFA_OBS_SMO_12CH         0
-#endif
-#ifndef M1_VOFA_OBS_PLL_12CH
-#define M1_VOFA_OBS_PLL_12CH         0
-#endif
-#ifndef M1_VOFA_OBS_SMO_RAW_12CH
-#define M1_VOFA_OBS_SMO_RAW_12CH     0
-#endif
-#ifndef M1_VOFA_IF_12CH
-#define M1_VOFA_IF_12CH              0
-#endif
-#ifndef M1_VOFA_HFI_12CH
-#define M1_VOFA_HFI_12CH             0
-#endif
-#ifndef M1_VOFA_HFI_ISR_CH
-#define M1_VOFA_HFI_ISR_CH           0
-#endif
 
-#if M1_VOFA_IDENT_DUMP_ENABLE
-    if (telem_ident_dump_next(vals, TELEM_BRINGUP_K)) {
-        /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-        return;
-    }
-#endif
-#if M1_VOFA_LUT_DUMP_ENABLE
-    if (telem_lut_dump_next(vals, TELEM_BRINGUP_K)) {
-        /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-        return;
-    }
-#endif
 
-#if M1_HFI_ENABLE && M1_VOFA_HFI_12CH && (TELEM_BRINGUP_K >= 12u)
-{
-    /*
-     * GATE 141 12ch（Park 直录；改映射须重录金样）：
-     * ch0 θ_park−θ_enc [rad]  ch1 θ_park  ch2 θ_enc  ch3 HFI−enc [rad]
-     * ch4 θ_smo−θ_hfi [rad]  ch5 ω_enc  ch6 ω_fb(进速度环)  ch7 Iq*
-     * ch8 Iq  ch9 ω_ref  ch10 stage（M1_VOFA_HFI_ISR_CH=1 时改 isr_delta）
-     * ch11 pub ss
-     */
-    {
-        const float th_park = dbg.foc_theta_el;
-        const float th_enc = dbg.enc_theta_el;
 
-        vals[0] = motor_wrap_pi(th_park - th_enc);
-        vals[1] = th_park;
-        vals[2] = th_enc;
-        vals[3] = dbg.hfi_theta_err;
-        vals[4] = dbg.obs_pll_theta_err;
-        /* 编码器 PLL 真值（勿用未维护的 dbg 裸读；与 get_enc_pll 同源）。 */
-        vals[5] = motor_current_get_enc_pll_omega_mech_rpm();
-        /* 141 无 OBS_SOFT_SWITCH 时 dbg.outer_omega_mech_rpm 不更新；读本拍速度环 fb。 */
-        vals[6] = motor_current_get_pll_omega_mech_rpm();
-        vals[7] = dbg.foc_iq_ref;
-        vals[8] = dbg.foc_iq;
-        vals[9] = dbg.outer_omega_ref;
-#if M1_VOFA_HFI_ISR_CH
-        vals[10] = (float)g_telem_dbg.isr_delta;
-#else
-        vals[10] = dbg.hfi_stage;
-#endif
-        vals[11] = dbg.obs_ss_spd_on;
-    }
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-}
-#endif
 
-#if M1_VOFA_IF_12CH && (TELEM_BRINGUP_K >= 12u)
-    /*
-     * I/F→OBS 先角后速联调：
-     * ch0 ω_enc  ch1 ω_ref  ch2 Iq_ref  ch3 θ_err(pll−enc监督)
-     * ch4 ω_obs  ch5 speed_fb(进PI)  ch6 Iq  ch7 emag
-     * ch8 Uq     ch9 θ_park  ch10 spd_on(0/1)  ch11 ss_state+0.1α
-     * 判读：进 OBS 。ch11。.x 。ch10=0 。角切速未切；ch10。 。ch5贴ch4 。速已切。
-     */
-    vals[0] = dbg.pll_omega_mech_rpm;
-    vals[1] = dbg.if_omega_cmd_rpm;
-    /* I/F 释放。ch1 跟外环；|ω| 判，兼容反向（旧：outer>1 会把 。000 漏成 0。*/
-    if ((dbg.if_omega_cmd_rpm > -1.0f) && (dbg.if_omega_cmd_rpm < 1.0f) &&
-        ((dbg.outer_omega_ref > 1.0f) || (dbg.outer_omega_ref < -1.0f))) {
-        vals[1] = dbg.outer_omega_ref;
-    }
-    vals[2] = dbg.foc_iq_ref;
-#if M1_EMF_PLL_ENABLE
-    vals[3] = dbg.obs_pll_theta_err;
-#else
-    vals[3] = dbg.if_theta_err_rad;
-#endif
-    vals[4] = dbg.obs_spd_pll_rpm;
-    vals[5] = dbg.outer_omega_mech_rpm;
-    vals[6] = dbg.foc_iq;
-#if M1_EMF_PLL_ENABLE
-    vals[7] = dbg.obs_smo_emag;
-#else
-    vals[7] = dbg.obs_pll_pd;
-#endif
-    vals[8] = dbg.foc_uq_out;
-    vals[9] = dbg.foc_theta_el;
-    vals[10] = dbg.obs_ss_spd_on;
-#if M1_OBS_SOFT_SWITCH_ENABLE
-    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
-#else
-    vals[11] = (float)dbg.open_seq_phase;
-#endif
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
 
-#if M1_VOFA_OBS_SMO_RAW_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* 离线重放原料：i/u + θ/ω；附带在。e/PLL 便于核对 */
-    vals[0] = dbg.obs_i_alpha;
-    vals[1] = dbg.obs_i_beta;
-    vals[2] = dbg.obs_u_alpha;
-    vals[3] = dbg.obs_u_beta;
-    vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.pll_omega_mech_rpm;
-    vals[6] = dbg.obs_smo_e_alpha;
-    vals[7] = dbg.obs_smo_e_beta;
-    vals[8] = dbg.obs_pll_theta_err;
-    vals[9] = dbg.obs_smo_emag;
-    vals[10] = dbg.obs_pll_theta_hat;
-    vals[11] = dbg.obs_smo_lpf_hz;
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
 
-#if M1_VOFA_OBS_PLL_12CH && (TELEM_BRINGUP_K >= 12u)
-#if M1_EMF_PLL_USE_SMO
-#if M1_OBS_SPD_PLL_ENABLE
-    /* 高速软切验收：速度反馈 / 指令 / 角误。/ 状态（不再。PLL 对照。*/
-    vals[0] = dbg.outer_omega_mech_rpm; /* 实际进速度环的反馈 */
-    vals[1] = dbg.outer_omega_ref;
-    vals[2] = dbg.foc_iq_ref;
-    vals[3] = dbg.obs_pll_theta_err;
-    vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.obs_spd_pll_rpm;     /* θ̂→PLL。 kHz。*/
-    vals[6] = dbg.obs_smo_emag;
-    vals[7] = dbg.obs_pll_theta_hat;
-    vals[8] = (float)g_telem_dbg.isr_delta;
-    vals[9] = (float)g_telem_dbg.foc_delta;
-    vals[10] = (float)g_telem_dbg.obs_delta;
-#if M1_OBS_SOFT_SWITCH_ENABLE
-    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
-#else
-    vals[11] = dbg.obs_smo_lpf_hz;
-#endif
-#else
-    /* SMO e 。PLL：中间量 eαβ + atan/PLL 对照 + cycle */
-    vals[0] = dbg.obs_smo_e_alpha;
-    vals[1] = dbg.obs_smo_e_beta;
-    vals[2] = dbg.obs_smo_theta_err;
-    vals[3] = dbg.obs_pll_theta_err;
-    vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.obs_pll_omega_el;
-    vals[6] = dbg.obs_smo_emag;
-    vals[7] = dbg.obs_pll_theta_hat;
-    vals[8] = (float)g_telem_dbg.isr_delta;
-    vals[9] = (float)g_telem_dbg.foc_delta;
-    vals[10] = (float)g_telem_dbg.obs_delta;
-#if M1_OBS_SOFT_SWITCH_ENABLE
-    vals[11] = dbg.obs_ss_state + 0.1f * dbg.obs_ss_alpha;
-#else
-    vals[11] = dbg.obs_smo_lpf_hz;
-#endif
-#endif
-#else
-    /* Veq atan vs EMF-PLL + cycle */
-    vals[0] = dbg.obs_i_alpha;
-    vals[1] = dbg.obs_i_beta;
-    vals[2] = dbg.obs_theta_err;
-    vals[3] = dbg.obs_pll_theta_err;
-    vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.obs_pll_omega_el;
-    vals[6] = dbg.obs_emag;
-    vals[7] = dbg.obs_pll_theta_hat;
-    vals[8] = (float)g_telem_dbg.isr_delta;
-    vals[9] = (float)g_telem_dbg.foc_delta;
-    vals[10] = (float)g_telem_dbg.obs_delta;
-    vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
-#endif
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
 
-#if M1_VOFA_OBS_SMO_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* 保留验收。+ DWT cycle（float 显示；isr 为上一拍完。tick。*/
-    vals[0] = dbg.obs_i_alpha;
-    vals[1] = dbg.obs_i_beta;
-    vals[2] = dbg.obs_theta_err;       /* Veq err */
-    vals[3] = dbg.obs_smo_theta_err;   /* SMO err 。主验。*/
-    vals[4] = dbg.foc_theta_el;
-    vals[5] = dbg.obs_omega_el;
-    vals[6] = dbg.obs_smo_emag;
-    vals[7] = dbg.obs_emag;           /* Veq |e| */
-    vals[8] = (float)g_telem_dbg.isr_delta;
-    vals[9] = (float)g_telem_dbg.foc_delta;
-    vals[10] = (float)g_telem_dbg.obs_delta;
-    vals[11] = (float)g_telem_dbg.enc_dma_cpu_delta;
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
 
-#if M1_VOFA_OBS_VEQ_12CH && (TELEM_BRINGUP_K >= 12u)
-    /* Veq 旁路：iαβ uαβ eαβ θ̂ θenc θerr |e| ωe ψinst */
-    vals[0] = dbg.obs_i_alpha;
-    vals[1] = dbg.obs_i_beta;
-    vals[2] = dbg.obs_u_alpha;
-    vals[3] = dbg.obs_u_beta;
-    vals[4] = dbg.obs_e_alpha;
-    vals[5] = dbg.obs_e_beta;
-    vals[6] = dbg.obs_theta_hat;
-    vals[7] = dbg.foc_theta_el;
-    vals[8] = dbg.obs_theta_err;
-    vals[9] = dbg.obs_emag;
-    vals[10] = dbg.obs_omega_el;
-    vals[11] = dbg.obs_psi_inst;
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
-
-#if M1_VOFA_FLUX_ID_6CH && (TELEM_BRINGUP_K >= 6u)
-    /* 有感稳速估 ψf：Id Iq Ud Uq ω_pll ω_ref @ D=5 。4 kHz */
-    vals[0] = dbg.foc_id;
-    vals[1] = dbg.foc_iq;
-    vals[2] = dbg.foc_ud_out;
-    vals[3] = dbg.foc_uq_out;
-    vals[4] = dbg.pll_omega_mech_rpm;
-    vals[5] = dbg.outer_omega_ref;
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
-    return;
-#endif
 
     if (g_phase_cal_active || g_cal_hold) {
         vals[0] = (float)dbg.adc_zeroed[0];
@@ -770,95 +330,6 @@ static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
     } else {
 #if TELEM_FOC_UNIFIED_12CH_ACTIVE
         telem_fill_foc_unified_12ch(vals);
-#else
-#if M1_VOFA_FOC_ABC
-        vals[0] = dbg.foc_ia;
-        vals[1] = dbg.foc_ib;
-        vals[2] = dbg.foc_ic;
-#else
-        vals[0] = (float)dbg.adc_zeroed[0];
-        vals[1] = (float)dbg.adc_zeroed[1];
-        vals[2] = (float)dbg.adc_zeroed[2];
-#endif
-#if M1_IDENT_ENABLE
-#if M1_IDENT_ID_CAL_BEFORE_STEP
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE || M1_OPEN_UD_PRE_ID_CAL_ENABLE
-        if (dbg.open_seq_phase >= M1_OPEN_PRE_ID_LADDER_ALIGN_PHASE &&
-            dbg.open_seq_phase <= M1_OPEN_PRE_ID_LADDER_DONE_PHASE) {
-#if M1_TELEM_BRINGUP_K >= 12u
-            telem_fill_open_ladder_12ch(vals);
-#else
-            vals[0] = dbg.foc_svpwm_uref;
-            vals[1] = dbg.foc_svpwm_duty_dev;
-            vals[2] = dbg.foc_svpwm_duty_ab;
-#if M1_OPEN_UD_PRE_ID_CAL_ENABLE
-            vals[3] = dbg.foc_id;
-            vals[4] = dbg.foc_ud_out;
-#else
-            vals[3] = dbg.foc_iq;
-            vals[4] = dbg.foc_uq_out;
-#endif
-            vals[5] = dbg.foc_theta_el;
-#endif
-        } else
-#endif
-        if (dbg.open_seq_phase >= 60u && dbg.open_seq_phase <= 84u) {
-            vals[3] = dbg.foc_iq;
-            vals[4] = ident_module_iq_ref_cmd();
-            vals[5] = (dbg.open_seq_phase >= 62u && dbg.open_seq_phase < 73u) ?
-                      ident_module_bode_freq_hz() :
-                      dbg.foc_uq_pi;
-        } else {
-            vals[3] = dbg.foc_ud_pi;
-            vals[4] = dbg.foc_id_ref;
-            vals[5] = dbg.foc_theta_el;
-        }
-#else
-#if M1_IDENT_BODE_AXIS_ID
-        if (dbg.open_seq_phase >= 60u && dbg.open_seq_phase <= 79u) {
-            vals[3] = dbg.foc_id;
-            vals[4] = ident_module_id_ref_cmd();
-            vals[5] = (dbg.open_seq_phase >= 62u && dbg.open_seq_phase < 73u) ?
-                      ident_module_bode_freq_hz() :
-                      dbg.foc_ud_pi;
-        } else {
-            vals[3] = dbg.foc_id;
-            vals[4] = dbg.foc_id_ref;
-            vals[5] = dbg.foc_theta_el;
-        }
-#else
-        if (dbg.open_seq_phase >= 60u && dbg.open_seq_phase <= 79u) {
-            vals[3] = dbg.foc_iq;
-            vals[4] = ident_module_iq_ref_cmd();
-            vals[5] = (dbg.open_seq_phase >= 62u && dbg.open_seq_phase < 73u) ?
-                      ident_module_bode_freq_hz() :
-                      dbg.foc_uq_pi;
-        } else {
-            vals[3] = dbg.foc_iq;
-            vals[4] = ident_module_iq_ref_cmd();
-            vals[5] = (dbg.open_seq_phase >= 62u && dbg.open_seq_phase < 73u) ?
-                      ident_module_bode_freq_hz() :
-                      dbg.foc_theta_el;
-        }
-#endif
-#endif
-#elif M1_ID_LOCK_CAL_SWEEP
-#if M1_TELEM_BRINGUP_K >= 12u
-        telem_fill_id_cal_12ch(vals);
-#else
-        vals[3] = dbg.foc_ud_pi;
-        vals[4] = dbg.foc_id_ref;
-        vals[5] = dbg.foc_theta_el;
-#endif
-#else
-        vals[3] = dbg.foc_iq;
-#if M1_VOFA_SECTOR_DIAG
-        vals[4] = (float)svpwm_sector_from_uq_ud(dbg.foc_uq_out, 0.0f, dbg.foc_theta_el);
-#else
-        vals[4] = dbg.foc_id_ref;
-#endif
-        vals[5] = dbg.foc_theta_el;
-#endif
 #endif /* !TELEM_FOC_UNIFIED_12CH_ACTIVE */
     }
 
@@ -1040,9 +511,6 @@ void telem_bringup_init(void)
     g_telem_dbg.enc_total_delta = 0u;
     g_telem_dbg.enc_chain_kick_cnt = 0u;
     time_cnt = 0u;
-#if TELEM_BRINGUP_INCLUDE_SEQ
-    s_seq = 0u;
-#endif
 }
 
 void UART_DMA_DEBUG_TASK(void *argument)

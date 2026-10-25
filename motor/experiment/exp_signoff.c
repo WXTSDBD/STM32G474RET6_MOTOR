@@ -76,6 +76,7 @@ const exp_def_t g_exp_signoff = {
     1u,
     TELEM_LAYOUT_SIGNOFF,
     &s_signoff_script,
+    0u,
 };
 
 #else /* 签收未编入：占位，避免空引用 */
@@ -94,6 +95,7 @@ const exp_def_t g_exp_signoff = {
     0u,
     0u,
     NULL,
+    0u,
 };
 
 #endif

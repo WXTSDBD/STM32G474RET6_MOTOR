@@ -34,6 +34,7 @@ void exp_act_theta_clear(void);
 uint8_t exp_act_angle_src_is_active(void);
 /* angle source: 0=observer (sensorless), 1=encoder (sensored) */
 uint8_t exp_act_angle_src(void);
+void exp_act_angle_from_mark(uint8_t mark);
 
 #ifdef __cplusplus
 }

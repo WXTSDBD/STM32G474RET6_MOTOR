@@ -17,10 +17,6 @@
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
 
-#ifndef M1_ID_CAL_D_TO_PHASE_COS
-#define M1_ID_CAL_D_TO_PHASE_COS     0.8660254037844386f
-#endif
-
 static m1_deadband_cfg_t s_cfg;
 static uint8_t s_runtime_apply_ud;
 static uint8_t s_lut_domain_d;
@@ -65,13 +61,6 @@ static const float *deadband_lut_table_vals(uint8_t phase)
     }
     return s_cfg.lut_vals;
 }
-
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-static float s_lut_flat_amp_lo;
-static float s_lut_flat_amp_hi;
-static float s_lut_flat_v_lo;
-static float s_lut_flat_v_hi;
-#endif
 
 static float deadband_phase_sign(float i, float i_zero)
 {
@@ -176,98 +165,11 @@ static void deadband_clamp_duty(float *d)
     }
 }
 
-#if M1_DEADBAND_RUNTIME_GEO_ENABLE
-
-static void deadband_apply_duty_geo(float theta_el, float id_dq, float iq_dq,
-                                    float ia, float ib, float ic,
-                                    float *duty_a, float *duty_b, float *duty_c)
-{
-    float i_mag;
-    float ud_mag;
-    float ua;
-    float ub;
-    float uc;
-    float da;
-    float db;
-    float dc;
-    float sign_a;
-    float sign_b;
-    float sign_c;
-
-    i_mag = sqrtf(id_dq * id_dq + iq_dq * iq_dq);
-#if M1_DEADBAND_LUT_APPLY_MIN_ENABLE
-    if (i_mag < M1_DEADBAND_LUT_APPLY_MIN_A) {
-        return;
-    }
-#endif
-    ud_mag = deadband_geo_dlut_interp_v(i_mag);
-    deadband_geo_ud_to_abc(ud_mag, theta_el, &ua, &ub, &uc);
-    deadband_geo_remove_u0(&ua, &ub, &uc);
-
-    sign_a = deadband_phase_sign(ia, s_cfg.i_zero_a);
-    sign_b = deadband_phase_sign(ib, s_cfg.i_zero_a);
-    sign_c = deadband_phase_sign(ic, s_cfg.i_zero_a);
-
-    da = (sign_a == 0.0f) ? 0.0f : (sign_a * fabsf(ua) * g_m1_motor_cfg.inv_vbus);
-    db = (sign_b == 0.0f) ? 0.0f : (sign_b * fabsf(ub) * g_m1_motor_cfg.inv_vbus);
-    dc = (sign_c == 0.0f) ? 0.0f : (sign_c * fabsf(uc) * g_m1_motor_cfg.inv_vbus);
-
-#if M1_DEADBAND_LUT_ZERO_SEQ_ENABLE
-    {
-        float u0 = (da + db + dc) / 3.0f;
-
-        da -= u0;
-        db -= u0;
-        dc -= u0;
-    }
-#endif
-
-    *duty_a += da;
-    *duty_b += db;
-    *duty_c += dc;
-
-    deadband_clamp_duty(duty_a);
-    deadband_clamp_duty(duty_b);
-    deadband_clamp_duty(duty_c);
-}
-
-#endif /* M1_DEADBAND_RUNTIME_GEO_ENABLE */
-
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-
-static void deadband_lut_update_flat_params(void)
-{
-    if (s_cfg.lut_amps == NULL || s_cfg.lut_vals == NULL || s_cfg.lut_len < 2u) {
-        return;
-    }
-
-    s_lut_flat_amp_lo = s_cfg.lut_amps[0];
-    if (s_lut_domain_d) {
-        s_lut_flat_amp_hi = M1_DEADBAND_LUT_LOW_FLAT_ID_A;
-    } else {
-        s_lut_flat_amp_hi = M1_DEADBAND_LUT_LOW_FLAT_ID_A * M1_ID_CAL_D_TO_PHASE_COS;
-    }
-    s_lut_flat_v_lo = s_cfg.lut_vals[0];
-    s_lut_flat_v_hi = deadband_lut_interp_segment(s_lut_flat_amp_hi);
-}
-
-#endif /* M1_DEADBAND_LUT_LOW_FLAT_ENABLE */
-
 static float deadband_lut_lookup_v_ph(uint8_t phase, float i_abs)
 {
     float v;
 
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-    if (!s_cfg.lut_triplet && s_cfg.lut_amps != NULL && s_cfg.lut_vals != NULL &&
-        s_cfg.lut_len >= 2u &&
-        s_lut_flat_amp_hi > s_lut_flat_amp_lo && i_abs <= s_lut_flat_amp_hi) {
-        float t = (i_abs - s_lut_flat_amp_lo) / (s_lut_flat_amp_hi - s_lut_flat_amp_lo);
-        v = s_lut_flat_v_lo + t * (s_lut_flat_v_hi - s_lut_flat_v_lo);
-    } else
-#endif
-    {
-        v = deadband_lut_interp_segment_ph(phase, i_abs);
-    }
+    v = deadband_lut_interp_segment_ph(phase, i_abs);
 
     if (s_lut_domain_d == 0u) {
         v *= s_lut_runtime_scale;
@@ -283,11 +185,6 @@ static float deadband_lut_lookup_v(float i_abs)
 static float deadband_comp_mag_v_ph(uint8_t phase, float i_abs)
 {
     if (s_cfg.mode == M1_DEADBAND_MODE_LUT) {
-#if M1_DEADBAND_LUT_APPLY_MIN_ENABLE
-        if (i_abs < M1_DEADBAND_LUT_APPLY_MIN_A) {
-            return 0.0f;
-        }
-#endif
         return deadband_lut_lookup_v_ph(phase, i_abs);
     }
     return s_cfg.v_comp_v;
@@ -382,9 +279,6 @@ void deadband_set_lut(const float *amps, const float *vals, uint8_t len)
     s_cfg.lut_vals_ph[1] = vals;
     s_cfg.lut_vals_ph[2] = vals;
     s_cfg.mode = M1_DEADBAND_MODE_LUT;
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-    deadband_lut_update_flat_params();
-#endif
 }
 
 void deadband_set_phase_luts(const float *amps_a, const float *vals_a,
@@ -415,9 +309,6 @@ void deadband_set_phase_luts(const float *amps_a, const float *vals_a,
 void deadband_set_lut_domain(uint8_t is_d_domain)
 {
     s_lut_domain_d = is_d_domain ? 1u : 0u;
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-    deadband_lut_update_flat_params();
-#endif
 }
 
 void deadband_set_runtime_apply_ud(uint8_t apply_ud)
@@ -508,11 +399,6 @@ float deadband_ud_comp_v(float id_a)
     }
 
     id_abs = (id_a >= 0.0f) ? id_a : -id_a;
-#if M1_DEADBAND_LUT_APPLY_MIN_ENABLE
-    if (id_abs < M1_DEADBAND_LUT_APPLY_MIN_A) {
-        return 0.0f;
-    }
-#endif
 #if !M1_DEADBAND_I_ZERO_DISABLE
     if (id_abs < s_cfg.i_zero_a) {
         return 0.0f;
@@ -543,14 +429,6 @@ void deadband_apply_duty(float ia, float ib, float ic,
     if (s_cfg.mode == M1_DEADBAND_MODE_LUT && s_runtime_apply_ud) {
         return;
     }
-
-#if M1_DEADBAND_RUNTIME_GEO_ENABLE
-    if (s_cfg.mode == M1_DEADBAND_MODE_LUT && s_geo_dlut_len >= 2u) {
-        deadband_apply_duty_geo(theta_el, id_dq, iq_dq, ia, ib, ic,
-                                duty_a, duty_b, duty_c);
-        return;
-    }
-#endif
 
 #if M1_DEADBAND_GEO_TWO_CLUSTER_ENABLE
     if (s_two_cluster != 0u && s_cluster_lut_len >= 2u) {

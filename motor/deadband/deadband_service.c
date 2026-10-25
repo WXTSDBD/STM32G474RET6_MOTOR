@@ -54,8 +54,6 @@ void deadband_service_boot(deadband_service_boot_t *boot)
     if (nvm_loaded == 0u) {
         deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
     }
-#elif M1_OPEN_UQ_DEADBAND_AB_SWEEP
-    deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
 #endif
 
     if (boot != NULL) {

@@ -4,7 +4,7 @@
  * @brief 实验段表（宏 → const 数据）对外声明。
  *
  * 目的：把原先靠 `M1_*_ENABLE` / `M1_*_PARAM` 宏描述的实验，改成"一张 const 表 + 注册表一行"。
- * 本文件只声明 `g_exp_*` 定义（数据在 exp_tables.c），不引入任何实验宏。
+ * 本文件只声明 `g_exp_*`。±2000 在 config/experiments/exp_rev141.c，其余在 exp_tables.c。
  * 执行器仍只在 2 kHz 外环跑（exp_runner_tick）；本表默认不启用任何实验，
  * 上电跑什么由 exp_runner_select(id) 决定（调用点仍在原处，后续改为运行时选）。
  */

@@ -24,11 +24,7 @@ extern "C" {
 /** ch0 魔数：辨识尾帧 */
 #define M1_VOFA_IDENT_MAGIC_TAIL    (-666666.0f)
 /** ch4 协议版本：2.0=500Hz+1kHz；3.0=+2kHz f2（M1_LD_LQ_IDENT_F2_ENABLE） */
-#if M1_LD_LQ_IDENT_F2_ENABLE
-#define M1_VOFA_IDENT_PROTO_VER     (3.0f)
-#else
 #define M1_VOFA_IDENT_PROTO_VER     (2.0f)
-#endif
 
 /*
  * proto 2.0 头帧：I0=magic, I1=grid_n, I2=Rs_ohm, I3=rs_ok, I4=proto,

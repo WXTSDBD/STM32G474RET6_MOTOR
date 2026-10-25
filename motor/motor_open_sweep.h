@@ -25,10 +25,6 @@ void motor_open_sweep_arm_v012(motor_context_t *ctx);
 /** 固定 Uq（V）运行 duration_s 秒；调用后需 ctx->mode=OPEN/OBSERVE。 */
 void motor_open_sweep_begin_fixed(motor_context_t *ctx, float uq_v, float duration_s);
 
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-/** 实验 A：ALIGN(68) → Uq 0/0.2/0.5/1/2/4 V @30°；dwell 0.3 s；phase 70..77。 */
-void motor_open_sweep_begin_pre_id_uq_ladder(motor_context_t *ctx);
-#endif
 
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
 /** 实验 B：ALIGN(68) → Ud OFF 70..75 → LUT ON 80..85（AB=1）；dwell 0.3 s。 */

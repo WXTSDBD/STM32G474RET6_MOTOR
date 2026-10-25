@@ -150,19 +150,6 @@ bool deadband_cal_apply_nvm(const factory_nvm_deadband_t *in)
 
 #if M1_ID_LOCK_CAL_SWEEP
 
-#ifndef M1_ID_CAL_CAPTURE_EPS_A
-#define M1_ID_CAL_CAPTURE_EPS_A    0.03f
-#endif
-
-#ifndef M1_ID_CAL_OUTLIER_V
-#define M1_ID_CAL_OUTLIER_V        1.0f
-#endif
-
-/** 段 2=0：只 capture；段 3=1：commit 时 deadband_set_lut */
-#ifndef M1_ID_CAL_COMMIT_LUT
-#define M1_ID_CAL_COMMIT_LUT       0
-#endif
-
 static float s_dlut_amps[M1_DEADBAND_LUT_MAX];
 static float s_dlut_vals[M1_DEADBAND_LUT_MAX];
 static float s_plut_amps[3][M1_DEADBAND_LUT_MAX];
@@ -332,91 +319,6 @@ static void deadband_cal_build_phase_lut(void)
 #endif
 }
 
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-
-static float deadband_cal_dlut_interp_v(float id_amp)
-{
-    uint8_t i;
-
-    if (s_dlut_len < 2u) {
-        return 0.0f;
-    }
-    if (id_amp <= s_dlut_amps[0]) {
-        return s_dlut_vals[0];
-    }
-    if (id_amp >= s_dlut_amps[s_dlut_len - 1u]) {
-        return s_dlut_vals[s_dlut_len - 1u];
-    }
-    for (i = 0u; i < (s_dlut_len - 1u); i++) {
-        float a0 = s_dlut_amps[i];
-        float a1 = s_dlut_amps[i + 1u];
-
-        if (id_amp <= a1) {
-            float t = (id_amp - a0) / (a1 - a0);
-            return s_dlut_vals[i] + t * (s_dlut_vals[i + 1u] - s_dlut_vals[i]);
-        }
-    }
-    return s_dlut_vals[s_dlut_len - 1u];
-}
-
-/** Id∈[首点, LOW_FLAT_ID_A]：d 表 val 线性化（去掉 0.15~0.2 A 陡升），再 ×0.866 得 phase 表 */
-static void deadband_cal_flatten_low_dlut(void)
-{
-    const float id_hi = M1_DEADBAND_LUT_LOW_FLAT_ID_A;
-    const float id_lo = s_dlut_amps[0];
-    float v_lo;
-    float v_hi;
-    uint8_t i;
-
-    if (s_dlut_len < 2u || id_hi <= id_lo) {
-        return;
-    }
-
-    v_lo = s_dlut_vals[0];
-    v_hi = deadband_cal_dlut_interp_v(id_hi);
-
-    for (i = 0u; i < s_dlut_len; i++) {
-        if (s_dlut_amps[i] <= id_hi) {
-            float t = (s_dlut_amps[i] - id_lo) / (id_hi - id_lo);
-            s_dlut_vals[i] = v_lo + t * (v_hi - v_lo);
-        }
-    }
-}
-
-#endif /* M1_DEADBAND_LUT_LOW_FLAT_ENABLE */
-
-#if M1_ID_CAL_LUT_DEDUP_ENABLE
-
-/** 小数组 val 中位数（插入排序，≤8 点） */
-static float deadband_cal_median_val(float *vals, uint8_t n)
-{
-    float tmp[M1_DEADBAND_LUT_MAX];
-    uint8_t i;
-    uint8_t j;
-
-    if (n == 0u) {
-        return 0.0f;
-    }
-    if (n > M1_DEADBAND_LUT_MAX) {
-        n = M1_DEADBAND_LUT_MAX;
-    }
-    for (i = 0u; i < n; i++) {
-        tmp[i] = vals[i];
-    }
-    for (i = 1u; i < n; i++) {
-        float key = tmp[i];
-        j = i;
-        while (j > 0u && tmp[j - 1u] > key) {
-            tmp[j] = tmp[j - 1u];
-            j--;
-        }
-        tmp[j] = key;
-    }
-    return tmp[n / 2u];
-}
-
-#endif /* M1_ID_CAL_LUT_DEDUP_ENABLE */
-
 /** Phase 2：amps 升序（插值安全） */
 static void deadband_cal_sort_dlut(void)
 {
@@ -441,44 +343,6 @@ static void deadband_cal_sort_dlut(void)
         }
     }
 }
-
-#if M1_ID_CAL_LUT_DEDUP_ENABLE
-
-/** 近邻 amp 合并（val 中位数）；须已 sort */
-static void deadband_cal_dedupe_dlut(void)
-{
-    uint8_t n = s_dlut_len;
-    uint8_t write = 0u;
-    uint8_t read = 0u;
-
-    if (n < 2u) {
-        return;
-    }
-
-    while (read < n) {
-        uint8_t group_start = read;
-        float group_vals[M1_DEADBAND_LUT_MAX];
-        uint8_t group_n = 0u;
-
-        while (read < n &&
-               (read == group_start ||
-                (s_dlut_amps[read] - s_dlut_amps[group_start]) <=
-                    M1_ID_CAL_LUT_DEDUP_AMP_EPS_A)) {
-            if (group_n < M1_DEADBAND_LUT_MAX) {
-                group_vals[group_n] = s_dlut_vals[read];
-                group_n++;
-            }
-            read++;
-        }
-
-        s_dlut_amps[write] = s_dlut_amps[group_start];
-        s_dlut_vals[write] = deadband_cal_median_val(group_vals, group_n);
-        write++;
-    }
-    s_dlut_len = write;
-}
-
-#endif /* M1_ID_CAL_LUT_DEDUP_ENABLE */
 
 void deadband_cal_switch_runtime_lut(uint8_t use_d_table)
 {
@@ -616,25 +480,11 @@ void deadband_cal_commit(void)
 #if M1_ID_CAL_COMMIT_LUT
     if (s_dlut_len >= 2u) {
         deadband_cal_sort_dlut();
-#if M1_ID_CAL_LUT_DEDUP_ENABLE
-        deadband_cal_dedupe_dlut();
-#endif
-#if M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-        deadband_cal_flatten_low_dlut();
-#endif
 #if defined(M1_DEADBAND_GEO_BUILD_ENABLE) && (M1_DEADBAND_GEO_BUILD_ENABLE != 0)
 #if M1_ID_CAL_DUAL_ANGLE_ENABLE
         if (s_geo_sample_count >= 2u) {
             uint8_t plut_len = 0u;
 
-#if M1_DEADBAND_GEO_TRIPLET_ENABLE
-            plut_len = deadband_geo_build_plut_triplet(s_geo_samples,
-                                                       s_geo_sample_count,
-                                                       s_dlut_amps, s_dlut_vals,
-                                                       s_dlut_len,
-                                                       s_plut_amps, s_plut_vals);
-            s_plut_triplet = (plut_len >= 2u) ? 1u : 0u;
-#endif
             if (plut_len < 2u) {
                 plut_len = deadband_geo_build_plut(s_geo_samples,
                                                    s_geo_sample_count,
@@ -750,16 +600,6 @@ void deadband_cal_commit(void)
 #else
         /* Pass0→Iq 探路：跳过 Pass1，commit 后直接 phase 表 + apply_duty */
         deadband_cal_switch_runtime_lut(0u);
-#endif
-#if defined(M1_DEADBAND_NVM_COMMIT_ENABLE) && (M1_DEADBAND_NVM_COMMIT_ENABLE != 0)
-        {
-            factory_nvm_deadband_t db;
-
-            if (deadband_cal_export_nvm(&db)) {
-                db.runtime_scale = deadband_get_lut_runtime_scale();
-                (void)factory_nvm_write_deadband(&db);
-            }
-        }
 #endif
     }
 #endif

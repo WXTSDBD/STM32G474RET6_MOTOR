@@ -40,17 +40,11 @@ typedef enum {
     DEADBAND_FLOW_KIND_SPEED_OFF,
     DEADBAND_FLOW_KIND_SPEED_LUT,
 #endif
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-    DEADBAND_FLOW_KIND_OPEN_UQ_LADDER,
-#endif
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
     DEADBAND_FLOW_KIND_OPEN_UD_LADDER,
 #endif
 #if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
     DEADBAND_FLOW_KIND_LD_LQ_IDENT,
-#endif
-#if M1_IDENT_POST_BODE_OPEN_UQ_ENABLE
-    DEADBAND_FLOW_KIND_OPEN_UQ,
 #endif
 } deadband_flow_kind_t;
 
@@ -59,9 +53,6 @@ typedef struct {
 } deadband_flow_step_t;
 
 static const deadband_flow_step_t s_flow_recipe[] = {
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-    { DEADBAND_FLOW_KIND_OPEN_UQ_LADDER },
-#endif
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE && !M1_OPEN_UD_AFTER_ID_CAL
     { DEADBAND_FLOW_KIND_OPEN_UD_LADDER },
 #endif
@@ -83,9 +74,6 @@ static const deadband_flow_step_t s_flow_recipe[] = {
 #endif
 #if M1_SPEED_IDENT_ENABLE
     { DEADBAND_FLOW_KIND_SPEED_IDENT },
-#endif
-#if M1_IDENT_POST_BODE_OPEN_UQ_ENABLE
-    { DEADBAND_FLOW_KIND_OPEN_UQ },
 #endif
 };
 
@@ -162,12 +150,6 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
     }
 
     switch (s_flow_recipe[step_idx].kind) {
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-    case DEADBAND_FLOW_KIND_OPEN_UQ_LADDER:
-        deadband_flow_enter_open_pre_id_ladder(ctx);
-        motor_open_sweep_begin_pre_id_uq_ladder(ctx);
-        break;
-#endif
 
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
     case DEADBAND_FLOW_KIND_OPEN_UD_LADDER:
@@ -250,19 +232,6 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
         break;
 #endif
 
-#if M1_IDENT_POST_BODE_OPEN_UQ_ENABLE
-    case DEADBAND_FLOW_KIND_OPEN_UQ:
-        ctx->id_ref = 0.0f;
-        ctx->iq_ref = 0.0f;
-        motor_foc_loop_pi_reset(ctx);
-        motor_open_sweep_begin_fixed(ctx,
-                                     M1_IDENT_POST_BODE_OPEN_UQ_V,
-                                     M1_IDENT_POST_BODE_OPEN_UQ_S);
-        ctx->mode = M1_CTRL_OPEN_LOOP;
-        deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-        DBG.open_seq_phase = 80u;
-        break;
-#endif
 
     default:
         break;
@@ -313,9 +282,6 @@ void deadband_flow_tick(motor_context_t *ctx)
         break;
 #endif
 
-#if M1_OPEN_UQ_PRE_ID_CAL_ENABLE
-    case DEADBAND_FLOW_KIND_OPEN_UQ_LADDER:
-#endif
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
     case DEADBAND_FLOW_KIND_OPEN_UD_LADDER:
 #endif
@@ -379,16 +345,6 @@ void deadband_flow_tick(motor_context_t *ctx)
         break;
 #endif
 
-#if M1_IDENT_POST_BODE_OPEN_UQ_ENABLE
-    case DEADBAND_FLOW_KIND_OPEN_UQ:
-        if (!motor_open_sweep_active()) {
-            ctx->mode = M1_CTRL_OBSERVE_ONLY;
-            ctx->uq_open = 0.0f;
-            ctx->ud_open = 0.0f;
-            DBG.open_seq_phase = 81u;
-        }
-        break;
-#endif
 
     default:
         break;

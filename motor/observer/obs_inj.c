@@ -12,10 +12,6 @@
 #include "observer/obs_cfg.h"
 #include "observer/hfi_sqwave.h"
 
-#ifndef M1_HFI_ENABLE
-#define M1_HFI_ENABLE 0
-#endif
-
 #if M1_HFI_ENABLE
 
 /**

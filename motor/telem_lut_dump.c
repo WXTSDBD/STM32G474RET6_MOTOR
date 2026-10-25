@@ -120,15 +120,9 @@ int telem_lut_dump_next(float vals[], uint8_t lut_dump_ch)
         vals[1] = (float)len;
         vals[2] = g_m1_motor_cfg.rs_ohm;
         vals[3] = deadband_cal_outlier_seen() ? 1.0f : 0.0f;
-#if M1_DEADBAND_LUT_APPLY_MIN_ENABLE
-        vals[4] = 3.3f;
-        vals[5] = M1_DEADBAND_LUT_APPLY_MIN_A;
-#elif M1_DEADBAND_I_ZERO_DISABLE
+#if M1_DEADBAND_I_ZERO_DISABLE
         vals[4] = 3.2f;
-        vals[5] = M1_DEADBAND_LUT_LOW_FLAT_ENABLE ? 1.0f : 0.0f;
-#elif M1_DEADBAND_LUT_LOW_FLAT_ENABLE
-        vals[4] = 3.1f;
-        vals[5] = 1.0f;
+        vals[5] = 0.0f;
 #elif defined(M1_DEADBAND_GEO_BUILD_ENABLE) && (M1_DEADBAND_GEO_BUILD_ENABLE != 0)
         if (deadband_cal_phase_lut_triplet() != 0u) {
             vals[4] = 3.5f;

@@ -13,42 +13,14 @@
 #include <stddef.h>
 
 #include "observer/obs_cfg.h"
+#include "obs_num.h"
 #include "motor_trig.h"
 #include "observer/obs_src.h"
 #if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
 #include "emf_smo.h"
 #endif
 
-#ifndef M1_EMF_PLL_ENABLE
-#define M1_EMF_PLL_ENABLE 0
-#endif
-
 #if M1_EMF_PLL_ENABLE
-
-#ifndef M1_EMF_PLL_FN_HZ
-#define M1_EMF_PLL_FN_HZ                100.0f
-#endif
-#ifndef M1_EMF_PLL_ZETA
-#define M1_EMF_PLL_ZETA                 0.707106781f
-#endif
-#ifndef M1_EMF_PLL_THETA_OFF_RAD
-#define M1_EMF_PLL_THETA_OFF_RAD        (-0.4054f)
-#endif
-#ifndef M1_EMF_LPF_PHASE_FF_ENABLE
-#define M1_EMF_LPF_PHASE_FF_ENABLE      0
-#endif
-#ifndef M1_EMF_PLL_NORM_ENABLE
-#define M1_EMF_PLL_NORM_ENABLE          1
-#endif
-#ifndef M1_EMF_PLL_NORM_EPS
-#define M1_EMF_PLL_NORM_EPS             0.05f
-#endif
-#ifndef M1_EMF_PLL_OMEGA_LIMIT_RAD_S
-#define M1_EMF_PLL_OMEGA_LIMIT_RAD_S    2000.0f
-#endif
-#ifndef M1_EMF_PLL_INTEGRATOR_LIMIT_RAD_S
-#define M1_EMF_PLL_INTEGRATOR_LIMIT_RAD_S M1_EMF_PLL_OMEGA_LIMIT_RAD_S
-#endif
 
 #define EMF_PLL_PI       3.14159265358979323846f
 #define EMF_PLL_TWO_PI   6.28318530717958647692f
@@ -138,15 +110,15 @@ static float emf_pll_lpf_phase_ff(float omega_el)
  */
 void emf_pll_init(emf_pll_t *p)
 {
-    const float wn = EMF_PLL_TWO_PI * M1_EMF_PLL_FN_HZ;
+    const float wn = EMF_PLL_TWO_PI * g_obs_num.pll_fn_hz;
 
     if (p == NULL) {
         return;
     }
-    p->kp = 2.0f * M1_EMF_PLL_ZETA * wn;
+    p->kp = 2.0f * g_obs_num.pll_zeta * wn;
     p->ki = wn * wn;
-    p->omega_limit = M1_EMF_PLL_OMEGA_LIMIT_RAD_S;
-    p->integrator_limit = M1_EMF_PLL_INTEGRATOR_LIMIT_RAD_S;
+    p->omega_limit = g_obs_num.pll_omega_limit_rad_s;
+    p->integrator_limit = g_obs_num.pll_integrator_limit_rad_s;
     emf_pll_reset(p);
 }
 
@@ -193,7 +165,7 @@ void emf_pll_update(emf_pll_t *p,
 
     if (p->primed == 0u) {
         /* 内部跟踪滤波后 e 帧；输出扣 θ_off + LPF 相位前馈 */
-        p->theta = emf_pll_wrap_pi(theta_enc + M1_EMF_PLL_THETA_OFF_RAD);
+        p->theta = emf_pll_wrap_pi(theta_enc + g_obs_num.pll_theta_off_rad);
         p->omega_el = 0.0f;
         p->integrator = 0.0f;
         p->theta_hat = theta_enc;
@@ -218,7 +190,7 @@ void emf_pll_update(emf_pll_t *p,
 
         /* 打开时与历史增益同口径：err/(|e|+eps)。 */
         p->emag = emag;
-        err /= (emag + M1_EMF_PLL_NORM_EPS);
+        err /= (emag + g_obs_num.pll_norm_eps);
     }
 #else
     /* T1：鉴相用原始正交误差，省 sqrt+除法；增益等效随 |e| 变。 */
@@ -247,7 +219,7 @@ void emf_pll_update(emf_pll_t *p,
         const float phi_ff = emf_pll_lpf_phase_ff(observer_lo_src()->get_omega());
 
         p->theta_hat = emf_pll_wrap_pi(
-            p->theta - M1_EMF_PLL_THETA_OFF_RAD - phi_ff);
+            p->theta - g_obs_num.pll_theta_off_rad - phi_ff);
     }
     p->theta_err = emf_pll_wrap_pi(p->theta_hat - theta_enc);
 }

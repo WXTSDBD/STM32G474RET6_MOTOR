@@ -34,16 +34,6 @@ typedef struct {
     /** fine @ M1_LD_LQ_IDENT_F_FINE_HZ（默认 1 kHz） */
     float ld_h_fine[M1_LD_LQ_GRID_N];
     float lq_h_fine[M1_LD_LQ_GRID_N];
-#if M1_LD_LQ_IDENT_F2_ENABLE
-    /** f2 @ M1_LD_LQ_IDENT_F_F2_HZ（默认 2 kHz，实验第三档） */
-    float ld_h_f2[M1_LD_LQ_GRID_N];
-    float lq_h_f2[M1_LD_LQ_GRID_N];
-    uint8_t ld_valid_f2[M1_LD_LQ_GRID_N];
-    uint8_t lq_valid_f2[M1_LD_LQ_GRID_N];
-    uint16_t n_ld_ok_f2;
-    uint16_t n_lq_ok_f2;
-    uint8_t ok_f2;
-#endif
     float id_bias[M1_LD_LQ_GRID_N];
     float iq_bias[M1_LD_LQ_GRID_N];
     uint8_t ld_valid[M1_LD_LQ_GRID_N];
@@ -85,12 +75,6 @@ uint8_t ld_lq_ident_is_ok(void);
 uint8_t ld_lq_ident_open_seq_phase(void);
 void ld_lq_ident_get_result(ld_lq_ident_result_t *out);
 void ld_lq_ident_sync_dbg(void);
-#if M1_LD_LQ_MULTI_ANGLE_ENABLE
-void ld_lq_ident_set_angle_leg(uint8_t leg, float theta_el_rad);
-void ld_lq_ident_commit_leg(uint8_t leg);
-void ld_lq_ident_get_result_leg(uint8_t leg, ld_lq_ident_result_t *out);
-uint8_t ld_lq_ident_angle_leg(void);
-#else
 static inline void ld_lq_ident_set_angle_leg(uint8_t leg, float theta_el_rad)
 {
     (void)leg;
@@ -105,7 +89,6 @@ static inline void ld_lq_ident_get_result_leg(uint8_t leg, ld_lq_ident_result_t 
     (void)leg;
 }
 static inline uint8_t ld_lq_ident_angle_leg(void) { return 0u; }
-#endif
 
 #else
 

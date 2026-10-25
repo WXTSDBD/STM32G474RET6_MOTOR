@@ -1536,6 +1536,26 @@
               <FilePath>..\config\hfi_pll_cfg.c</FilePath>
             </File>
             <File>
+              <FileName>obs_num.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\obs_num.c</FilePath>
+            </File>
+            <File>
+              <FileName>exp_rev141.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\experiments\exp_rev141.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_hfi_standstill.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_hfi_standstill.c</FilePath>
+            </File>
+            <File>
+              <FileName>angle_route.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\angle_route.c</FilePath>
+            </File>
+            <File>
               <FileName>ident_module.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\ident\ident_module.c</FilePath>
