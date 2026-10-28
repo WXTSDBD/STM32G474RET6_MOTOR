@@ -15,7 +15,6 @@
 #include "deadband_id_cal.h"
 #include "dbg_monitor.h"
 #include "foc_pi.h"
-#include "ld_lq_ident.h"
 #include "motor_current.h"
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
@@ -198,14 +197,17 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             id_cal_pi_run = 0u;
         }
 #endif
-#if M1_LD_LQ_IDENT_ENABLE
+#if M1_L_HFI_IDENT_ENABLE
         if (deadband_id_cal_use_ld_lq_align_ud()) {
+            id_cal_pi_run = 0u;
+        }
+        /* l_hfi 注入段由 exp_hooks 写 ud/uq，PI 输出清零 */
+        if (deadband_id_cal_in_ld_lq_ident() != 0u) {
             id_cal_pi_run = 0u;
         }
 #endif
         if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq &&
             (!deadband_id_cal_bumpless_arm() ||
-             (deadband_id_cal_in_ld_lq_ident() && ld_lq_ident_pi_active()) ||
              deadband_id_cal_in_rs_ident() ||
              deadband_id_cal_in_ld_lq_pre_decay()) &&
             id_cal_pi_run) {
@@ -240,11 +242,6 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             }
         } else if (!deadband_flow_id_cal_active()) {
             /* fall through to ident PI below */
-#if M1_LD_LQ_IDENT_ENABLE && M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
-        } else if (deadband_id_cal_in_ld_lq_ident() && ld_lq_ident_inject_active()) {
-            ctx->ud_pi = ld_lq_ident_u_bias_d();
-            ctx->uq_pi = ld_lq_ident_u_bias_q();
-#endif
         } else {
             ctx->ud_pi = 0.0f;
             ctx->uq_pi = 0.0f;

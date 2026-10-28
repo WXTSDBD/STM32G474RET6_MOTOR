@@ -43,7 +43,7 @@ typedef enum {
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE
     DEADBAND_FLOW_KIND_OPEN_UD_LADDER,
 #endif
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_L_HFI_IDENT_ENABLE
     DEADBAND_FLOW_KIND_LD_LQ_IDENT,
 #endif
 } deadband_flow_kind_t;
@@ -62,7 +62,7 @@ static const deadband_flow_step_t s_flow_recipe[] = {
 #if M1_OPEN_UD_PRE_ID_CAL_ENABLE && M1_OPEN_UD_AFTER_ID_CAL
     { DEADBAND_FLOW_KIND_OPEN_UD_LADDER },
 #endif
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_L_HFI_IDENT_ENABLE
     { DEADBAND_FLOW_KIND_LD_LQ_IDENT },
 #endif
 #if M1_DEADBAND_FLOW_ONE_SHOT
@@ -185,7 +185,7 @@ static void deadband_flow_enter_step(motor_context_t *ctx,
         break;
 #endif
 
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_L_HFI_IDENT_ENABLE
     case DEADBAND_FLOW_KIND_LD_LQ_IDENT:
         ctx->mode = M1_CTRL_CURRENT_LOOP;
         ctx->uq_open = 0.0f;
@@ -311,7 +311,7 @@ void deadband_flow_tick(motor_context_t *ctx)
         break;
 #endif
 
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_L_HFI_IDENT_ENABLE
     case DEADBAND_FLOW_KIND_LD_LQ_IDENT:
         deadband_id_cal_tick(ctx);
         if (deadband_id_cal_is_done()) {
@@ -364,7 +364,7 @@ uint8_t deadband_flow_id_cal_active(void)
     if (s_flow_recipe[s_flow_step].kind == DEADBAND_FLOW_KIND_ID_CAL) {
         return deadband_id_cal_is_running();
     }
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_LD_LQ_IDENT_ENABLE
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && M1_L_HFI_IDENT_ENABLE
     if (s_flow_recipe[s_flow_step].kind == DEADBAND_FLOW_KIND_LD_LQ_IDENT) {
         return deadband_id_cal_is_running();
     }

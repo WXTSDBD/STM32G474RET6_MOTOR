@@ -17,9 +17,9 @@
 #if M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE
 #include "deadband_flow.h"
 #endif
-#if M1_LD_LQ_IDENT_ENABLE
+#if M1_L_HFI_IDENT_ENABLE
 #include "deadband_id_cal.h"
-#include "ld_lq_ident.h"
+#include "l_hfi_ident.h"
 #endif
 #if (M1_OPEN_UQ_PRE_ID_CAL_ENABLE || M1_OPEN_UD_PRE_ID_CAL_ENABLE)
 #include "motor_open_sweep.h"
@@ -28,6 +28,11 @@
 #if M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE
 /** 0=辨识流程还未 init。 */
 static uint8_t s_ident_booted;
+#endif
+#if (M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE) && \
+    !(M1_IDENT_ENABLE && !M1_IDENT_ID_CAL_BEFORE_STEP && !M1_SPEED_IDENT_ENABLE)
+/** 0=deadband_flow 还未 boot（非 SPEED_IDENT 路径）。 */
+static uint8_t s_db_flow_booted;
 #endif
 
 /**
@@ -49,6 +54,10 @@ void motor_current_exp_flow_tick(motor_context_t *ctx)
     if (ctx == 0) {
         return;
     }
+    if (s_db_flow_booted == 0u) {
+        deadband_flow_boot(ctx);
+        s_db_flow_booted = 1u;
+    }
     deadband_flow_tick(ctx);
 #else
     (void)ctx;
@@ -56,7 +65,7 @@ void motor_current_exp_flow_tick(motor_context_t *ctx)
 }
 
 /**
- * @brief Ld/Lq 辨识段改写 ud/uq。未开宏恒返回 0。
+ * @brief Ld/Lq（l_hfi）辨识段改写 ud/uq。未开宏恒返回 0。
  * @param ctx 控制上下文。
  * @param id Id，单位 A。
  * @param iq Iq，单位 A。
@@ -67,26 +76,22 @@ void motor_current_exp_flow_tick(motor_context_t *ctx)
 uint8_t motor_current_exp_try_ld_lq_udq(motor_context_t *ctx, float id,
                                        float iq, float *ud, float *uq)
 {
-#if M1_LD_LQ_IDENT_ENABLE
+#if M1_L_HFI_IDENT_ENABLE
     if ((ctx == 0) || (ud == 0) || (uq == 0)) {
         return 0u;
     }
     if (deadband_id_cal_in_ld_lq_ident() == 0u) {
         return 0u;
     }
-#if M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
-    if (ld_lq_ident_inject_active() != 0u) {
-        *ud = ld_lq_ident_u_bias_d() + ld_lq_ident_u_inj_d();
-        *uq = ld_lq_ident_u_bias_q() + ld_lq_ident_u_inj_q();
-    } else {
-        *ud = ctx->ud_pi;
-        *uq = ctx->uq_pi;
+    if (l_hfi_ident_is_done() != 0u) {
+        return 0u;
     }
-#else
-    *ud = ctx->ud_pi + ld_lq_ident_u_inj_d();
-    *uq = ctx->uq_pi + ld_lq_ident_u_inj_q();
-#endif
-    ld_lq_ident_integrate(id, iq, *ud, *uq);
+    /* 先按上拍电压采样，再取下一拍 ud/uq（与 VESC is_samp_n 同序）。 */
+    if (l_hfi_ident_inject_active() != 0u) {
+        l_hfi_ident_on_sample(id, iq);
+    }
+    *ud = l_hfi_ident_u_d();
+    *uq = l_hfi_ident_u_q();
     return 1u;
 #else
     (void)ctx;

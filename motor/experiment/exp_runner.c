@@ -37,6 +37,7 @@ static const exp_def_t *const g_experiments[] = {
     &g_exp_if_drag,
     &g_exp_deadband_lut,
     &g_exp_qkick,
+    &g_exp_calib_chain,
 };
 
 static const exp_def_t *s_active;

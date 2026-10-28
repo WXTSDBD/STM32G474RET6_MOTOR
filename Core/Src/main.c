@@ -237,10 +237,13 @@ HAL_ADCEx_Calibration_Start(&hadc5,	ADC_SINGLE_ENDED);
 		Error_Handler();
 	}
 #endif
-#if M1_EXP_FRAMEWORK_ENABLE && (M1_EXP_BOOT_UD_CAL || M1_EXP_BOOT_REV141)
+#if M1_EXP_FRAMEWORK_ENABLE && \
+    (M1_EXP_BOOT_UD_CAL || M1_EXP_BOOT_REV141 || M1_EXP_BOOT_CALIB_CHAIN)
 	/* pilot: boot the experiment selected by build switches. */
 	exp_runner_init();
-#if M1_EXP_BOOT_REV141
+#if M1_EXP_BOOT_CALIB_CHAIN
+	(void)exp_runner_select(EXP_ID_CALIB_CHAIN);
+#elif M1_EXP_BOOT_REV141
 	(void)exp_runner_select(EXP_ID_REV141);
 #else
 	(void)exp_runner_select(EXP_ID_UD_CAL);

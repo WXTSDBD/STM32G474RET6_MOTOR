@@ -45,6 +45,8 @@ extern const exp_def_t g_exp_if_drag;
 extern const exp_def_t g_exp_deadband_lut;
 /** QKICK 极性判决（原 M1_HFI_QKICK_*，正反转的前置段） */
 extern const exp_def_t g_exp_qkick;
+/** 联合标定链：Pass0→Rs→LdLq（config/experiments/exp_calib_chain.c） */
+extern const exp_def_t g_exp_calib_chain;
 
 #ifdef __cplusplus
 }

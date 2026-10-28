@@ -769,16 +769,39 @@ void motor_current_tick(bsp_axis_t *axis)
      * 有感对照：只推时钟，Park=enc（SENSED_PAIRS 段）。
      * 无感：始终 pre_park（含 inj_off），与 6059/141 一致；Park=发布角。
      * 交接省 ISR 的 hand_keep 先收回，避免无感交接角路径与冻结点不一致。
+     *
+     * 标定链锁轴：上方已写死 theta_park=target；此处若再走观测角会把
+     * FIX_THETA/ALIGN 整段盖掉（Rs 灌 Id 却跟转子转、无锁轴力矩）。
      */
-    if (motor_angle_active() != NULL) {
-        const angle_ops_t *ang = motor_angle_active();
+    if (deadband_flow_id_cal_active() == 0u) {
+        if (motor_angle_active() != NULL) {
+            const angle_ops_t *ang = motor_angle_active();
 
-        motor_angle_note_enc(theta_enc_park);
-        if (ang->update != NULL) {
-            ang->update(&s_m1_ctx, M1_CTRL_TS_S);
-        }
-        theta_park = ang->get_theta(&s_m1_ctx);
-        if (ang->post_park != NULL) {
+            motor_angle_note_enc(theta_enc_park);
+            if (ang->update != NULL) {
+                ang->update(&s_m1_ctx, M1_CTRL_TS_S);
+            }
+            theta_park = ang->get_theta(&s_m1_ctx);
+            if (ang->post_park != NULL) {
+#if M1_HFI_MOTION_BYPASS_ENABLE
+                if (observer_get_stage() == OBS_STAGE_RUN) {
+                    s_hfi_recon_theta = theta_park;
+                    s_hfi_recon_theta_ok = 1u;
+                }
+#endif
+#if M1_HFI_QKICK_AFTER_LOCK_ENABLE
+                if (observer_consume_pi_reset() != 0u) {
+                    foc_pi_reset(&ctx->pi_iq);
+                    ctx->uq_pi = 0.0f;
+                }
+#endif
+            }
+        } else if (observer_sensed_fb_active() != 0u) {
+            observer_sensed_keep(theta_enc_park, M1_CTRL_TS_S);
+            theta_park = theta_enc_park;
+        } else {
+            s_m1_obs->pre_park(theta_enc_park, M1_CTRL_TS_S);
+            theta_park = s_m1_obs->get_theta();
 #if M1_HFI_MOTION_BYPASS_ENABLE
             if (observer_get_stage() == OBS_STAGE_RUN) {
                 s_hfi_recon_theta = theta_park;
@@ -787,30 +810,12 @@ void motor_current_tick(bsp_axis_t *axis)
 #endif
 #if M1_HFI_QKICK_AFTER_LOCK_ENABLE
             if (observer_consume_pi_reset() != 0u) {
+                /* 踢时只清 Iq PI，Id 积分保持 */
                 foc_pi_reset(&ctx->pi_iq);
                 ctx->uq_pi = 0.0f;
             }
 #endif
         }
-    } else if (observer_sensed_fb_active() != 0u) {
-        observer_sensed_keep(theta_enc_park, M1_CTRL_TS_S);
-        theta_park = theta_enc_park;
-    } else {
-        s_m1_obs->pre_park(theta_enc_park, M1_CTRL_TS_S);
-        theta_park = s_m1_obs->get_theta();
-#if M1_HFI_MOTION_BYPASS_ENABLE
-        if (observer_get_stage() == OBS_STAGE_RUN) {
-            s_hfi_recon_theta = theta_park;
-            s_hfi_recon_theta_ok = 1u;
-        }
-#endif
-#if M1_HFI_QKICK_AFTER_LOCK_ENABLE
-        if (observer_consume_pi_reset() != 0u) {
-            /* 踢时只清 Iq PI，Id 积分保持 */
-            foc_pi_reset(&ctx->pi_iq);
-            ctx->uq_pi = 0.0f;
-        }
-#endif
     }
     /*
      * 进有感段（REV141 SENSED_PAIRS）第一拍：电流环 PI 与 Ud/Uq 全部清零。
@@ -945,9 +950,10 @@ void motor_current_tick(bsp_axis_t *axis)
     /*
      * 无扰：id* = (1-soft)·id → 误差 = -soft·id；
      * soft=0 时误差为 0；soft→1 → id*→0。须在 foc_loop 之前。
-     * 141：ID_ON_FROM_RUN → HAND_ID_WITH_VH 常开。
+     * 标定链（Pass0/Rs/L）与 HFI 互斥：表在跑就别改 id_ref。
      */
-    if (observer_id_pi_bypass() == 0u) {
+    if ((deadband_flow_id_cal_active() == 0u) &&
+        (observer_id_pi_bypass() == 0u)) {
         const float soft = observer_id_pi_soft_scale();
 
         if (soft < 1.0f) {
@@ -1003,8 +1009,10 @@ void motor_current_tick(bsp_axis_t *axis)
             ud_out = ctx->ud_pi + deadband_service_ud_inject(id);
             uq_out = ctx->uq_pi;
 #if M1_HFI_ENABLE
-            /* 旁路：清 Id。放行后：Ud*=soft；OVERLAP 不清积分（id* 无扰）。*/
-            if (observer_id_pi_bypass() != 0u) {
+            /* 标定链：HFI 不掺 Ud；其余旁路/soft 与 141 无感一致。 */
+            if (deadband_flow_id_cal_active() != 0u) {
+                dbg.foc_ud_pi = ctx->ud_pi;
+            } else if (observer_id_pi_bypass() != 0u) {
                 foc_pi_reset(&ctx->pi_id);
                 ctx->ud_pi = 0.0f;
                 dbg.foc_ud_pi = 0.0f;
@@ -1020,7 +1028,11 @@ void motor_current_tick(bsp_axis_t *axis)
 #endif
         }
 #if M1_HFI_ENABLE
-        {
+        /*
+         * 标定链（Rs/L/Pass0）与 HFI 互斥：IDLE 的 override(0,0) 会盖住 Rs 斜坡
+         * 并每拍清 PI（表现为前几秒无电流、随后 id_ref 已爬高而突跳）。
+         */
+        if (deadband_flow_id_cal_active() == 0u) {
             float ud_ov;
             float uq_ov;
             float ud_inj;

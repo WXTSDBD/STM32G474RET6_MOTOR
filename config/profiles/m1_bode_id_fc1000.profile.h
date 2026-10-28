@@ -27,7 +27,7 @@
 #undef M1_IDENT_STEP_FIXED_ROUNDS
 #define M1_IDENT_STEP_FIXED_ROUNDS      0u
 #define M1_RS_IDENT_ENABLE              0
-#define M1_LD_LQ_IDENT_ENABLE           0
+#define M1_L_HFI_IDENT_ENABLE           0
 #define M1_SPEED_IDENT_ENABLE           0
 
 #undef M1_IDENT_BODE_LUT_ENABLE

@@ -275,6 +275,10 @@
 #ifndef M1_EXP_BOOT_REV141
 #define M1_EXP_BOOT_REV141              0
 #endif
+/** 1=上电跑联合标定链（Pass0→Rs→LdLq，EXP_ID_CALIB_CHAIN）。 */
+#ifndef M1_EXP_BOOT_CALIB_CHAIN
+#define M1_EXP_BOOT_CALIB_CHAIN         0
+#endif
 
 /** 1=有感解耦前馈同电 A/B（0→500→0）；需 M1_EXP_FRAMEWORK_ENABLE 与 ROTATION_FF。 */
 /** 摩擦表点数。PACK2 用。 */
@@ -650,7 +654,7 @@
  * 1=bringup 全阶段固。VOFA×12（Id cal / ident / 开环阶梯同布局，不再按 open_seq 。ch3。1）。
  * ch0=Ia ch1=Ib ch2=Ic ch3=Id ch4=Iq ch5=θ_el
  * M1_VOFA_IDENT_DUTY_12CH=1（辨。标定，默认）：ch6=Vd_est ch7=Vq_est ch8=Ta ch9=Tb ch10=Tc ch11=open_seq。
- *   VASI(open_seq=57) 。ch8=grid ch9=proc_code ch10=L_est_uH（ch6/7 仍为端电压估计）。
+ *   Pass0：ch8=id_ref ch9=id ch10=err；VASI：ch6/7=Ud/Uq ch8=Ld_uH ch9=Lq_uH ch10=L_avg。
  * M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out。
  *   M1_VOFA_MIT_CH8_11=1 。ch8=ω_pll ch9=θ_err ch10=Iq_ref ch11=open_seq（MIT 验收）；
  *   M1_VOFA_PLL_CH8_11=1 。ch8=ω_pll ch9=ω_diff ch10=θ_err ch11=Δω。
@@ -970,7 +974,7 @@
 #endif /* speed loop deadband off */
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_BUILD)
-/** 。Pass0 。。Ud 阶梯 OFF→ON 。。VASI Ld/Lq(INJECT LUT) 。LUT/ident 突发；同次上。RAM only */
+/** Pass0 → Ud 阶梯 → l_hfi；LUT/ident 突发；同次上电 RAM only */
 #define M1_ID_LOCK_CAL_SWEEP            1
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_MULTI_ANGLE_ENABLE    0
@@ -984,14 +988,7 @@
 #define M1_RS_IDENT_ENABLE              0
 #undef M1_RS_IDENT_USE_FIXED_NOMINAL
 #define M1_RS_IDENT_USE_FIXED_NOMINAL   1
-#define M1_LD_LQ_IDENT_ENABLE           1
-#undef M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
-#define M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE   1
-#undef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
-#define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  1
-/** 15 。+ 500 Hz coarse 。1 kHz fine（关 F2 / FINE_ONLY。*/
-#undef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
-#define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  1
+#define M1_L_HFI_IDENT_ENABLE           1
 #undef M1_VOFA_IDENT_DUMP_ENABLE
 #define M1_VOFA_IDENT_DUMP_ENABLE         1
 #undef M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
@@ -1156,35 +1153,69 @@
 #define M1_ID_CAL_PASS0_ONLY_ENABLE         0
 #define M1_ID_CAL_LUT_VERIFY_SWEEP          0
 #define M1_RS_IDENT_ENABLE                  0
-#define M1_LD_LQ_IDENT_ENABLE               0
+#define M1_L_HFI_IDENT_ENABLE               0
 #define M1_DEADBAND_LUT_BAKED_ENABLE        0
 #ifndef M1_DEADBAND_ENABLE
 #define M1_DEADBAND_ENABLE                  1
 #endif
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_RS)
-/** Pass0 30° 30。。commit 。单轮 OFF Rs+VASI（死。OFF 辨识；DONE 后切 LUT runtime。*/
+/** 只跑参数辨识：跳过 Pass0/LUT，ALIGN → Rs ramp → l_hfi×10（VESC 旋转HF+DFT）。*/
 #define M1_ID_LOCK_CAL_SWEEP            1
 #define M1_IDENT_ENABLE                 0
+#define M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE  1
 #define M1_ID_CAL_MULTI_ANGLE_ENABLE    0
 #define M1_ID_CAL_PASS0_ONLY_ENABLE     0
 #define M1_ID_CAL_LUT_VERIFY_SWEEP      0
 #define M1_ID_CAL_IQ_PROBE_ENABLE       0
+/** Rs 最小二乘；与 FIXED_NOMINAL 互斥。 */
+#undef M1_RS_IDENT_USE_FIXED_NOMINAL
+#define M1_RS_IDENT_USE_FIXED_NOMINAL   0
 #define M1_RS_IDENT_ENABLE              1
-#define M1_LD_LQ_IDENT_ENABLE           1
-/** 0=θ 漂移只记 dbg。 。VASI 强制跑完（离线再筛）。=超限 ld_lq_abort */
+#define M1_L_HFI_IDENT_ENABLE           1
 #define M1_ID_CAL_DUAL_ANGLE_ENABLE     0
 #define M1_ID_CAL_FIX_THETA_ENABLE      1
-#define M1_ID_CAL_ALIGN_ENABLE          0
-#define M1_ID_CAL_COMMIT_LUT            1
-#undef M1_ID_CAL_AMP_TABLE_LEN
-#define M1_ID_CAL_AMP_TABLE_LEN         30u
-#undef M1_ID_CAL_ID_DWELL_S
-#define M1_ID_CAL_ID_DWELL_S            0.5f
-/** 0=。OFF 。Rs+VASI。=commit 后再。LUT 轮对照（open_seq +100。*/
+/** 开环 Ud 拉到 FIX_THETA 角，再 Rs 灌 Id。 */
+#define M1_ID_CAL_ALIGN_ENABLE          1
+/** 3V 曾拉到 ~11A；1.5V 够贴角，电流约减半。 */
+#undef M1_ID_CAL_ALIGN_UD_V
+#define M1_ID_CAL_ALIGN_UD_V            1.5f
+#define M1_ID_CAL_COMMIT_LUT            0
+#undef M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE
+#define M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE  0
+#undef M1_DEADBAND_ENABLE
+#define M1_DEADBAND_ENABLE              0
+/** HF-L 连跑 10 轮，轮间歇 2 s；每轮 mark55 连发本轮结果。 */
+#undef M1_L_HFI_REPEAT_N
+#define M1_L_HFI_REPEAT_N               10u
+#undef M1_L_HFI_INTER_ROUND_S
+#define M1_L_HFI_INTER_ROUND_S          2.0f
+/*
+ * 遥测：6ch @ 20kHz（DECIM=1）。12ch@10kHz 对 20kHz 双极半拍别名，离线凑不齐 Δi；
+ * 6×20k≈560KB/s，与原 12×10k 同量级，6Mbps UART 吃得下。VOFA 通道数改 6。
+ */
+#undef M1_TELEM_BRINGUP_K
+#define M1_TELEM_BRINGUP_K              6u
+#undef M1_TELEM_BRINGUP_DECIMATION
+#define M1_TELEM_BRINGUP_DECIMATION     1u
+#include "profiles/m1_hfi_compile_nums.h"
+#undef M1_HFI_ENABLE
+#define M1_HFI_ENABLE                   1
+#undef M1_HFI_MOTION_BYPASS_ENABLE
+#define M1_HFI_MOTION_BYPASS_ENABLE     1
+#undef M1_EMF_SMO_ENABLE
+#define M1_EMF_SMO_ENABLE               1
+#undef M1_EMF_PLL_ENABLE
+#define M1_EMF_PLL_ENABLE               1
+#undef M1_EMF_PLL_USE_SMO
+#define M1_EMF_PLL_USE_SMO              1
+#undef M1_VOFA_OPT12
+#define M1_VOFA_OPT12                   0
+#undef M1_VOFA_IDENT_DUTY_12CH
+#define M1_VOFA_IDENT_DUTY_12CH         1
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_RS_LD_LQ_ONLY)
-/** Pass0 已完成：ALIGN@30° 。HOLD 。VASI Ld/Lq 。DONE 。LUT runtime（Rs 固定 M1_RS_OHM。*/
+/** Pass0 已完成：ALIGN→HOLD→l_hfi（Rs 固定 M1_RS_OHM）。*/
 #define M1_ID_LOCK_CAL_SWEEP            1
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE  1
@@ -1195,7 +1226,7 @@
 #undef M1_RS_IDENT_USE_FIXED_NOMINAL
 #define M1_RS_IDENT_USE_FIXED_NOMINAL   1
 #define M1_RS_IDENT_ENABLE              0
-#define M1_LD_LQ_IDENT_ENABLE           1
+#define M1_L_HFI_IDENT_ENABLE           1
 #define M1_ID_CAL_DUAL_ANGLE_ENABLE     0
 #define M1_ID_CAL_FIX_THETA_ENABLE      1
 #define M1_ID_CAL_ALIGN_ENABLE          1
@@ -1206,16 +1237,6 @@
 #define M1_PLL_ENABLE                   0
 #undef M1_VOFA_PLL_CH8_11
 #define M1_VOFA_PLL_CH8_11              0
-/** 论文 §2.3：SETTLE 。PI 到偏。。注入段关 PI、冻。Ud/Uq + 对称 HF 方波（合力矩。。*/
-#undef M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
-#define M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE   1
-/** 0=论文 9 格；1=方案 A 15 。0。 A 加密 */
-#undef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
-#define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  1
-/** 15 。+ 500 Hz coarse 。1 kHz fine（关 F2 / FINE_ONLY。*/
-/** INJECT 开环段 abc duty LUT；SETTLE/PRE_DECAY 。OFF（PI 自补偿） */
-#undef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
-#define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  1
 
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_OPEN_UD_LUT_VERIFY)
 /** 。开。Ud 0/0.2/0.5/1/2/4 V 阶梯，deadband LUT runtime（验 Pass0 表） */
@@ -1262,7 +1283,7 @@
 #undef M1_IDENT_STEP_FIXED_ROUNDS
 #define M1_IDENT_STEP_FIXED_ROUNDS      0u
 #define M1_RS_IDENT_ENABLE              0
-#define M1_LD_LQ_IDENT_ENABLE           0
+#define M1_L_HFI_IDENT_ENABLE           0
 #define M1_SPEED_IDENT_ENABLE           0
 #undef M1_IDENT_BODE_LUT_ENABLE
 #define M1_IDENT_BODE_LUT_ENABLE        0
@@ -1328,7 +1349,7 @@
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            0
-#define M1_LD_LQ_IDENT_ENABLE           0
+#define M1_L_HFI_IDENT_ENABLE           0
 #define M1_RS_IDENT_ENABLE              0
 #define M1_VOFA_IDENT_DUMP_ENABLE       0
 #define M1_SPEED_IDENT_ENABLE           1
@@ -1505,8 +1526,8 @@
  *       M1_VOFA_IDENT_DUTY_12CH=0：ch6=Ud_out ch7=Uq_out。
  *       M1_VOFA_PLL_CH8_11=1 。ch8=ω_pll ch9=ω_diff ch10=θ_err ch11=Δω。
  *       M1_VOFA_PLL_CH8_11=0 。ch8=Id_ref ch9=Iq_ref ch10=duty_dev ch11=open_seq。
- *       VASI(open_seq=57) 。ch8=grid ch9=proc_code ch10=L_est_uH ch11=open_seq（ch6/7 不变）。
- * M1_LD_LQ_IDENT_INJECT_LUT_ENABLE=1：仅 INJ_LD/LQ 。LUT runtime；SETTLE/PRE_DECAY OFF。
+ *       Pass0(open_seq=1..30)：ch8=id_ref ch9=id ch10=id_ref−id；看阶跃。
+ *       l_hfi：ch6/7=Ud/Uq；mark55 shout 为 Ld/Lq/Lavg_uH。
  * M1_OPEN_PRE_ID_LADDER_LUT_RUNTIME=1：开。Ud/Uq ladder 。LUT runtime（AB=0 时整。ON）。
  * M1_OPEN_PRE_ID_LADDER_AB_ENABLE=1：Ud/Uq 阶梯。OFF(70..75) 。LUT ON(80..85)。7/87=轮末。
  * dbg.open_seq_phase。8=ALIGN(30° Ud)。4=Rs ramp。5=Rs OK。6=Rs FAIL。
@@ -1541,9 +1562,13 @@
 #endif
 
 #if M1_ID_CAL_OVERRIDE_LIMITS
-/** 。2347 电流环一致（M1_CLOSURE_BRINGUP 6 V），Pass0/Pass1/第三段共。*/
+#ifndef M1_ID_CAL_I_REF_ABS_MAX
+#define M1_ID_CAL_I_REF_ABS_MAX    3.0f
+#endif
+/** 与电流环一致（M1_CLOSURE_BRINGUP），Pass0/Pass1 共用。 */
 #define M1_ID_CAL_PI_V_LIMIT_V     M1_PI_V_LIMIT_V
 #else
+#define M1_ID_CAL_I_REF_ABS_MAX    M1_I_REF_ABS_MAX
 #define M1_ID_CAL_PI_V_LIMIT_V     M1_PI_V_LIMIT_V
 #endif
 
@@ -1565,16 +1590,26 @@
 #ifndef M1_ID_CAL_ID_DWELL_S
 #define M1_ID_CAL_ID_DWELL_S        3.0f
 #endif
-/** Id_ref 。此值时。M1_ID_CAL_ID_DWELL_LOW_S（与 M1_ID_CAL_ID_DWELL_S 同），否则用 M1_ID_CAL_ID_DWELL_S */
-/** Pass1 LUT 验收：各 Id 。dwell 统一（s），不再。LOW_S 加长 */
+/** Id_ref 低于此值时用 LOW_S，否则用 ID_DWELL_S。 */
+#ifndef M1_ID_CAL_ID_DWELL_LOW_ID_A
+#define M1_ID_CAL_ID_DWELL_LOW_ID_A  0.40f
+#endif
+#ifndef M1_ID_CAL_ID_DWELL_LOW_S
+#define M1_ID_CAL_ID_DWELL_LOW_S     M1_ID_CAL_ID_DWELL_S
+#endif
+/** Pass1 LUT 验收：各 Id dwell 统一（s）。 */
 #ifndef M1_ID_CAL_VERIFY_ID_DWELL_S
 #define M1_ID_CAL_VERIFY_ID_DWELL_S  M1_ID_CAL_ID_DWELL_S
 #endif
-/** 上电 Id=0 稳定（s）；240125 已验。*/
-/**
- * Pass0 末档→Pass1：Id_ref=0 衰减 (s)，LUT 。OFF，再 commit；仅 LUT_VERIFY 双扫生效。
- */
-/** Pass1 LUT 验收扫表 init hold (s)，commit 后略长以。settle */
+/** 上电 Id=0 稳定（s）。 */
+#define M1_ID_CAL_INIT_HOLD_S       0.5f
+#ifndef M1_ID_CAL_PASS0_DECAY_S
+#define M1_ID_CAL_PASS0_DECAY_S     0.8f
+#endif
+/** Pass1 验收扫表 init hold（s）。 */
+#ifndef M1_ID_CAL_VERIFY_INIT_HOLD_S
+#define M1_ID_CAL_VERIFY_INIT_HOLD_S  1.0f
+#endif
 
 /** capture：|Id-Id_ref| 门限 (A) */
 #ifndef M1_ID_CAL_CAPTURE_EPS_A
@@ -1715,81 +1750,43 @@
 #endif
 
 /**
- * Pass0+Rs 。VASI 9 。Ld/Lq 曲面（Id/Iq 偏置 0.5~1.5 A 线性区；U_inj 。L 自适应）。
- * open_seq。7=进行中，58=9 格跑完，59=中。abort（ABORT_ON_THETA_DRIFT=1 。θ 漂移）；
- * 163=Rs/L leg 。decay。
- * MULTI=1 。160+leg=ALIGN。70+leg×40=VASI（stride 40 。uint8 溢出）。
+ * Rs 后 L 辨识：仅 VESC 旋转 HF+DFT（l_hfi_ident）。旧 VASI 已移除。
+ * open_seq：163=PRE_DECAY；其后由 l_hfi_ident_open_seq_phase 上报。
  */
-#ifndef M1_LD_LQ_IDENT_ENABLE
-#define M1_LD_LQ_IDENT_ENABLE           0
+#ifndef M1_L_HFI_IDENT_ENABLE
+#define M1_L_HFI_IDENT_ENABLE           0
 #endif
-#ifndef M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE
-/** 1=VASI 注入段冻。SETTLE 。Ud/Uq（论。§2.3 开。HF 注入）；0=闭环 PI+。u_inj（旧。*/
-#define M1_LD_LQ_IDENT_OPEN_LOOP_ENABLE  0
+#ifndef M1_L_HFI_PRE_DECAY_S
+#define M1_L_HFI_PRE_DECAY_S            0.8f
 #endif
-#ifndef M1_LD_LQ_IDENT_FINE_GRID_ENABLE
-/** 1=方案 A：Id 0.5/0.75/1.0 × Iq 0/0.25/0.5/0.75/1.0。5 格，0。 A 加密。*/
-#define M1_LD_LQ_IDENT_FINE_GRID_ENABLE  0
-#endif
-#if M1_LD_LQ_IDENT_FINE_GRID_ENABLE
-#undef M1_LD_LQ_IQ_BIAS_N
-#define M1_LD_LQ_IQ_BIAS_N              5u
-#endif
-#ifndef M1_LD_LQ_ID_BIAS_N
-#define M1_LD_LQ_ID_BIAS_N              3u
-#endif
-#ifndef M1_LD_LQ_IQ_BIAS_N
-#define M1_LD_LQ_IQ_BIAS_N              3u
-#endif
-/** 1=每轴 coarse→fine→f2 三档。=。500 Hz+1 kHz（proto 2.0。*/
-/** @deprecated 兼容旧脚本；等同 F_FINE */
-/** @deprecated 变幅。U_INJ_MIN/MAX + L 自适应；保。0 以兼。*/
-/** 1=编码器漂移超限时 ld_lq_abort()。=只记 dbg。 。grid 强制跑完（离线分析用。*/
-/** 1=ψ 积分。(U−U_bias) 去掉偏置 DC，对齐论文对。± 注入 */
-/** 1=VASI INJ_LD/LQ 。deadband LUT runtime；SETTLE/PRE_DECAY 。OFF */
-#ifndef M1_LD_LQ_IDENT_INJECT_LUT_ENABLE
-#define M1_LD_LQ_IDENT_INJECT_LUT_ENABLE  0
-#endif
-#if M1_LD_LQ_IDENT_INJECT_LUT_ENABLE && !M1_LD_LQ_IDENT_ENABLE
-#error "M1_LD_LQ_IDENT_INJECT_LUT_ENABLE requires M1_LD_LQ_IDENT_ENABLE=1"
-#endif
-#if M1_LD_LQ_IDENT_INJECT_LUT_ENABLE && !M1_DEADBAND_ENABLE
-#error "M1_LD_LQ_IDENT_INJECT_LUT_ENABLE requires M1_DEADBAND_ENABLE=1"
+#ifndef M1_L_HFI_OPEN_SEQ_PRE_DECAY
+#define M1_L_HFI_OPEN_SEQ_PRE_DECAY     163u
 #endif
 
-/** deadband_flow 编译/启动条件（含。OPEN_UD 验表。*/
-#ifndef M1_DEADBAND_FLOW_ENABLE
-#define M1_DEADBAND_FLOW_ENABLE         \
-    (M1_IDENT_ENABLE || M1_ID_LOCK_CAL_SWEEP || M1_SPEED_IDENT_ENABLE || \
-     M1_OPEN_UD_PRE_ID_CAL_ENABLE || M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
-#endif
-/** 正负半周 |u_ac| 最小比值，低于此丢弃该 cycle */
-/** 半周平均 |u_ac| 低于此视为无效注。*/
-/** fine(1 kHz) 额外 v_inj 上限，避免大幅值非线。*/
-/** 1=Rs 。30/150/270° 各跑一。9 。VASI（ALIGN Ud 换角，同 Pass0 三角。*/
-/** L 辨识多角度电角（默认。Pass0 三角 30/150/270°。*/
-
-#if M1_LD_LQ_IDENT_ENABLE && !M1_RS_IDENT_ENABLE && !M1_RS_IDENT_USE_FIXED_NOMINAL
-#error "M1_LD_LQ_IDENT_ENABLE requires M1_RS_IDENT_ENABLE=1 or M1_RS_IDENT_USE_FIXED_NOMINAL=1"
+#if M1_L_HFI_IDENT_ENABLE && !M1_RS_IDENT_ENABLE && !M1_RS_IDENT_USE_FIXED_NOMINAL
+#error "M1_L_HFI_IDENT_ENABLE requires M1_RS_IDENT_ENABLE=1 or M1_RS_IDENT_USE_FIXED_NOMINAL=1"
 #endif
 
 /**
- * Pass0 commit 。Rs+VASI：默认单。deadband OFF。
- * M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE=1 时再。LUT 轮对照（open_seq +100）。
+ * Pass0 commit → Rs+l_hfi：默认单轮 deadband OFF。
+ * DUAL=1 时再跑一轮 LUT（open_seq + OFFSET）对照。
  */
 #ifndef M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE
 #define M1_RS_L_IDENT_DUAL_LUT_ROUND_ENABLE  0
+#endif
+#ifndef M1_RS_L_IDENT_LUT_ROUND_OPEN_SEQ_OFFSET
+#define M1_RS_L_IDENT_LUT_ROUND_OPEN_SEQ_OFFSET  100u
 #endif
 
 #ifndef M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
 #define M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE  0
 #endif
 
-#if M1_LD_LQ_IDENT_ENABLE && !M1_ID_CAL_COMMIT_LUT && !M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
-#error "M1_LD_LQ_IDENT_ENABLE requires M1_ID_CAL_COMMIT_LUT=1 (or RS_LD_LQ_ONLY)"
+#if M1_L_HFI_IDENT_ENABLE && !M1_ID_CAL_COMMIT_LUT && !M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
+#error "M1_L_HFI_IDENT_ENABLE requires M1_ID_CAL_COMMIT_LUT=1 (or RS_LD_LQ_ONLY)"
 #endif
-#if M1_LD_LQ_IDENT_ENABLE && M1_ID_CAL_IQ_PROBE_ENABLE
-#error "M1_LD_LQ_IDENT_ENABLE and M1_ID_CAL_IQ_PROBE_ENABLE are mutually exclusive"
+#if M1_L_HFI_IDENT_ENABLE && M1_ID_CAL_IQ_PROBE_ENABLE
+#error "M1_L_HFI_IDENT_ENABLE and M1_ID_CAL_IQ_PROBE_ENABLE are mutually exclusive"
 #endif
 
 #ifndef M1_ID_CAL_IQ_PROBE_ONLY_ENABLE
@@ -1801,15 +1798,15 @@
 #if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE && M1_ID_CAL_PASS0_ONLY_ENABLE
 #error "M1_ID_CAL_IQ_PROBE_ONLY_ENABLE requires M1_ID_CAL_PASS0_ONLY_ENABLE=0"
 #endif
-#if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE && (M1_RS_IDENT_ENABLE || M1_LD_LQ_IDENT_ENABLE)
-#error "M1_ID_CAL_IQ_PROBE_ONLY_ENABLE is incompatible with RS/L ident"
+#if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE && (M1_RS_IDENT_ENABLE || M1_L_HFI_IDENT_ENABLE)
+#error "M1_ID_CAL_IQ_PROBE_ONLY_ENABLE is incompatible with RS/L-HFI ident"
 #endif
 #if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE && !M1_ID_LOCK_CAL_SWEEP
 #error "M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE requires M1_ID_LOCK_CAL_SWEEP=1"
 #endif
 #if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE && \
-    (!M1_LD_LQ_IDENT_ENABLE || (!M1_RS_IDENT_ENABLE && !M1_RS_IDENT_USE_FIXED_NOMINAL))
-#error "M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE requires M1_LD_LQ_IDENT_ENABLE and (M1_RS_IDENT_ENABLE or M1_RS_IDENT_USE_FIXED_NOMINAL)"
+    (!M1_L_HFI_IDENT_ENABLE || (!M1_RS_IDENT_ENABLE && !M1_RS_IDENT_USE_FIXED_NOMINAL))
+#error "M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE requires M1_L_HFI_IDENT_ENABLE and (M1_RS_IDENT_ENABLE or M1_RS_IDENT_USE_FIXED_NOMINAL)"
 #endif
 #if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE && M1_ID_CAL_PASS0_ONLY_ENABLE
 #error "M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE requires M1_ID_CAL_PASS0_ONLY_ENABLE=0"
@@ -2114,8 +2111,8 @@
 #ifndef M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
 #define M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD  0
 #endif
-#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && !M1_LD_LQ_IDENT_ENABLE
-#error "M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD requires M1_LD_LQ_IDENT_ENABLE=1"
+#if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && !M1_L_HFI_IDENT_ENABLE
+#error "M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD requires M1_L_HFI_IDENT_ENABLE=1"
 #endif
 #if M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD && !M1_OPEN_UD_AFTER_ID_CAL
 #error "M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD requires M1_OPEN_UD_AFTER_ID_CAL=1"

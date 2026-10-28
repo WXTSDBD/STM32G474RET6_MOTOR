@@ -30,6 +30,7 @@
 | `bode_id_fc1600` | CURRENT | BOOT_ONCE | 同上，`M1_PI_FC_HZ=1600` | 🔧 | ✅ | **主档** `1705/1708/1709`（−3dB≈4057 Hz，Mp≈1.30，踩线）；见 [fc1600 报告](验收报告_BODE_ID_fc1600_5kHz_2026-09-09.md) |
 | `ident_iq_step` | CURRENT | BOOT_RECIPE | `M1_BRINGUP_MODE_IDENT_IQ_STEP` | 🔧 | ✅ | IDENT 1604：0.5–2 A 有条件通过（单次长录波多轮） |
 | `rs_ld_lq_only` | PARAM | BOOT_ONCE | `M1_BRINGUP_MODE_RS_LD_LQ_ONLY` | 🔧 | ✅ | `VOFA+CSV/20260708/` |
+| `l_hfi_vesc_fft` | PARAM | BOOT_ONCE | `l_hfi_ident`（VESC 旋转 HF+DFT；Rs→L×10；**VASI 已删**） | 🔧 | ⚠️ | **散度可用、绝对值偏高**：[日报 2026-10-27](联调日报_VESC旋转HF_LdLq辨识_散度与用法_2026-10-27.md)；主录波 `VOFA+CSV/20261026/vofa+202610272257.csv`；包 `_pkg/20261028_calib_rs_lhfi_no_vasi` |
 | `iq_probe_off` | CURRENT | MANUAL | `M1_BRINGUP_MODE_IQ_PROBE_OFF_ONLY` | — | 🔧 | — |
 | `id_cal_pass0_build` | DEADBAND | BOOT_RECIPE | `M1_BRINGUP_MODE_ID_CAL_PASS0_BUILD` | 🔧 | ⚠️ | Pass0 流水线 |
 

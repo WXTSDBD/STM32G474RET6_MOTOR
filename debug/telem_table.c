@@ -30,6 +30,7 @@
 #include "pwm_port.h"
 #include "observer/observer_composite.h"
 #include "app_axis_jeoc.h"
+#include "l_hfi_ident.h"
 
 static uint8_t s_layout = TELEM_LAYOUT_LEGACY;
 
@@ -204,6 +205,148 @@ static float tl_duty_tb(const motor_context_t *ctx)
 static float tl_duty_tc(const motor_context_t *ctx)
 {
     (void)ctx;
+    return dbg.foc_duty_tc;
+}
+
+/**
+ * @brief 去掉双轮 +100 后的 open_seq 基码。
+ */
+static uint8_t tl_open_seq_base(void)
+{
+    const uint8_t m = dbg.open_seq_phase;
+
+    return (m >= 100u) ? (uint8_t)(m - 100u) : m;
+}
+
+/**
+ * @brief L 段基码：55 本轮 shout / 56 轮间 / 57 跑中 / 58 OK / 59 FAIL / 163。
+ */
+static uint8_t tl_ident_l_overlay(void)
+{
+    const uint8_t m = tl_open_seq_base();
+
+    return ((m == 55u) || (m == 56u) || (m == 57u) || (m == 58u) ||
+            (m == 59u) || (m == 163u))
+               ? 1u
+               : 0u;
+}
+
+/**
+ * @brief 已出 L 且非注入中：粘住 Ld/Lq 供双轮对照（含轮间 Rs）。
+ */
+static uint8_t tl_ident_l_sticky(void)
+{
+    const uint8_t m = tl_open_seq_base();
+
+    if (dbg.ld_lq_ok == 0u) {
+        return 0u;
+    }
+    if (m == 57u) {
+        return 0u;
+    }
+    if ((m >= 1u) && (m <= 30u)) {
+        return 0u;
+    }
+    return 1u;
+}
+
+/**
+ * @brief IDENT ch6：L 段看 Ud 阶跃；其余仍 Vd_est。
+ */
+static float tl_ident_ch6(const motor_context_t *ctx)
+{
+    (void)ctx;
+    if (tl_ident_l_overlay() != 0u) {
+        return dbg.foc_ud_out;
+    }
+    return dbg.foc_vd_est;
+}
+
+/**
+ * @brief IDENT ch7：L 段看 Uq 阶跃；其余仍 Vq_est。
+ */
+static float tl_ident_ch7(const motor_context_t *ctx)
+{
+    (void)ctx;
+    if (tl_ident_l_overlay() != 0u) {
+        return dbg.foc_uq_out;
+    }
+    return dbg.foc_vq_est;
+}
+
+/**
+ * @brief IDENT ch8：Ld_uH / grid；Pass0=id_ref。
+ */
+static float tl_ident_ch8(const motor_context_t *ctx)
+{
+    const uint8_t m = tl_open_seq_base();
+
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_ld_uH();
+    }
+    if (tl_ident_l_sticky() != 0u) {
+        return dbg.ld_lq_proc_last_l_uH;
+    }
+    if (tl_ident_l_overlay() != 0u) {
+        if ((m == 58u) || (m == 59u)) {
+            return dbg.ld_lq_proc_last_l_uH;
+        }
+        return dbg.ld_lq_proc_grid;
+    }
+    if ((m >= 1u) && (m <= 30u)) {
+        return (ctx != NULL) ? ctx->id_ref : dbg.foc_id_ref;
+    }
+    return dbg.foc_duty_ta;
+}
+
+/**
+ * @brief IDENT ch9：Lq_uH / proc；Pass0=id。
+ */
+static float tl_ident_ch9(const motor_context_t *ctx)
+{
+    const uint8_t m = tl_open_seq_base();
+
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_lq_uH();
+    }
+    if (tl_ident_l_sticky() != 0u) {
+        return dbg.ld_lq_proc_psi_du_wb;
+    }
+    if (tl_ident_l_overlay() != 0u) {
+        if ((m == 58u) || (m == 59u)) {
+            return dbg.ld_lq_proc_psi_du_wb;
+        }
+        return dbg.ld_lq_proc_code;
+    }
+    if ((m >= 1u) && (m <= 30u)) {
+        return (ctx != NULL) ? ctx->id : dbg.foc_id;
+    }
+    return dbg.foc_duty_tb;
+}
+
+/**
+ * @brief IDENT ch10：L_avg_uH；Pass0=id_ref−id。
+ */
+static float tl_ident_ch10(const motor_context_t *ctx)
+{
+    const uint8_t m = tl_open_seq_base();
+    float id_ref;
+    float id_fb;
+
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_lavg_uH();
+    }
+    if (tl_ident_l_sticky() != 0u) {
+        return dbg.ld_lq_L_est_uH;
+    }
+    if (tl_ident_l_overlay() != 0u) {
+        return dbg.ld_lq_L_est_uH;
+    }
+    if ((m >= 1u) && (m <= 30u)) {
+        id_ref = (ctx != NULL) ? ctx->id_ref : dbg.foc_id_ref;
+        id_fb = (ctx != NULL) ? ctx->id : dbg.foc_id;
+        return id_ref - id_fb;
+    }
     return dbg.foc_duty_tc;
 }
 
@@ -385,6 +528,99 @@ static const telem_ch_t s_layout_opt[TELEM_TABLE_CH_N] = {
     { "omega_fb",       tl_opt_omega_fb },
 };
 
+#if M1_TELEM_BRINGUP_K <= 6u
+/**
+ * @brief 6ch@20kHz 紧凑辨识：id iq ud uq flex mark（表仍 12 槽，后 6 填 0）。
+ * flex：L 段报 Lavg_uH 或 n_di；其余报 θe（锁轴检查）。
+ * mark54 Rs：id iq ud_pi id_ref θe mark（供离线拟合斜率/截距）。
+ * mark55 本轮 shout：Ld Lq Lavg round ok mark（连发，单位 µH）。
+ */
+static float tl_zero(const motor_context_t *ctx)
+{
+    (void)ctx;
+    return 0.0f;
+}
+
+static uint8_t tl_is_rs_ramp(void)
+{
+    return (tl_open_seq_base() == 54u) ? 1u : 0u;
+}
+
+static float tl_ident6_ch0(const motor_context_t *ctx)
+{
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_ld_uH();
+    }
+    return tl_id(ctx);
+}
+
+static float tl_ident6_ch1(const motor_context_t *ctx)
+{
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_lq_uH();
+    }
+    return tl_iq(ctx);
+}
+
+static float tl_ident6_ch2(const motor_context_t *ctx)
+{
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_lavg_uH();
+    }
+    /* Rs 段挂 ud_pi（拟合用）；旧包 mark54 的 ud 几乎全 0 */
+    if (tl_is_rs_ramp() != 0u) {
+        return dbg.foc_ud_pi;
+    }
+    return tl_ident_ch6(ctx);
+}
+
+static float tl_ident6_ch3(const motor_context_t *ctx)
+{
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_round();
+    }
+    if (tl_is_rs_ramp() != 0u) {
+        return (ctx != NULL) ? ctx->id_ref : dbg.foc_id_ref;
+    }
+    return tl_ident_ch7(ctx);
+}
+
+static float tl_ident_flex6(const motor_context_t *ctx)
+{
+    (void)ctx;
+    if (l_hfi_ident_result_shout_active() != 0u) {
+        return l_hfi_ident_shout_ok();
+    }
+    if (tl_is_rs_ramp() != 0u) {
+        /* 跑中仍报 θe；Rs 算完后 dbg 已有 ohm/截距，但 mark 很快切走 */
+        return dbg.foc_theta_el;
+    }
+    if (tl_ident_l_overlay() != 0u) {
+        if ((dbg.ld_lq_ok != 0u) || (tl_ident_l_sticky() != 0u)) {
+            return dbg.ld_lq_L_est_uH;
+        }
+        /* 跑中：上一圈有效 bin 数（应≈32） */
+        return dbg.ld_lq_proc_half_ticks;
+    }
+    return dbg.foc_theta_el;
+}
+
+static const telem_ch_t s_layout_ident_duty[TELEM_TABLE_CH_N] = {
+    { "id",    tl_ident6_ch0 },
+    { "iq",    tl_ident6_ch1 },
+    { "u_d",   tl_ident6_ch2 },
+    { "u_q",   tl_ident6_ch3 },
+    { "flex",  tl_ident_flex6 },
+    { "mark",  tl_mark },
+    { "z6",    tl_zero },
+    { "z7",    tl_zero },
+    { "z8",    tl_zero },
+    { "z9",    tl_zero },
+    { "z10",   tl_zero },
+    { "z11",   tl_zero },
+};
+#else
+/** 辨识：ia ib ic id iq θ；ch6/7 电压；ch8-10 随 open_seq 切 Pass0/L 结果 */
 static const telem_ch_t s_layout_ident_duty[TELEM_TABLE_CH_N] = {
     { "ia",       tl_ia },
     { "ib",       tl_ib },
@@ -392,13 +628,14 @@ static const telem_ch_t s_layout_ident_duty[TELEM_TABLE_CH_N] = {
     { "id",       tl_id },
     { "iq",       tl_iq },
     { "theta_el", tl_theta_el },
-    { "vd_est",   tl_vd_est },
-    { "vq_est",   tl_vq_est },
-    { "duty_ta",  tl_duty_ta },
-    { "duty_tb",  tl_duty_tb },
-    { "duty_tc",  tl_duty_tc },
+    { "u_d",      tl_ident_ch6 },
+    { "u_q",      tl_ident_ch7 },
+    { "ident_a",  tl_ident_ch8 },
+    { "ident_b",  tl_ident_ch9 },
+    { "ident_c",  tl_ident_ch10 },
     { "mark",     tl_mark },
 };
+#endif
 
 typedef struct {
     uint8_t id;
@@ -470,6 +707,10 @@ uint8_t telem_table_fill(float vals[TELEM_TABLE_CH_N],
 {
     const telem_ch_t *ch;
     uint32_t i;
+    /* 实发通道数可能是 6；只填前 K 路，避免 6 元缓冲被写爆 */
+    const uint32_t n_fill =
+        (M1_TELEM_BRINGUP_K < TELEM_TABLE_CH_N) ? M1_TELEM_BRINGUP_K
+                                                 : TELEM_TABLE_CH_N;
 
     if (vals == NULL) {
         return 0u;
@@ -484,7 +725,7 @@ uint8_t telem_table_fill(float vals[TELEM_TABLE_CH_N],
         ch = s_layout_foc_dq;
     }
 
-    for (i = 0u; i < TELEM_TABLE_CH_N; i++) {
+    for (i = 0u; i < n_fill; i++) {
         vals[i] = ch[i].get(ctx);
     }
     return 1u;

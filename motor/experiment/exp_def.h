@@ -55,6 +55,8 @@ extern "C" {
 #define EXP_ID_IF_DRAG        14u
 #define EXP_ID_DEADBAND_LUT   15u
 #define EXP_ID_QKICK          16u
+/** 联合标定：Pass0 LUT → Rs → LdLq 采数（2026-10-26 第一轮） */
+#define EXP_ID_CALIB_CHAIN    17u
 
 typedef struct exp_seg_s exp_seg_t;
 

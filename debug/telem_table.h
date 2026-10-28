@@ -47,7 +47,7 @@ void telem_set_layout(uint8_t layout_id);
 uint8_t telem_get_layout(void);
 
 /**
- * @brief 按当前 layout 填 12 通道。
+ * @brief 按当前 layout 填通道：最多 TELEM_TABLE_CH_N，实发前 M1_TELEM_BRINGUP_K 路。
  * @return 1=已填（表驱动）；0=当前是 LEGACY，调用方走旧分支。
  */
 uint8_t telem_table_fill(float vals[TELEM_TABLE_CH_N],

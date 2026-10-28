@@ -1,8 +1,7 @@
 /**
  * @file telem_ident_dump.c
  * @date 2026-10-06
- * @brief 辨识结果突发状态机。
-
+ * @brief 辨识结果突发状态机（Rs + l_hfi 标量；无 VASI 网格）。
  *
  * 节拍限制见 telem_ident_dump.h 文件头。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
@@ -12,58 +11,36 @@
 
 #include <stddef.h>
 
-#include "ld_lq_ident.h"
+#include "l_hfi_ident.h"
 #include "motor_params_m1.h"
 #include "rs_ident.h"
 
 #if defined(M1_VOFA_IDENT_DUMP_ENABLE) && (M1_VOFA_IDENT_DUMP_ENABLE != 0) && \
     ((defined(M1_RS_IDENT_ENABLE) && (M1_RS_IDENT_ENABLE != 0)) || \
-     (defined(M1_LD_LQ_IDENT_ENABLE) && (M1_LD_LQ_IDENT_ENABLE != 0)))
+     (defined(M1_L_HFI_IDENT_ENABLE) && (M1_L_HFI_IDENT_ENABLE != 0)))
 
 typedef enum {
     TELEM_IDENT_DUMP_IDLE = 0,
     TELEM_IDENT_DUMP_HDR,
-    TELEM_IDENT_DUMP_DATA,
     TELEM_IDENT_DUMP_TAIL,
     TELEM_IDENT_DUMP_DONE,
 } telem_ident_dump_state_t;
 
 static telem_ident_dump_state_t s_dump_state;
-static uint8_t s_data_frame_idx;
 static rs_ident_result_t s_rs_snap;
-static ld_lq_ident_result_t s_ld_lq_snap;
-static uint8_t s_grid_n;
+static l_hfi_ident_result_t s_l_snap;
 
 static float telem_ident_dump_checksum(void)
 {
-    uint8_t i;
-    float sum = 0.0f;
-
-    for (i = 0u; i < s_grid_n; i++) {
-        if (s_ld_lq_snap.ld_valid[i] != 0u) {
-            sum += s_ld_lq_snap.ld_h[i] * 1e6f;
-        }
-        if (s_ld_lq_snap.lq_valid[i] != 0u) {
-            sum += s_ld_lq_snap.lq_h[i] * 1e6f;
-        }
-        if (s_ld_lq_snap.ld_valid_fine[i] != 0u) {
-            sum += s_ld_lq_snap.ld_h_fine[i] * 1e6f;
-        }
-        if (s_ld_lq_snap.lq_valid_fine[i] != 0u) {
-            sum += s_ld_lq_snap.lq_h_fine[i] * 1e6f;
-        }
-    }
-    return sum;
+    return (s_l_snap.ld_h + s_l_snap.lq_h + s_l_snap.l_avg_h) * 1e6f;
 }
 
 void telem_ident_dump_arm(void)
 {
-#if M1_LD_LQ_IDENT_ENABLE
-    ld_lq_ident_get_result(&s_ld_lq_snap);
-    s_grid_n = M1_LD_LQ_GRID_N;
+#if M1_L_HFI_IDENT_ENABLE
+    l_hfi_ident_get_result(&s_l_snap);
 #else
-    s_ld_lq_snap = (ld_lq_ident_result_t){0};
-    s_grid_n = 0u;
+    s_l_snap = (l_hfi_ident_result_t){0};
 #endif
 
 #if M1_RS_IDENT_ENABLE
@@ -72,18 +49,16 @@ void telem_ident_dump_arm(void)
     s_rs_snap = (rs_ident_result_t){0};
 #endif
 
-    if (s_grid_n == 0u && s_rs_snap.ok == 0u) {
+    if ((s_l_snap.ok == 0u) && (s_rs_snap.ok == 0u)) {
         return;
     }
 
     s_dump_state = TELEM_IDENT_DUMP_HDR;
-    s_data_frame_idx = 0u;
 }
 
 uint8_t telem_ident_dump_is_busy(void)
 {
     return (s_dump_state == TELEM_IDENT_DUMP_HDR ||
-            s_dump_state == TELEM_IDENT_DUMP_DATA ||
             s_dump_state == TELEM_IDENT_DUMP_TAIL) ?
            1u :
            0u;
@@ -92,7 +67,6 @@ uint8_t telem_ident_dump_is_busy(void)
 int telem_ident_dump_next(float vals[], uint8_t ident_dump_ch)
 {
     uint8_t k;
-    uint8_t gi;
 
     if (vals == NULL || ident_dump_ch == 0u) {
         return 0;
@@ -105,64 +79,33 @@ int telem_ident_dump_next(float vals[], uint8_t ident_dump_ch)
 
     switch (s_dump_state) {
     case TELEM_IDENT_DUMP_HDR:
+        /* proto 4：无网格；I5..I8=Ld/Lq/Lavg_uH、l_ok */
         vals[0] = M1_VOFA_IDENT_MAGIC_HDR;
-        vals[1] = (float)s_grid_n;
+        vals[1] = 0.0f;
         vals[2] = s_rs_snap.rs_ohm;
         vals[3] = s_rs_snap.ok ? 1.0f : 0.0f;
         vals[4] = M1_VOFA_IDENT_PROTO_VER;
-        vals[5] = (float)s_ld_lq_snap.n_ld_ok;
+        vals[5] = s_l_snap.ld_h * 1e6f;
         if (ident_dump_ch > 6u) {
-            vals[6] = (float)s_ld_lq_snap.n_lq_ok;
+            vals[6] = s_l_snap.lq_h * 1e6f;
         }
         if (ident_dump_ch > 7u) {
-            vals[7] = (float)s_ld_lq_snap.n_ld_ok_fine;
+            vals[7] = s_l_snap.l_avg_h * 1e6f;
         }
         if (ident_dump_ch > 8u) {
-            vals[8] = (float)s_ld_lq_snap.n_lq_ok_fine;
+            vals[8] = s_l_snap.ok ? 1.0f : 0.0f;
         }
-        if (ident_dump_ch > 9u) {
-            vals[9] = s_ld_lq_snap.ok ? 1.0f : 0.0f;
-        }
-        if (ident_dump_ch > 10u) {
-            vals[10] = s_ld_lq_snap.ok_fine ? 1.0f : 0.0f;
-        }
-        for (k = 11u; k < ident_dump_ch; k++) {
+        for (k = 9u; k < ident_dump_ch; k++) {
             vals[k] = 0.0f;
         }
-        if (s_grid_n > 0u) {
-            s_dump_state = TELEM_IDENT_DUMP_DATA;
-            s_data_frame_idx = 0u;
-        } else {
-            s_dump_state = TELEM_IDENT_DUMP_TAIL;
-        }
-        return 1;
-
-    case TELEM_IDENT_DUMP_DATA:
-        gi = s_data_frame_idx;
-        vals[0] = s_ld_lq_snap.id_bias[gi];
-        vals[1] = s_ld_lq_snap.iq_bias[gi];
-        vals[2] = s_ld_lq_snap.ld_h[gi] * 1e6f;
-        vals[3] = s_ld_lq_snap.lq_h[gi] * 1e6f;
-        vals[4] = s_ld_lq_snap.ld_h_fine[gi] * 1e6f;
-        vals[5] = s_ld_lq_snap.lq_h_fine[gi] * 1e6f;
-        vals[6] = s_ld_lq_snap.ld_valid[gi] ? 1.0f : 0.0f;
-        vals[7] = s_ld_lq_snap.lq_valid[gi] ? 1.0f : 0.0f;
-        vals[8] = s_ld_lq_snap.ld_valid_fine[gi] ? 1.0f : 0.0f;
-        vals[9] = s_ld_lq_snap.lq_valid_fine[gi] ? 1.0f : 0.0f;
-        for (k = 10u; k < ident_dump_ch; k++) {
-            vals[k] = 0.0f;
-        }
-        s_data_frame_idx++;
-        if (s_data_frame_idx >= s_grid_n) {
-            s_dump_state = TELEM_IDENT_DUMP_TAIL;
-        }
+        s_dump_state = TELEM_IDENT_DUMP_TAIL;
         return 1;
 
     case TELEM_IDENT_DUMP_TAIL:
         vals[0] = M1_VOFA_IDENT_MAGIC_TAIL;
-        vals[1] = (float)s_grid_n;
+        vals[1] = 0.0f;
         vals[2] = telem_ident_dump_checksum();
-        vals[3] = s_ld_lq_snap.rs_used_ohm;
+        vals[3] = s_l_snap.rs_used_ohm;
         vals[4] = 0.0f;
         vals[5] = 0.0f;
         for (k = 6u; k < ident_dump_ch; k++) {

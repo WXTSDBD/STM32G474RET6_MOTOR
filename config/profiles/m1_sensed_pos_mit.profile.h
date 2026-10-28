@@ -14,7 +14,7 @@
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            0
-#define M1_LD_LQ_IDENT_ENABLE           0
+#define M1_L_HFI_IDENT_ENABLE           0
 #define M1_RS_IDENT_ENABLE              0
 #define M1_VOFA_IDENT_DUMP_ENABLE       0
 

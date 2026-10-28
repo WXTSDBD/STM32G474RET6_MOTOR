@@ -21,18 +21,26 @@ extern "C" {
 void deadband_id_cal_init(void);
 void deadband_id_cal_tick(motor_context_t *ctx);
 
+/** Pass0 结束回调；由实验表挂接，勿用新 M1_* 宏分叉。 */
+typedef void (*deadband_id_cal_pass0_cont_fn)(motor_context_t *ctx);
+void deadband_id_cal_set_pass0_continue(deadband_id_cal_pass0_cont_fn fn);
+/** 实验续接：commit → Rs → l_hfi（同 continue_rs_lhfi）。 */
+void deadband_id_cal_continue_rs_ldlq(motor_context_t *ctx);
+/** 实验续接：commit → Rs → VESC 旋转 HF+DFT 测 L。 */
+void deadband_id_cal_continue_rs_lhfi(motor_context_t *ctx);
+
 #if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE
 /** 跳过 Pass0/align，直接进入 Iq 探路 OFF 段。 */
 void deadband_id_cal_boot_iq_probe_only(motor_context_t *ctx);
 #endif
 
 #if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
-/** 跳过 Pass0：NVM 恢复 LUT + OFF；ALIGN→HOLD→VASI（Rs 固定 M1_RS_OHM）由 init 状态机接管。 */
+/** 跳过 Pass0：ALIGN→HOLD→Rs→l_hfi（由 init 状态机接管）。 */
 void deadband_id_cal_boot_rs_ld_lq_only(motor_context_t *ctx);
 #endif
 
-#if M1_LD_LQ_IDENT_ENABLE && M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
-/** Pass0+Ud 阶梯后：保留 RAM LUT，ALIGN→HOLD→VASI（不 deadband_cal_reset）。 */
+#if M1_L_HFI_IDENT_ENABLE && M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
+/** Pass0+Ud 阶梯后：保留 RAM LUT，ALIGN→HOLD→l_hfi（不 deadband_cal_reset）。 */
 void deadband_id_cal_reinit_ld_lq_chain(motor_context_t *ctx);
 #endif
 
@@ -68,7 +76,7 @@ uint8_t deadband_id_cal_in_rs_ident(void);
 #else
 static inline uint8_t deadband_id_cal_in_rs_ident(void) { return 0u; }
 #endif
-#if M1_LD_LQ_IDENT_ENABLE
+#if M1_L_HFI_IDENT_ENABLE
 uint8_t deadband_id_cal_in_ld_lq_ident(void);
 uint8_t deadband_id_cal_in_ld_lq_pre_decay(void);
 uint8_t deadband_id_cal_use_ld_lq_align_ud(void);
