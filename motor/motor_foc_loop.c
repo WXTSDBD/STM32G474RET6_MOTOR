@@ -10,7 +10,6 @@
 
 #include "motor_foc_loop.h"
 
-#include "deadband_cal.h"
 #include "deadband_flow.h"
 #include "deadband_id_cal.h"
 #include "dbg_monitor.h"
@@ -41,13 +40,46 @@ static void motor_foc_loop_pi_load(motor_context_t *ctx,
                                   float v_min, float v_max,
                                   float i_min, float i_max)
 {
-    const float kp_id = g_m1_motor_cfg.ld_h * M1_PI_WC_RADS;
-    const float kp_iq = g_m1_motor_cfg.lq_h * M1_PI_WC_RADS;
-    const float ki = g_m1_motor_cfg.rs_ohm * M1_PI_WC_RADS * M1_CTRL_TS_S
-                     * M1_PI_KI_SCALE;
+    float ld = g_m1_motor_cfg.ld_h;
+    float lq = g_m1_motor_cfg.lq_h;
+    float rs = g_m1_motor_cfg.rs_ohm;
+    float kp_id;
+    float kp_iq;
+    float ki;
+
+    if (ctx->plant != NULL) {
+        ld = ctx->plant->ld_h;
+        lq = ctx->plant->lq_h;
+        rs = ctx->plant->rs_ohm;
+    }
+    kp_id = ld * M1_PI_WC_RADS;
+    kp_iq = lq * M1_PI_WC_RADS;
+    ki = rs * M1_PI_WC_RADS * M1_CTRL_TS_S * M1_PI_KI_SCALE;
 
     foc_pi_init(&ctx->pi_id, kp_id, ki, v_min, v_max, i_min, i_max);
     foc_pi_init(&ctx->pi_iq, kp_iq, ki, v_min, v_max, i_min, i_max);
+}
+
+/**
+ * @brief 有 route->gains 时用表内 Kp/Ki/Vlim；否则回落 plant 公式。
+ */
+static void motor_foc_loop_pi_load_from_gains(motor_context_t *ctx)
+{
+    const motor_gains_t *g = ctx->gains;
+    float vmax;
+
+    if (g == NULL) {
+        motor_foc_loop_pi_load(ctx,
+                               M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
+                               M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
+        return;
+    }
+    vmax = g->iq.v_lim_v;
+    if (vmax < 0.1f) {
+        vmax = M1_PI_V_LIMIT_V;
+    }
+    foc_pi_init(&ctx->pi_id, g->id.kp, g->id.ki, -vmax, vmax, -vmax, vmax);
+    foc_pi_init(&ctx->pi_iq, g->iq.kp, g->iq.ki, -vmax, vmax, -vmax, vmax);
 }
 
 #if M1_IDENT_ENABLE
@@ -74,17 +106,26 @@ void motor_foc_loop_pi_init(motor_context_t *ctx)
                            M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                            M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
 #elif M1_ID_LOCK_CAL_SWEEP
-    motor_foc_loop_pi_load(ctx,
-                           M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
-                           M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+    /* S4a：标定档优先吃 route gains（与 r_id_cal_pass0_rs 对齐）。 */
+    if (ctx->gains != NULL) {
+        motor_foc_loop_pi_load_from_gains(ctx);
+    } else {
+        motor_foc_loop_pi_load(ctx,
+                               M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
+                               M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+    }
 #elif M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS
     motor_foc_loop_pi_load(ctx,
                            M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                            M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
 #else
-    motor_foc_loop_pi_load(ctx,
-                           M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
-                           M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
+    if (ctx->gains != NULL) {
+        motor_foc_loop_pi_load_from_gains(ctx);
+    } else {
+        motor_foc_loop_pi_load(ctx,
+                               M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
+                               M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
+    }
 #endif
 }
 
@@ -198,18 +239,18 @@ void motor_foc_loop_tick(motor_context_t *ctx,
         }
 #endif
 #if M1_L_HFI_IDENT_ENABLE
-        if (deadband_id_cal_use_ld_lq_align_ud()) {
+        if (deadband_id_cal_use_l_hfi_align_ud()) {
             id_cal_pi_run = 0u;
         }
         /* l_hfi 注入段由 exp_hooks 写 ud/uq，PI 输出清零 */
-        if (deadband_id_cal_in_ld_lq_ident() != 0u) {
+        if (deadband_id_cal_in_l_hfi_ident() != 0u) {
             id_cal_pi_run = 0u;
         }
 #endif
         if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq &&
             (!deadband_id_cal_bumpless_arm() ||
              deadband_id_cal_in_rs_ident() ||
-             deadband_id_cal_in_ld_lq_pre_decay()) &&
+             deadband_id_cal_in_l_hfi_pre_decay()) &&
             id_cal_pi_run) {
             if (deadband_id_cal_in_iq_probe()) {
                 iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
@@ -340,22 +381,7 @@ void motor_foc_loop_tick(motor_context_t *ctx,
     DBG.foc_uq_pi = startup->use_fixed_uq ? startup->uq_out : ctx->uq_pi;
 
 #if M1_ID_LOCK_CAL_SWEEP
-    if (deadband_flow_id_cal_active() &&
-        deadband_id_cal_should_capture() &&
-        ctx->mode == M1_CTRL_CURRENT_LOOP &&
-        !startup->use_fixed_uq) {
-        if (deadband_cal_capture_at(id, ctx->ud_pi, deadband_id_cal_capture_id_ref(),
-#if M1_ID_CAL_DUAL_ANGLE_ENABLE
-                                    deadband_id_cal_target_theta(),
-                                    deadband_id_cal_capture_append_dlut())) {
-#elif M1_ID_CAL_FIX_THETA_ENABLE
-                                    M1_ID_CAL_THETA_EL_RAD, 1u)) {
-#else
-                                    theta_enc_park, 1u)) {
-#endif
-            deadband_id_cal_clear_capture_pending();
-        }
-    }
+    (void)theta_enc_park;
     if (deadband_flow_id_cal_active()) {
         deadband_id_cal_sync_dbg();
     }

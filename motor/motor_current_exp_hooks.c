@@ -80,7 +80,7 @@ uint8_t motor_current_exp_try_ld_lq_udq(motor_context_t *ctx, float id,
     if ((ctx == 0) || (ud == 0) || (uq == 0)) {
         return 0u;
     }
-    if (deadband_id_cal_in_ld_lq_ident() == 0u) {
+    if (deadband_id_cal_in_l_hfi_ident() == 0u) {
         return 0u;
     }
     if (l_hfi_ident_is_done() != 0u) {

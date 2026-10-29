@@ -14,7 +14,6 @@
 #include <stddef.h>
 #include <string.h>
 
-#include "deadband_cal.h"
 #include "memory_map.h"
 #include "stm32g4xx_hal.h"
 #include "stm32g4xx_hal_flash.h"
@@ -283,19 +282,9 @@ bool factory_nvm_apply_phase_binding(void)
 
 /**
  * @brief 从 Flash 装死区表到运行时 LUT。
- * @return 表有效且已应用为 true。
+ * @return 建表已下线，恒为 false。
  */
 bool factory_nvm_apply_deadband(void)
 {
-    factory_nvm_record_t rec;
-
-    if (!factory_nvm_read_raw(&rec)) {
-        return false;
-    }
-
-    if (rec.deadband.valid == 0u || rec.deadband.len < 2u) {
-        return false;
-    }
-
-    return deadband_cal_apply_nvm(&rec.deadband);
+    return false;
 }

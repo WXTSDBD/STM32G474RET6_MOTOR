@@ -7,7 +7,9 @@
 #define CONFIG_BM_RS_LD_LQ_ONLY_H
 
 /** Pass0 已完成：ALIGN→HOLD→l_hfi（Rs 固定 M1_RS_OHM）。*/
+#undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            1
+#undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE  1
 #define M1_ID_CAL_MULTI_ANGLE_ENABLE    0

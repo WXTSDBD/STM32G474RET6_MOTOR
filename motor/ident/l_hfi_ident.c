@@ -487,8 +487,8 @@ static void l_hfi_step_sample(float id_fb, float iq_fb)
     }
 
     /* +Vh 半拍：Δi，写入本角，推进角。
-     * 用 |di| 写 inv：SEEK 本就看 |di|；若要求 di>0，半拍顺序/投影符号
-     * 稍偏就会 n_di<<32 → 达不到 MIN_VALID_BINS → 整轮 FAIL。 */
+     * 用 |di|：本半拍顺序（先 −V 记 prev，再 +V 测 di）与 VESC is_samp_n
+     * 极性不完全同构；硬套 di>MIN 会漏大纹波、duty 虚高、L 系统性偏大。 */
     di = i_now - s_i_prev;
     {
         const float adi = fabsf(di);

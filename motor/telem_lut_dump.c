@@ -12,12 +12,14 @@
 
 #include <stddef.h>
 
-#include "deadband_cal.h"
+#include "build_config.h"
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
 
-#if defined(M1_VOFA_LUT_DUMP_ENABLE) && (M1_VOFA_LUT_DUMP_ENABLE != 0) && \
-    defined(M1_ID_LOCK_CAL_SWEEP) && (M1_ID_LOCK_CAL_SWEEP != 0)
+/* S8：BUILD_DEADBAND_LUT=0 时突发 dump 恒空实现。 */
+#if BUILD_DEADBAND_LUT && defined(M1_VOFA_LUT_DUMP_ENABLE) && \
+    (M1_VOFA_LUT_DUMP_ENABLE != 0) && defined(M1_ID_LOCK_CAL_SWEEP) && \
+    (M1_ID_LOCK_CAL_SWEEP != 0)
 
 typedef enum {
     TELEM_LUT_DUMP_IDLE = 0,

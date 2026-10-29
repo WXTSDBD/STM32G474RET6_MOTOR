@@ -13,11 +13,12 @@
 #include <math.h>
 #include <stddef.h>
 
+#include "build_config.h"
 #include "foc_pi.h"
 #include "motor_params_m1.h"
 #include "motor_trig.h"
 
-#if M1_SPEED_IDENT_ENABLE
+#if BUILD_IDENT && M1_SPEED_IDENT_ENABLE
 
 #if M1_SPEED_IDENT_BODE_ENABLE
 static const float s_bode_freq_table[] = {
@@ -367,7 +368,7 @@ uint8_t speed_ident_module_hold_iq_inhibit(void)
 #endif
 }
 
-#else /* !M1_SPEED_IDENT_ENABLE */
+#else /* !(BUILD_IDENT && M1_SPEED_IDENT_ENABLE) */
 
 void speed_ident_module_init(motor_context_t *ctx)
 {
@@ -419,4 +420,4 @@ uint8_t speed_ident_module_hold_iq_inhibit(void)
     return 0u;
 }
 
-#endif /* M1_SPEED_IDENT_ENABLE */
+#endif /* BUILD_IDENT && M1_SPEED_IDENT_ENABLE */

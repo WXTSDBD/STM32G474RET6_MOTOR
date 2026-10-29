@@ -6,7 +6,9 @@
 #ifndef CONFIG_BM_NORMAL_H
 #define CONFIG_BM_NORMAL_H
 
+#undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            0
+#undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_MULTI_ANGLE_ENABLE    0
 #define M1_ID_CAL_PASS0_ONLY_ENABLE     0

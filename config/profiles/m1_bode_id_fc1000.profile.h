@@ -15,10 +15,15 @@
 #undef M1_PI_FC_HZ
 #define M1_PI_FC_HZ                     1000.0f
 
+#undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            0
+#undef M1_IDENT_ID_CAL_BEFORE_STEP
 #define M1_IDENT_ID_CAL_BEFORE_STEP     0
+#undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 1
+#undef M1_IDENT_IQ_STEP_ENABLE
 #define M1_IDENT_IQ_STEP_ENABLE         0
+#undef M1_IDENT_IQ_BODE_ENABLE
 #define M1_IDENT_IQ_BODE_ENABLE         1
 #undef M1_IDENT_STEP_ROUNDS
 #define M1_IDENT_STEP_ROUNDS            0u
@@ -28,6 +33,7 @@
 #define M1_IDENT_STEP_FIXED_ROUNDS      0u
 #define M1_RS_IDENT_ENABLE              0
 #define M1_L_HFI_IDENT_ENABLE           0
+#undef M1_SPEED_IDENT_ENABLE
 #define M1_SPEED_IDENT_ENABLE           0
 
 #undef M1_IDENT_BODE_LUT_ENABLE

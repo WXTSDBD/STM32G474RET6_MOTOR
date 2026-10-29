@@ -8,12 +8,25 @@ alwaysApply: true
 **凡改了会进 MDK 的代码/配置，交给人类（说「做完了」「可烧录」「下一步」）之前，Agent 必须自己跑一遍 Keil 编译，结果为 `0 Error(s)` 且 `0 Warning(s)`。**
 
 - **禁止**：只改代码不编译就交付；假设「应该能过」；让用户去编译找错；把 Warning 留给用户。
-- **必须**：本机执行下方命令（或等价 `-b`），读 `rebuild_log.txt` **末尾**汇总；有 Error/Warning 则自己修到 `0/0` 再回复。
+- **必须**：本机执行下方命令，读 `rebuild_log.txt` **末尾**汇总；有 Error/Warning 则自己修到 `0/0` 再回复。
 - **固定工作流**：改代码（按 `.cursor/skills/comment-style.md`）→ 自己编到 0/0 → **先交付可烧录包**（`MDK-ARM/_pkg/<日期>_<实验名>/`：hex + rebuild_log + size + sha256 + bringup/profile 快照）→ 用户上台架跑 → 回 CSV 后才写分析脚本。
 
 **顺序硬约束**：先给 Keil 可烧录产物，再写分析脚本；不许先堆脚本。**不要催结果、不要假设立刻有 CSV**（台架实验有等待期）。
 
 仅改 `tools/*.py`、`docs/`、`.cursor/` 且未动固件时，可跳过 Keil。
+
+## 默认增量 Build（`-b`），勿无全量
+
+**默认用 `-b`（Build，只编改动依赖）。全量 `-r`（Rebuild）约 2.5–3 min，日常交付禁止当默认。**
+
+仅在下列情况用 `-r`：
+
+- 用户明确要求 Rebuild / 全量
+- 改了 `MDK-ARM/*.uvprojx`（加删文件、选项、组件）
+- 清过目标目录 / `.o` 缺失导致链接怪错
+- 增量结果可疑（例如几乎没编任何业务 `.c` 却声称通过）
+
+勿用 `-j0` 并行。
 
 ## 命令（PowerShell）
 
@@ -24,12 +37,12 @@ D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx
 ```powershell
 Set-Location "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM"
 Start-Process -FilePath "D:\keil5\UV4\UV4.exe" `
-  -ArgumentList '-r','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx','-o','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt' `
+  -ArgumentList '-b','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx','-o','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt' `
   -Wait -NoNewWindow
 Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 ```
 
-小改动可用 `-b`（Build）代替 `-r`（Rebuild）。勿用 `-j0` 并行。
+全量时把 `-b` 换成 `-r`。日志文件名仍用 `rebuild_log.txt`（历史路径，勿改）。
 
 ## 判定与固件范围
 
@@ -38,4 +51,4 @@ Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 
 ## 回复格式
 
-交付时写明例如：`Keil Rebuild: 0 Error(s), N Warning(s)`。未通过不得声称任务完成。
+交付时写明例如：`Keil Build: 0 Error(s), 0 Warning(s)`（全量则写 `Keil Rebuild`）。未通过不得声称任务完成。

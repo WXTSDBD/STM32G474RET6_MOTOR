@@ -6,6 +6,7 @@
  * 本文件写出 iq_ref。电流 PI 和 Park 不在这里。
  * 节拍限制见 motor_outer_loop.h 文件头。
  * MIT 并行力矩律（M1_MIT_TORQUE_LAW）可在电流环节拍刷新 iq_ref。
+ * SPEED/TORQUE 另挂 g_outer_speed / g_outer_torque；热路径优先走表。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -148,9 +149,7 @@ static float outer_omega_ref_ramped(motor_context_t *ctx)
     float step;
     const float eps_rpm = 1.0f;
 
-#if defined(M1_SPEED_OMEGA_RAMP_DECEL_RPM_S)
-    ramp_dn = M1_SPEED_OMEGA_RAMP_DECEL_RPM_S;
-#endif
+    /* 斜坡只认 route->gains；无 route 时 accel=decel=宏默认。 */
     if ((route != NULL) && (route->gains != NULL)) {
         ramp_up = route->gains->omega_ramp_rpm_s;
         ramp_dn = route->gains->omega_ramp_decel_rpm_s;
@@ -275,17 +274,32 @@ static void outer_pos_p_decim_arm(void)
  */
 void motor_outer_loop_init(motor_context_t *ctx)
 {
+    float kp = M1_SPEED_PI_KP;
+    float ki = M1_SPEED_PI_KI;
+    float out_max = M1_SPEED_PI_OUT_MAX;
+    float out_min = M1_SPEED_PI_OUT_MIN;
+    float int_max = M1_SPEED_PI_INT_MAX;
+    float int_min = M1_SPEED_PI_INT_MIN;
+
     if (ctx == NULL) {
         return;
     }
 
-    foc_pi_init(&ctx->pi_speed,
-                M1_SPEED_PI_KP,
-                M1_SPEED_PI_KI,
-                M1_SPEED_PI_OUT_MIN,
-                M1_SPEED_PI_OUT_MAX,
-                M1_SPEED_PI_INT_MIN,
-                M1_SPEED_PI_INT_MAX);
+    /* S4a：有 route gains 时速度环吃表（i_lim→输出限幅）。 */
+    if (ctx->gains != NULL) {
+        const motor_gains_t *g = ctx->gains;
+
+        kp = g->spd.kp;
+        ki = g->spd.ki;
+        if (g->spd.i_lim_a > 0.0f) {
+            out_max = g->spd.i_lim_a;
+            out_min = -g->spd.i_lim_a;
+            int_max = out_max;
+            int_min = out_min;
+        }
+    }
+
+    foc_pi_init(&ctx->pi_speed, kp, ki, out_min, out_max, int_min, int_max);
 
     ctx->outer_mode = M1_OUTER_DISABLED;
     ctx->omega_ref  = 0.0f;
@@ -455,14 +469,97 @@ static void outer_nested_pos_mit_step(motor_context_t *ctx,
 #endif
 
 /**
+ * @brief 力矩外环：iq_ref = clamp(iq_cmd)。
+ * @param ctx 控制上下文。
+ * @param theta_fb_rad 未用。
+ * @param omega_rpm 未用。
+ * @return iq_ref，单位 A。
+ */
+static float outer_ops_torque_tick(motor_context_t *ctx,
+                                   float theta_fb_rad,
+                                   float omega_rpm)
+{
+    (void)theta_fb_rad;
+    (void)omega_rpm;
+    return outer_clamp_iq_ref(ctx, ctx->iq_cmd);
+}
+
+/**
+ * @brief 速度外环：ident / 电压饱和冻积分 / 斜坡 + 速度 PI。
+ * @param ctx 控制上下文。
+ * @param theta_fb_rad 未用（位置环才吃角）。
+ * @param omega_rpm 机械转速反馈，单位 rpm。
+ * @return iq_ref，单位 A。
+ */
+static float outer_ops_speed_tick(motor_context_t *ctx,
+                                  float theta_fb_rad,
+                                  float omega_rpm)
+{
+    uint8_t speed_hold_i = 0u;
+    uint8_t force_iq_zero = 0u;
+    float iq;
+
+    (void)theta_fb_rad;
+
+#if M1_SPEED_IDENT_ENABLE
+    if (speed_ident_flow_is_armed()) {
+        speed_ident_flow_tick(ctx);
+    }
+    if (speed_ident_flow_is_armed() &&
+        speed_ident_module_hold_iq_inhibit()) {
+        speed_hold_i = 1u;
+        force_iq_zero = 1u;
+    }
+#endif
+    /* 电压饱和：冻积分，避免 iq_ref→11A 而电流环顶满（2030） */
+    {
+        const float ud = dbg.foc_ud_out;
+        const float uq = dbg.foc_uq_out;
+        const float um2 = ud * ud + uq * uq;
+        const float lim = 0.95f * M1_PI_V_MAX;
+
+        if (um2 >= (lim * lim)) {
+            speed_hold_i = 1u;
+        }
+    }
+#if M1_SPEED_OMEGA_RAMP_ENABLE
+    iq = outer_speed_pi_step(ctx,
+                             outer_omega_ref_ramped(ctx),
+                             omega_rpm,
+                             speed_hold_i);
+#else
+    iq = outer_speed_pi_step(ctx,
+                             ctx->omega_ref,
+                             omega_rpm,
+                             speed_hold_i);
+#endif
+    if (force_iq_zero != 0u) {
+        iq = 0.0f;
+    }
+    return iq;
+}
+
+const outer_ops_t g_outer_torque = {
+    outer_ops_torque_tick,
+    NULL,
+};
+
+const outer_ops_t g_outer_speed = {
+    outer_ops_speed_tick,
+    NULL,
+};
+
+/**
  * @brief 按外环模式写 id_ref / iq_ref。DISABLED 不写。
  * @param ctx 控制上下文。不可为 NULL。
+ * @note SPEED/TORQUE 若已绑 outer_ops，走表；否则回落本函数 switch。
  */
 void motor_outer_loop_tick(motor_context_t *ctx)
 {
     float omega_mech_rpm;
     float theta_mech_rad;
     float theta_fb_rad;
+    const outer_ops_t *outer;
 
     if (ctx == NULL) {
         return;
@@ -482,6 +579,7 @@ void motor_outer_loop_tick(motor_context_t *ctx)
 #endif
     theta_mech_rad = motor_current_get_theta_mech_rad();
     theta_fb_rad = motor_current_get_theta_fb_rad();
+    outer = motor_outer_active();
 
 #if M1_EXP_FRAMEWORK_ENABLE
     /* Experiment runner: runs every 2 kHz outer tick.
@@ -510,7 +608,12 @@ void motor_outer_loop_tick(motor_context_t *ctx)
 
     switch (ctx->outer_mode) {
     case M1_OUTER_TORQUE:
-        ctx->iq_ref = outer_clamp_iq_ref(ctx, ctx->iq_cmd);
+        /* 仅当已挂力矩表才走 ops，避免 SPEED 表误入力矩分支。 */
+        if ((outer == &g_outer_torque) && (outer->tick != NULL)) {
+            ctx->iq_ref = outer->tick(ctx, theta_fb_rad, omega_mech_rpm);
+        } else {
+            ctx->iq_ref = outer_clamp_iq_ref(ctx, ctx->iq_cmd);
+        }
         ctx->id_ref = 0.0f;
         break;
 
@@ -611,51 +714,14 @@ void motor_outer_loop_tick(motor_context_t *ctx)
 #endif /* M1_POS_LOOP_ENABLE */
 
     case M1_OUTER_SPEED:
-        {
-            uint8_t speed_hold_i = 0u;
-            uint8_t force_iq_zero = 0u;
-
-#if M1_SPEED_IDENT_ENABLE
-            if (speed_ident_flow_is_armed()) {
-                speed_ident_flow_tick(ctx);
-            } else
-#endif
-            {
-            }
-#if M1_SPEED_IDENT_ENABLE
-            if (speed_ident_flow_is_armed() &&
-                speed_ident_module_hold_iq_inhibit()) {
-                speed_hold_i = 1u;
-                force_iq_zero = 1u;
-            }
-#endif
-            /* 电压饱和：冻积分，避免 iq_ref→11A 而电流环顶满（2030） */
-            {
-                const float ud = dbg.foc_ud_out;
-                const float uq = dbg.foc_uq_out;
-                const float um2 = ud * ud + uq * uq;
-                const float lim = 0.95f * M1_PI_V_MAX;
-
-                if (um2 >= (lim * lim)) {
-                    speed_hold_i = 1u;
-                }
-            }
-#if M1_SPEED_OMEGA_RAMP_ENABLE
-            ctx->iq_ref = outer_speed_pi_step(ctx,
-                                               outer_omega_ref_ramped(ctx),
-                                               omega_mech_rpm,
-                                               speed_hold_i);
-#else
-            ctx->iq_ref = outer_speed_pi_step(ctx,
-                                               ctx->omega_ref,
-                                               omega_mech_rpm,
-                                               speed_hold_i);
-#endif
-            if (force_iq_zero != 0u) {
-                ctx->iq_ref = 0.0f;
-            }
-            ctx->id_ref = 0.0f;
+        /* 仅当已挂速度表才走 ops；未绑时同函数直调，行为一致。 */
+        if ((outer == &g_outer_speed) && (outer->tick != NULL)) {
+            ctx->iq_ref = outer->tick(ctx, theta_fb_rad, omega_mech_rpm);
+        } else {
+            ctx->iq_ref = outer_ops_speed_tick(ctx, theta_fb_rad,
+                                               omega_mech_rpm);
         }
+        ctx->id_ref = 0.0f;
         break;
 
     case M1_OUTER_DISABLED:
@@ -760,6 +826,10 @@ void motor_outer_set_mode(motor_context_t *ctx,
 #if M1_SPEED_IQ_SLEW_ENABLE
         s_iq_ref_slew = iq_meas;
 #endif
+        motor_outer_use(&g_outer_speed);
+        if (g_outer_speed.enter != NULL) {
+            g_outer_speed.enter(ctx);
+        }
         break;
 
 #if M1_POS_LOOP_ENABLE
@@ -780,11 +850,13 @@ void motor_outer_set_mode(motor_context_t *ctx,
 #if M1_SPEED_IQ_SLEW_ENABLE
         s_iq_ref_slew = iq_meas;
 #endif
+        motor_outer_use(NULL);
         break;
 #if M1_OUTER_NEST_ENABLE
     case M1_OUTER_MIT:
         motor_outer_arm_position_hold(ctx);
         foc_pi_reset(&ctx->pi_speed);
+        motor_outer_use(NULL);
         break;
 #endif
 #endif
@@ -792,12 +864,18 @@ void motor_outer_set_mode(motor_context_t *ctx,
     case M1_OUTER_TORQUE:
         /* SPEED → TORQUE：重置速度 PI，防止下次切回时积分残留 */
         foc_pi_reset(&ctx->pi_speed);
+        motor_outer_use(&g_outer_torque);
+        if (g_outer_torque.enter != NULL) {
+            g_outer_torque.enter(ctx);
+        }
         break;
 
     case M1_OUTER_DISABLED:
     default:
         /* 切回 DISABLED 时重置，重新进入 startup/标定不残留速度 PI 积分 */
         foc_pi_reset(&ctx->pi_speed);
+        /* 位置/MIT/DISABLED 尚无 outer_ops，卸表回落 switch。 */
+        motor_outer_use(NULL);
         break;
     }
 
@@ -831,6 +909,11 @@ void motor_outer_set_mode(motor_context_t *ctx,
 void motor_outer_arm_position_hold(motor_context_t *ctx)
 {
     (void)ctx;
+}
+
+void motor_outer_set_omega_ramp_rpm(float omega_rpm)
+{
+    (void)omega_rpm;
 }
 
 #endif /* M1_SPEED_LOOP_ENABLE */

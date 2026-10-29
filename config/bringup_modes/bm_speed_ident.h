@@ -32,30 +32,44 @@
  * open_seq。20=HOLD  221..226=STEP 各相  230=BODE(。  239=DONE
  * ω_ref 斜坡 500 rpm/s 。7/8 0840 实验1（抑重载减。Mp）；轻载看硬阶跃可关 M1_SPEED_OMEGA_RAMP_ENABLE
  */
+#undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            0
+#undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            0
 #define M1_L_HFI_IDENT_ENABLE           0
 #define M1_RS_IDENT_ENABLE              0
 #define M1_VOFA_IDENT_DUMP_ENABLE       0
+#undef M1_SPEED_IDENT_ENABLE
 #define M1_SPEED_IDENT_ENABLE           1
 #define M1_DEADBAND_ENABLE              0
 #define M1_DEADBAND_LUT_BAKED_ENABLE    0
 #define M1_DEADBAND_NVM_ON_BOOT         0
 #define M1_SPEED_PROFILE_ENABLE         0
+#undef M1_SPEED_IDENT_STEP_ENABLE
 #define M1_SPEED_IDENT_STEP_ENABLE      1
+#undef M1_SPEED_IDENT_BODE_ENABLE
 #define M1_SPEED_IDENT_BODE_ENABLE      0
+#undef M1_SPEED_IDENT_HOLD_S
 #define M1_SPEED_IDENT_HOLD_S           5.0f
 #ifndef M1_SPEED_IDENT_RPM_START
+#undef M1_SPEED_IDENT_RPM_START
 #define M1_SPEED_IDENT_RPM_START        100.0f
 #endif
+#undef M1_SPEED_IDENT_STEP_ROUNDS
 #define M1_SPEED_IDENT_STEP_ROUNDS      1u
+#undef M1_SPEED_IDENT_STEP_RPM0
 #define M1_SPEED_IDENT_STEP_RPM0        300.0f   /* 基准；带载时在此档加/load */
+#undef M1_SPEED_IDENT_STEP_RPM1
 #define M1_SPEED_IDENT_STEP_RPM1        500.0f
+#undef M1_SPEED_IDENT_STEP_RPM2
 #define M1_SPEED_IDENT_STEP_RPM2        700.0f
+#undef M1_SPEED_IDENT_STEP_RPM3
 #define M1_SPEED_IDENT_STEP_RPM3        200.0f
+#undef M1_SPEED_IDENT_STEP_DWELL_S
 #define M1_SPEED_IDENT_STEP_DWELL_S     4.0f     /* 。300 。dwell。/5。。 s。*/
+#undef M1_SPEED_IDENT_STEP_ZERO_DWELL_S
 #define M1_SPEED_IDENT_STEP_ZERO_DWELL_S 3.0f   /* 。300 rpm dwell。/5 1746 签收。*/
 /** HOLD 。PLL 重锁 + Iq=0 时长 [s]，抑制上。ch8 毛刺 / iq_ref 打满 */
 #ifndef M1_SPEED_IDENT_PLL_SETTLE_S

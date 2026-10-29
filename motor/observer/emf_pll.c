@@ -10,6 +10,7 @@
 
 #include "emf_pll.h"
 
+#include <math.h>
 #include <stddef.h>
 
 #include "observer/obs_cfg.h"

@@ -13,11 +13,12 @@
 #include <math.h>
 #include <stddef.h>
 
+#include "build_config.h"
 #include "foc_pi.h"
 #include "motor_params_m1.h"
 #include "motor_trig.h"
 
-#if M1_IDENT_ENABLE
+#if BUILD_IDENT && M1_IDENT_ENABLE
 
 #if M1_IDENT_IQ_BODE_ENABLE
 #include "ident_bode_freq_table.h"
@@ -474,4 +475,4 @@ uint8_t ident_module_deadband_fixed(void)
     return 0u;
 }
 
-#endif /* M1_IDENT_ENABLE */
+#endif /* BUILD_IDENT && M1_IDENT_ENABLE */

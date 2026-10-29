@@ -17,10 +17,11 @@
 #include "foc_pi.h"
 #include "motor_current.h"
 #include "motor_outer_loop.h"
+#include "build_config.h"
 #include "motor_params_m1.h"
 #include "speed_ident_module.h"
 
-#if M1_SPEED_IDENT_ENABLE
+#if BUILD_IDENT && M1_SPEED_IDENT_ENABLE
 
 static speed_ident_module_state_t s_prev_state;
 static uint8_t s_prev_round;
@@ -119,7 +120,7 @@ uint8_t speed_ident_flow_is_armed(void)
     return s_speed_ident_armed;
 }
 
-#else /* !M1_SPEED_IDENT_ENABLE */
+#else /* !(BUILD_IDENT && M1_SPEED_IDENT_ENABLE) */
 
 void speed_ident_flow_init(motor_context_t *ctx)
 {
@@ -136,4 +137,4 @@ uint8_t speed_ident_flow_is_armed(void)
     return 0u;
 }
 
-#endif /* M1_SPEED_IDENT_ENABLE */
+#endif /* BUILD_IDENT && M1_SPEED_IDENT_ENABLE */

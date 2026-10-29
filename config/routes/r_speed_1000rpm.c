@@ -4,7 +4,7 @@
  * @brief 有感 1000 rpm 速度环交付 route（对应 m1_speed_1000rpm.profile.h）。
  *
  * 数值抄自 profile + SPEED_IDENT 下 motor_params 默认。角度用编码器。
- * 外环/前馈/iref/telem ops 尚未成表，指针先空；未进 bringup 选择。
+ * 外环挂 g_outer_speed；前馈/iref/telem 尚未成表。未进 bringup 选择。
  */
 #include "core/motor_route.h"
 
@@ -32,7 +32,7 @@ const motor_route_t g_route_speed_1000rpm = {
     &g_plant_m1_n5065,
     &s_gains,
     &g_angle_enc,
-    NULL,
+    &g_outer_speed,
     NULL,
     NULL,
     NULL,

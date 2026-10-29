@@ -11,9 +11,11 @@
 #ifndef MOTOR_CONTEXT_H
 #define MOTOR_CONTEXT_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "foc_pi.h"
+#include "core/motor_types.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -116,6 +118,11 @@ typedef struct {
     float traj_vel_rpm;
     /** 速度 PI。输出为 iq_ref。 */
     foc_pi_t pi_speed;
+
+    /** route 绑定的铭牌（只读）；未绑定为 NULL。 */
+    const motor_plant_t *plant;
+    /** route 绑定的控制器参数（只读）；未绑定为 NULL。 */
+    const motor_gains_t *gains;
 } motor_context_t;
 
 #ifdef __cplusplus

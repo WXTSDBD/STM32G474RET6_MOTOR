@@ -1,9 +1,10 @@
 /**
  * @file motor_bind.c
  * @date 2026-10-25
- * @brief 保存 route 和当前角度指针；上电按 M1_ACTIVE_ROUTE_ID 选表。
+ * @brief 保存 route、角度与外环指针；上电按 M1_ACTIVE_ROUTE_ID 选表。
  *
- * 20 kHz 只读这两个指针。更换角度源走 motor_angle_use，由段边界调用。
+ * 20 kHz / 2 kHz 只读这些指针。换角度走 motor_angle_use（段边界）；
+ * 换外环走 motor_outer_use（模式切换时可调）。
  */
 #include "core/motor_route.h"
 
@@ -16,18 +17,21 @@
 static const motor_route_t *s_route;
 /** 当前角度源。段边界可以换成另一张表。 */
 static const angle_ops_t *s_angle;
+/** 当前外环。SPEED/TORQUE 热路径优先走这张表。 */
+static const outer_ops_t *s_outer;
 /** 本拍编码器电角，单位 rad。 */
 static float s_enc_theta;
 
 /**
- * @brief 绑定 route：写入 ctx 的 plant/gains，并装上角度指针。
- * @param ctx 电机上下文；NULL 时只保存 route/angle。
+ * @brief 绑定 route：写入 ctx 的 plant/gains，并装上角度/外环指针。
+ * @param ctx 电机上下文；NULL 时只保存 route/angle/outer。
  * @param route 目标 route。NULL 表示卸下。
  */
 void motor_route_bind(motor_context_t *ctx, const motor_route_t *route)
 {
     s_route = route;
     s_angle = (route != NULL) ? route->angle : NULL;
+    s_outer = (route != NULL) ? route->outer : NULL;
     if (ctx != NULL) {
         if (route != NULL) {
             ctx->plant = route->plant;
@@ -126,4 +130,21 @@ uint8_t motor_angle_sensorless(void)
         return 0u;
     }
     return (s_angle->post_park != NULL) ? 1u : 0u;
+}
+
+/**
+ * @brief 更换外环表。
+ * @param ops 新的外环表。NULL 表示卸下，热路径回落 switch。
+ */
+void motor_outer_use(const outer_ops_t *ops)
+{
+    s_outer = ops;
+}
+
+/**
+ * @brief 取当前外环表。
+ */
+const outer_ops_t *motor_outer_active(void)
+{
+    return s_outer;
 }

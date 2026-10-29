@@ -84,243 +84,24 @@
 /** 。Pass0 后：开。Ud 阶梯。LUT（NVM LUT ON；无 Pass0/ident。*/
 
 /*
- * 联调实例选择：只。config/bringup_active.h
- * Bode 配方：config/profiles/m1_bode_id_fc1000.profile.h
- * 磁链稳速：config/profiles/m1_flux_id_1000rpm.profile.h
+ * 联调实例选择：只改 config/bringup_active.h
+ * 外环/MIT/实验默认：defaults_outer.h（在 active 前，active 用 #undef 覆盖）
+ * 观测门控默认：defaults_obs.h（在 profile/bm 前，bm 用 #undef 覆盖）
  */
+#include "defaults_outer.h"
 #include "bringup_active.h"
-/** 台架角源/零偏/机械角符号：须在本文件后续 #ifndef 默认之前纳入。 */
+/** 台架角源/零偏/机械角符号：须在本文件后续默认之前纳入。 */
 #include "bringup_bench.h"
 #include "route_ids.h"
 #include "route_use_from_id.h"
-
-/**
- * 外环执行位置：
- *   1 = 速度/位置/力矩等外环在 TIM6 2 kHz 中断里跑（与 20 kHz FOC 内环剥离，降抖动）
- *   0 = 旧行为：在 20 kHz FOC ISR 里按 M1_SPEED_DECIM 分频调用
- */
-#ifndef M1_OUTER_IN_TIM6
-#define M1_OUTER_IN_TIM6                0
-#endif
-
-#define M1_OUTER_EXPT_NONE              0
-#define M1_OUTER_EXPT_POS_STEP          2
-#define M1_OUTER_EXPT_POS_REV           3
-#define M1_OUTER_EXPT_MIT_HOLD          4
-#define M1_OUTER_EXPT_MIT_REV           5
-#ifndef M1_OUTER_EXPT
-#define M1_OUTER_EXPT                   M1_OUTER_EXPT_NONE
-#endif
-#ifndef M1_OUTER_NEST_ENABLE
-#define M1_OUTER_NEST_ENABLE            0
-#endif
-#ifndef M1_MIT_KP_SCALE
-/** MIT 相对 Kp_pos 的倍率。1=与位置环同一 P。 */
-#define M1_MIT_KP_SCALE                 1.0f
-#endif
-/** MIT 在 ω_ref 上减 Kd·ω，单位 rpm/rpm。0=不加阻尼。 */
-#ifndef M1_MIT_KD_RPM
-#define M1_MIT_KD_RPM                   0.0f
-#endif
-
-/* ---- 外环签收档（一条上电时间表跑完位置环与 MIT 的验收项）---- */
-
-/** 签收档编号。与 POS_STEP/POS_REV/MIT_HOLD/MIT_REV 并列，一次只选一个。 */
-#define M1_OUTER_EXPT_SIGNOFF           6
-
-/** 超速门：|ω| > 本值 × ω_max 即停环。位置档与 MIT 档共用。 */
-/** 1=超速守卫使能。无感冒烟可关，避免中途 seq=252 掐死。 */
-#ifndef M1_OUTER_OVERSPEED_GUARD_ENABLE
-#define M1_OUTER_OVERSPEED_GUARD_ENABLE 1
-#endif
-
-/** 签收档轨迹巡航速度上限，单位 rpm。 */
-/** 签收档轨迹加/减速度，单位 rad/s^2。行程 90° 时峰速约 sqrt(A·Δθ)。 */
-
-/** 1=速度 PI 的积分当拍为 0，即参数级关 Ki。MIT 档用，位置档保持 0。 */
-#ifndef M1_MIT_KI_DISABLE
-#define M1_MIT_KI_DISABLE               0
-#endif
-
-/**
- * MIT 力矩律形态（运控/力控常用「并行」写法）。
- * 0=嵌套旧路径：位置 P → 速度 PI（Ki 可关）→ iq_ref（可回退）。
- * 1=并行力矩源：iq* = Kp·Δθ + Kd·Δω + iq_ff，不经速度 PI；电流环跟 Iq*。
- */
-#ifndef M1_MIT_TORQUE_LAW
-#define M1_MIT_TORQUE_LAW               0
-#endif
-/**
- * 1=并行 MIT 在电流环节拍（20 kHz）每拍刷新 iq_ref；时间表仍按 SPEED_DECIM。
- * 仅 M1_MIT_TORQUE_LAW=1 时有效。0=只在外环分频拍更新（2 kHz 若 DECIM=10）。
- */
-#ifndef M1_MIT_TORQUE_LAW_20KHZ
-#define M1_MIT_TORQUE_LAW_20KHZ         1
-#endif
-/**
- * 并行 MIT 刚度，单位 A/rad（电流域；与 iq_ff 同单位，便于刚度 A/B）。
- * 运控若下发 Nm：Kp_A = Kp_Nm / Kt（Kt 见 M1_MIT_KT_NM_A）。
- * 默认约对齐嵌套档 scale=1 的等效刚度（scale=2 时约 44 A/rad）。
- */
-#ifndef M1_MIT_KP_A_PER_RAD
-#define M1_MIT_KP_A_PER_RAD             22.0f
-#endif
-/** 并行 MIT 阻尼，单位 A·s/rad。低刚度档默认 0。 */
-#ifndef M1_MIT_KD_A_S_PER_RAD
-#define M1_MIT_KD_A_S_PER_RAD           0.0f
-#endif
-/**
- * 高刚度档专用阻尼，单位 A·s/rad。
- * PACK_MK 中 Kp_scale ≥ M1_MIT_KD_HIGH_SCALE_MIN 时改用本值（×6 松手抑振）。
- * 由 202610150052 反推：ζ≈0.3–0.4 → 约 0.35–0.5；默认 0.4。
- */
-#ifndef M1_MIT_KD_HIGH_A_S_PER_RAD
-#define M1_MIT_KD_HIGH_A_S_PER_RAD      0.4f
-#endif
-/** 启用高档阻尼的最小 Kp_scale（含）。 */
-#ifndef M1_MIT_KD_HIGH_SCALE_MIN
-#define M1_MIT_KD_HIGH_SCALE_MIN        6.0f
-#endif
-#if M1_MIT_TORQUE_LAW && !M1_OUTER_NEST_ENABLE
-#error "M1_MIT_TORQUE_LAW=1 requires M1_OUTER_NEST_ENABLE=1"
-#endif
-
-/* ---- 库仑摩擦方向前馈（静摩擦死区补偿）---- */
-
-/** 1=使能。出口叠加；标定段由时间表分段关掉。 */
-#ifndef M1_FRIC_FF_ENABLE
-#define M1_FRIC_FF_ENABLE               0
-#endif
-/** 前馈饱和幅值，单位 A。实测静摩擦约 0.43 A，取略小，避免单独推得动转子。 */
-/**
- * 线性带半宽，单位 rad。iq_fric = A * sat(θ_err / 此值)。
- * 默认 2°：带内等效多约 10 A/rad，带外才满幅。不要用符号滞回。
- */
-/** 1=签收时间表只跑位置保持 + MIT 正反切 + 推-放。 */
-/** 1=上电先爬一圈记速度积分，再关饱和前馈、用表跑 MIT。 */
-/**
- * 1=只跑 MIT 刚度 A/B：多档 iq_ff × Kp_scale∈{1,2,3,4,6}（一包自动）。
- * 与 PACK1/PACK2/PACK_BW 互斥；推-放另包。×6 可用高档阻尼。
- */
-#ifndef M1_OUTER_SIGNOFF_PACK_MK
-#define M1_OUTER_SIGNOFF_PACK_MK        0
-#endif
-/**
- * 1=位置/MIT 带宽签收：小阶跃 + 密扫频（目标约 10 Hz）。
- * 与 PACK1/PACK2/PACK_MK 互斥。
- */
-/** PACK_MK：每档 iq_ff 保持时间，单位 s。 */
-/** PACK_MK：档间回零间隙，单位 s。 */
-/**
- * 1=外环实验走 motor/experiment 注册表（E0）。
- * 签收档打开后由 exp_runner SCRIPT 调现网 signoff tick，行为逐拍等价。
- */
-#ifndef M1_EXP_FRAMEWORK_ENABLE
-#define M1_EXP_FRAMEWORK_ENABLE         0
-#endif
-/**
- * 阶段1 pilot：上电是否直接跑表驱动 UD_CAL（Ud/Id 锁轴标定）。
- * 1=启动时 exp_runner_select(EXP_ID_UD_CAL)+arm（与旧 M1_UD_PROBE_* 双轨）；
- * 0=不跑（默认）。
- */
-#ifndef M1_EXP_BOOT_UD_CAL
-#define M1_EXP_BOOT_UD_CAL              0
-#endif
-/** 1=上电跑 ±2000 段表。默认关，静置 profile 打开。 */
-#ifndef M1_EXP_BOOT_REV141
-#define M1_EXP_BOOT_REV141              0
-#endif
-/** 1=上电跑联合标定链（Pass0→Rs→LdLq，EXP_ID_CALIB_CHAIN）。 */
-#ifndef M1_EXP_BOOT_CALIB_CHAIN
-#define M1_EXP_BOOT_CALIB_CHAIN         0
-#endif
-
-/** 1=有感解耦前馈同电 A/B（0→500→0）；需 M1_EXP_FRAMEWORK_ENABLE 与 ROTATION_FF。 */
-/** 摩擦表点数。PACK2 用。 */
-/** 爬表每点停留，单位 s。含到位后采样。 */
-/** 每点末尾用来平均积分器的窗口，单位 s。 */
-
-/**
- * 位置环位置反馈源：
- * 0=编码器解包角，1=编码器 PLL 角，2=HFI θ̂ 多圈解包（无感位控冒烟）。
- */
-#ifndef M1_OUTER_THETA_FB_SRC
-#define M1_OUTER_THETA_FB_SRC           0
-#endif
-
-/** 1=12 通道遥测切到签收档映射（θ_fb/θ_enc 并存，带 seq）。 */
-#ifndef M1_VOFA_SIGNOFF_CH
-#define M1_VOFA_SIGNOFF_CH              0
-#endif
-/** 1=OPT12 遥测布局。默认关，静置 profile 打开。 */
-#ifndef M1_VOFA_OPT12
-#define M1_VOFA_OPT12                   0
-#endif
-/** 1=编进 HFI 与 Composite。默认 0；profile 可覆盖。关掉时 Composite 走空桩。 */
-#ifndef M1_HFI_ENABLE
-#define M1_HFI_ENABLE                   0
-#endif
-/** 1=无感运动旁路：速度环用观测转速。默认 0；profile 可覆盖。 */
-#ifndef M1_HFI_MOTION_BYPASS_ENABLE
-#define M1_HFI_MOTION_BYPASS_ENABLE     0
-#endif
-/** 1=速度反馈走观测 PLL，不吃编码器。默认 0；profile 可覆盖。须与运动旁路一起开。 */
-#ifndef M1_HFI_SPEED_FB_ENABLE
-#define M1_HFI_SPEED_FB_ENABLE          0
-#endif
-#ifndef M1_EMF_VEQ_ENABLE
-#define M1_EMF_VEQ_ENABLE               0
-#endif
-#ifndef M1_EMF_SMO_ENABLE
-#define M1_EMF_SMO_ENABLE               0
-#endif
-#ifndef M1_EMF_PLL_ENABLE
-#define M1_EMF_PLL_ENABLE               0
-#endif
-#ifndef M1_EMF_SMO_LPF_LINEAR_ENABLE
-#define M1_EMF_SMO_LPF_LINEAR_ENABLE    0
-#endif
-#ifndef M1_EMF_LPF_PHASE_FF_ENABLE
-#define M1_EMF_LPF_PHASE_FF_ENABLE      0 /* 1=θ̂ 模型前馈 */
-#endif
-#ifndef M1_OBS_SOFT_SWITCH_ENABLE
-#define M1_OBS_SOFT_SWITCH_ENABLE       0
-#endif
-#ifndef M1_OBS_SS_SPEED_SWITCH_ENABLE
-#define M1_OBS_SS_SPEED_SWITCH_ENABLE   0
-#endif
-#if M1_EMF_PLL_ENABLE && !(M1_EMF_VEQ_ENABLE || M1_EMF_SMO_ENABLE)
-#error "M1_EMF_PLL_ENABLE requires M1_EMF_VEQ_ENABLE and/or M1_EMF_SMO_ENABLE (PLL feeds on eαβ)"
-#endif
-#if M1_OBS_SOFT_SWITCH_ENABLE && !M1_EMF_PLL_ENABLE
-#error "M1_OBS_SOFT_SWITCH_ENABLE requires M1_EMF_PLL_ENABLE"
-#endif
-/** 1=PLL 。SMO e（无。SMO 主路径）。=。Veq e。未定义时：。SMO 则优。SMO */
-#ifndef M1_EMF_PLL_USE_SMO
-#if M1_EMF_SMO_ENABLE
-#define M1_EMF_PLL_USE_SMO              1
-#else
-#define M1_EMF_PLL_USE_SMO              0
-#endif
-#endif
-#if M1_EMF_PLL_USE_SMO && !M1_EMF_SMO_ENABLE
-#error "M1_EMF_PLL_USE_SMO=1 requires M1_EMF_SMO_ENABLE"
-#endif
-#if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO && !M1_EMF_VEQ_ENABLE
-#error "PLL without USE_SMO requires M1_EMF_VEQ_ENABLE"
-#endif
+#include "defaults_obs.h"
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
 /* TODO(factory)：斜坡速率出厂自算；500 为联调临时。见 docs/规范_外环限幅与斜坡_出厂整定_2026-10-11.md */
-#ifndef M1_SPEED_OMEGA_RAMP_ENABLE
 #define M1_SPEED_OMEGA_RAMP_ENABLE      1
-#endif
-#ifndef M1_SPEED_OMEGA_RAMP_RPM_S
 #define M1_SPEED_OMEGA_RAMP_RPM_S       500.0f
-#endif
 #endif
 
 /* --- E1 速度。@ 2 kHz。0 kHz 分频；限幅宏。M1_I_REF_ABS_MAX 之后。-- */
-#ifndef M1_SPEED_LOOP_ENABLE
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_OFF_ONLY) || \
     (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
 #define M1_SPEED_LOOP_ENABLE            0
@@ -336,19 +117,14 @@
 #else
 #define M1_SPEED_LOOP_ENABLE            1
 #endif
-#endif
 #if M1_SPEED_LOOP_ENABLE
 #include "defaults_speed_loop.h"
 #endif /* M1_SPEED_LOOP_ENABLE */
 
 
 /** VOFA JustFloat 通道数与分频（JEOC 20kHz 基准，D=2。0kHz / D=4。kHz / D=10。kHz 帧率。*/
-#ifndef M1_TELEM_BRINGUP_K
 #define M1_TELEM_BRINGUP_K              12u
-#endif
-#ifndef M1_TELEM_BRINGUP_DECIMATION
 #define M1_TELEM_BRINGUP_DECIMATION     2u
-#endif
 
 /**
  * ISR dbg 瘦身（默认关 = 省 foc 窗 cycles；Watch 深挖时单开）。
@@ -369,9 +145,7 @@
  *   M1_VOFA_PLL_CH8_11=1 。ch8=ω_pll ch9=ω_diff ch10=θ_err ch11=Δω。
  *   M1_VOFA_PLL_CH8_11=0 。ch8=Id_ref ch9=Iq_ref ch10=duty_dev ch11=open_seq。
  */
-#ifndef M1_VOFA_UNIFIED_12CH
 #define M1_VOFA_UNIFIED_12CH            1
-#endif
 
 /** 机械角符号（±1）。KTH 台架默认在 bringup_bench.h 置 -1。 */
 #ifndef M1_ENCODER_MECH_SIGN
@@ -387,9 +161,7 @@
  * 母线电压（V）→ 仅电压限幅 PI_V_MAX；运行时副本见 g_m1_motor_cfg。
  * 改 24→48 等时不要顺手改 I_REF / 斜坡（电流额定与采样链另定）。
  */
-#ifndef M1_VBUS_V
 #define M1_VBUS_V           24.0f
-#endif
 #define M1_PI_V_MAX         (M1_VBUS_V * 0.577350269f)
 
 /** PI 带宽（Hz）；M1_PI_USE_FIXED_GAIN=0 时用。L×ωc 整定（阶跃验收参。1000 Hz。*/
@@ -401,21 +173,17 @@
 #define M1_PI_KP_ID         (M1_LD_H * M1_PI_WC_RADS)
 #define M1_PI_KP_IQ         (M1_LQ_H * M1_PI_WC_RADS)
 #define M1_PI_KI_NOMINAL    (M1_RS_OHM * M1_PI_WC_RADS * M1_CTRL_TS_S)
-#ifndef M1_PI_KI_SCALE
 #define M1_PI_KI_SCALE      1.0f
-#endif
 #define M1_PI_KI            (M1_PI_KI_NOMINAL * M1_PI_KI_SCALE)
 
 /**
  * 首次闭环联调。4V/0.8A 电源）：降低 dq 电压限幅，ref 硬钳位。
  * 稳定后设 M1_CLOSURE_BRINGUP=0 恢复满幅 SVPWM 线性区。
  */
-#ifndef M1_CLOSURE_BRINGUP
 #if M1_SPEED_LOOP_ENABLE
 #define M1_CLOSURE_BRINGUP  0   /* 速度环联调：满幅 Iq/Uq */
 #else
 #define M1_CLOSURE_BRINGUP  1
-#endif
 #endif
 
 #if M1_CLOSURE_BRINGUP
@@ -445,14 +213,12 @@
 
 #if M1_SPEED_LOOP_ENABLE
 /* TODO(factory)：速度环 Iq 上限应等于 I_REF 单一源；勿再平行写死 11。 */
-#ifndef M1_SPEED_IQ_REF_ABS_MAX
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT) && \
     (M1_USE_SENSED_POS_MIT_PROFILE == 0) && \
     (M1_USE_SENSORLESS_POS_MIT_PROFILE == 0)
 #define M1_SPEED_IQ_REF_ABS_MAX         11.0f
 #else
 #define M1_SPEED_IQ_REF_ABS_MAX         M1_I_REF_ABS_MAX
-#endif
 #endif
 #define M1_SPEED_PI_OUT_MAX             M1_SPEED_IQ_REF_ABS_MAX
 #define M1_SPEED_PI_OUT_MIN             (-M1_SPEED_IQ_REF_ABS_MAX)
@@ -464,15 +230,9 @@
 /* M1_IQ_REF_A：无 .c / 无派生引用；profile 若仍 #define 可留。 */
 
 /** 0=。ALIGN/DRAG，编码器 θ 直接闭环。=启动状态机 */
-#ifndef M1_STARTUP_ENABLE
 #define M1_STARTUP_ENABLE   0
-#endif
-#ifndef M1_IF_ENABLE
 #define M1_IF_ENABLE                    0
-#endif
-#ifndef M1_IF_IQ_A
 #define M1_IF_IQ_A                      0.5f
-#endif
 #if M1_IF_ENABLE
 #include "defaults_if.h"
 #endif /* M1_IF_ENABLE */
@@ -481,9 +241,7 @@
  * 1=编码器可选：控制不吃 SPI。插着只给遥测对照；拔掉仍走无感。
  * 默认 0；profile 可覆盖。
  */
-#ifndef M1_ENC_OPTIONAL_ENABLE
 #define M1_ENC_OPTIONAL_ENABLE          0
-#endif
 
 /* ==========================================================================
  * 联调模式（只改这一处，其余 M1_ID_* / M1_IDENT_* 由下面自动推导）
@@ -513,17 +271,39 @@
 #if (M1_BRINGUP_MODE == M1_BRINGUP_MODE_NORMAL)
 #include "bringup_modes/bm_normal.h"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_ID_CAL_PASS0_RS)
+/* A2：先 defaults（裸定义）再 bm（#undef 覆盖）；实验值不变。 */
+#undef M1_ID_LOCK_CAL_SWEEP
+#define M1_ID_LOCK_CAL_SWEEP            1
+#undef M1_IDENT_ENABLE
+#define M1_IDENT_ENABLE                 0
+#include "defaults_id_cal.h"
 #include "bringup_modes/bm_pass0_rs.h"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_RS_LD_LQ_ONLY)
 #include "bringup_modes/bm_rs_ld_lq_only.h"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_OFF_ONLY)
+/* A2：先 defaults_ident_iq 再 bm 覆盖。 */
+#undef M1_ID_LOCK_CAL_SWEEP
+#define M1_ID_LOCK_CAL_SWEEP            0
+#undef M1_IDENT_ENABLE
+#define M1_IDENT_ENABLE                 1
+#include "defaults_ident_iq.h"
 #include "bringup_modes/bm_bode_off_only.h"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_BODE_ID_OFF_ONLY)
 #include "bringup_modes/bm_bode_id_off_only.h"
 #elif (M1_BRINGUP_MODE == M1_BRINGUP_MODE_SPEED_IDENT)
+/* profile（如 hfi_standstill）可能关 SPEED_IDENT；defaults 在后面按门控纳入。 */
 #include "bringup_modes/bm_speed_ident.h"
 #else
 #error "Unknown M1_BRINGUP_MODE — use M1_BRINGUP_MODE_* in motor_params_m1.h"
+#endif
+
+/* C：观测配方 vs 模块编译闸（BUILD_*）；配方开而模块未编则硬失败。 */
+#include "build_config.h"
+#if M1_HFI_ENABLE && !BUILD_HFI
+#error "M1_HFI_ENABLE=1 requires BUILD_HFI=1"
+#endif
+#if (M1_EMF_SMO_ENABLE || M1_EMF_PLL_ENABLE) && !BUILD_SMO
+#error "M1_EMF_SMO/PLL_ENABLE=1 requires BUILD_SMO=1"
 #endif
 
 /** 辨识/标定 bringup：关 PLL，避。ch8。1 。ω/θ 占用导致 open_seq 不可。*/
@@ -536,7 +316,7 @@
 #endif
 
 /** 1=辨识 VOFA ch6。 端电压估。+ ch8。0 abc duty（可离线核对 ψ）；0=。Ud/Uq + Id_ref 布局 */
-#ifndef M1_VOFA_IDENT_DUTY_12CH
+#undef M1_VOFA_IDENT_DUTY_12CH
 #if (M1_BRINGUP_MODE != M1_BRINGUP_MODE_NORMAL) && \
     (M1_BRINGUP_MODE != M1_BRINGUP_MODE_SPEED_IDENT) && \
     (M1_BRINGUP_MODE != M1_BRINGUP_MODE_BODE_OFF_ONLY) && \
@@ -544,7 +324,6 @@
 #define M1_VOFA_IDENT_DUTY_12CH         1
 #else
 #define M1_VOFA_IDENT_DUTY_12CH         0
-#endif
 #endif
 
 /* M1_DEADBAND_LUT_BAKED_ENABLE：建表下线闸门里强制 0，不再给 #ifndef 默认。 */
@@ -588,9 +367,7 @@
 #define M1_ID_CAL_FIX_THETA_ENABLE   0
 #endif
 
-#ifndef M1_VOFA_LUT_DUMP_ENABLE
 #define M1_VOFA_LUT_DUMP_ENABLE     0
-#endif
 
 #ifndef M1_VOFA_IDENT_DUMP_ENABLE
 #define M1_VOFA_IDENT_DUMP_ENABLE   0
@@ -599,11 +376,9 @@
 #endif /* M1_ID_LOCK_CAL_SWEEP */
 
 /** 1=跑 deadband_flow（Id/Rs/L 或 ident/speed_ident 配方） */
-#ifndef M1_DEADBAND_FLOW_ENABLE
 #define M1_DEADBAND_FLOW_ENABLE         \
     (M1_IDENT_ENABLE || M1_ID_LOCK_CAL_SWEEP || M1_SPEED_IDENT_ENABLE || \
      M1_OPEN_UD_PRE_ID_CAL_ENABLE || M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
-#endif
 
 /* --- 死区补偿（仅固定符号法；建表 LUT 已下线）--- */
 /**
@@ -617,9 +392,7 @@
 
 
 /** 有效死区时间（ns）；标定模式强制 OFF；运行时副本见 g_m1_motor_cfg。 */
-#ifndef M1_DEADTIME_NS
 #define M1_DEADTIME_NS          591u
-#endif
 
 /** PWM 周期（s），。M1_CTRL_TS_S / TIM8 20 kHz 一。*/
 #define M1_PWM_PERIOD_S         M1_CTRL_TS_S
@@ -628,9 +401,7 @@
  * PWM ARR 计数（与 CubeMX TIM1/TIM8 Init.Period 同值）。
  * 这是计数域，不是时间域。M1_PWM_PERIOD_S 是秒，二者不能互换。
  */
-#ifndef M1_PWM_ARR_COUNTS
 #define M1_PWM_ARR_COUNTS       3999u
-#endif
 
 /** 每相固定补偿电压：Vbus × t_dead / T_pwm 。0.284 V @ 24 V, 591 ns */
 #define M1_DEADBAND_V_COMP_V    (M1_VBUS_V * (float)M1_DEADTIME_NS * 1.0e-9f / M1_PWM_PERIOD_S)
@@ -645,9 +416,7 @@
  * A/B 联调。1 关闭过零死区，i。 即按符号全幅补偿。
  * 低电流请优先。M1_DEADBAND_LUT_APPLY_MIN_A。
  */
-#ifndef M1_DEADBAND_I_ZERO_DISABLE
 #define M1_DEADBAND_I_ZERO_DISABLE   0
-#endif
 
 /* LUT/geo / Pass0 双角电角：见上方下线闸门与 FIX_THETA 段，此处不再重复。 */
 
@@ -669,19 +438,13 @@
  * 0=默认 JDR1=PC3(ic) JDR3=PC4(ia)，binding [2,1,0]
  * 1=交换 JDR1=PC4(ia) JDR3=PC3(ic)，binding [0,1,2]（ic 最后采）
  */
-#ifndef M1_ADC_RANK_SWAP_IAIC
 #define M1_ADC_RANK_SWAP_IAIC     0
-#endif
 
 /* --- 扇区条件电流重构：仅扇区 1。 重建 ic。80010 路线；CCR4 扫时。0。--- */
-#ifndef M1_CURRENT_RECON_ENABLE
 #define M1_CURRENT_RECON_ENABLE   1
-#endif
 
 /** |i| 低于此值（A）时不重构，避免零漂放大 */
-#ifndef M1_CURRENT_RECON_MIN_A
 #define M1_CURRENT_RECON_MIN_A    0.05f
-#endif
 
 /* --- Iq 环辨识（堵转 + 磁粉制动器；。Id 扫表互斥，由 M1_BRINGUP_MODE 开关） --- */
 /**

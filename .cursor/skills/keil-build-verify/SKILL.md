@@ -20,7 +20,7 @@ description: >-
 
 ```text
 1. 改代码（按 .cursor/skills/comment-style.md 写注释）
-2. 自己跑 Keil Rebuild → 修到 0 Error(s), 0 Warning(s)
+2. 自己跑 Keil Build（默认 -b）→ 修到 0 Error(s), 0 Warning(s)
 3. ★ 先交付可烧录产物 ★
    打 MDK-ARM/_pkg/<日期>_<实验名>/ 包，给出绝对路径、字节数、sha256、Program Size，
    并说明本轮改了什么、上电后会跑什么。到这一步就交棒。
@@ -45,6 +45,19 @@ description: >-
 
 可跳过：仅改 `tools/*.py`、`docs/`、`.cursor/` 且未动固件。
 
+## 默认 `-b`（增量）；何时才 `-r`
+
+**日常交付默认 `-b`（Build）。** 全量 `-r` 约 2.5–3 min（~139 单元含 CMSIS-DSP Source），不要当默认。
+
+仅这些情况用 `-r`：
+
+- 用户明确要求 Rebuild / 全量
+- 改了 `MDK-ARM/*.uvprojx`（加删源文件、编译选项、CMSIS 组件）
+- 目标目录被清 / `.o` 缺失导致奇怪链接错误
+- 增量几乎没编业务文件却宣称通过（依赖图可疑）
+
+勿用 `-j0` 并行。须 `-Wait` 等结束。增量常见约 40–90 s，视改动面而定。
+
 ## 编译命令（PowerShell）
 
 工程路径固定：
@@ -53,17 +66,15 @@ description: >-
 D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx
 ```
 
-**须 `-Wait` 等编译结束**（全量 Rebuild 约 60–90 s）。勿用 `-j0` 并行。
-
 ```powershell
 Set-Location "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM"
 Start-Process -FilePath "D:\keil5\UV4\UV4.exe" `
-  -ArgumentList '-r','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx','-o','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt' `
+  -ArgumentList '-b','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\STM32G474RET6_MOTOR.uvprojx','-o','D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt' `
   -Wait -NoNewWindow
 Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 ```
 
-小改动可用 `-b`（Build）代替 `-r`（Rebuild）。
+全量时把 `-b` 换成 `-r`。日志文件名仍用 `rebuild_log.txt`（历史约定）。
 
 ## 判定
 
@@ -74,14 +85,16 @@ Get-Content "D:\stm32\STM32G474RET6_MOTOR\MDK-ARM\rebuild_log.txt" -Tail 5
 
 - `motor_params_m1.h` 宏互斥 `#error`：对照当前 `M1_BRINGUP_MODE` 分支修宏。
 - 新增宏在 `#if M1_IDENT_ENABLE` 外使用：在模式块与 `#ifndef` 兜底两处补齐。
-- CubeMX Generate 后：跑 `tools/fix_keil_ac6_freertos.bat` 再 Rebuild。
+- CubeMX Generate 后：跑 `tools/fix_keil_ac6_freertos.bat` 再 **Rebuild（`-r`）**。
 - 注释里写 `*ud/*uq` 会触发 `-Wcomment`（`/*` 嵌套）：改成「ud/uq」。
-- 新增 `.c` 必须同时在 `MDK-ARM/*.uvprojx` 里加 `<File>` 条目，否则不参与编译。
+- 新增 `.c` 必须同时在 `MDK-ARM/*.uvprojx` 里加 `<File>` 条目，否则不参与编译；改完 uvprojx 后用 `-r`。
 
 ## 交付给用户时
 
 ```text
-Keil Rebuild: 0 Error(s), 0 Warning(s)
+Keil Build: 0 Error(s), 0 Warning(s)
 ```
+
+若本次用了全量，写 `Keil Rebuild: 0 Error(s), 0 Warning(s)`。
 
 未通过不得声称任务完成。

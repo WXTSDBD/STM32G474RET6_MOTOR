@@ -634,9 +634,6 @@ void motor_current_tick(bsp_axis_t *axis)
             }
         }
 #endif
-#if !M1_ENC_OPTIONAL_ENABLE
-#else
-#endif
     }
 #endif
 #if M1_THETA_NEGATE
@@ -736,6 +733,7 @@ void motor_current_tick(bsp_axis_t *axis)
 #else
         startup = motor_startup_tick(ctx, theta_enc_park);
 #if M1_IDENT_ENABLE
+        /* ident：θ 由 ident_flow 写，此处不改 theta_park */
 #elif M1_ID_LOCK_CAL_SWEEP && M1_ID_CAL_FIX_THETA_ENABLE
         if (deadband_id_cal_use_fix_theta() ||
             (deadband_flow_id_cal_active() && !deadband_id_cal_in_iq_probe())) {
@@ -765,14 +763,10 @@ void motor_current_tick(bsp_axis_t *axis)
         startup.uq_prev = 0.0f;
         startup.ud_prev = 0.0f;
     }
-#if M1_HFI_ENABLE
     /*
-     * 有感对照：只推时钟，Park=enc（SENSED_PAIRS 段）。
-     * 无感：始终 pre_park（含 inj_off），与 6059/141 一致；Park=发布角。
-     * 交接省 ISR 的 hand_keep 先收回，避免无感交接角路径与冻结点不一致。
-     *
-     * 标定链锁轴：上方已写死 theta_park=target；此处若再走观测角会把
-     * FIX_THETA/ALIGN 整段盖掉（Rs 灌 Id 却跟转子转、无锁轴力矩）。
+     * D：Park 角优先解引用 route 角度表（有感/无感同一条）。
+     * 无表时才回落 HFI observer_ops（须 M1_HFI_ENABLE）。
+     * 标定链锁轴：上方已写死 theta_park=target，此处跳过以免盖掉 FIX_THETA。
      */
     if (deadband_flow_id_cal_active() == 0u) {
         if (motor_angle_active() != NULL) {
@@ -783,6 +777,7 @@ void motor_current_tick(bsp_axis_t *axis)
                 ang->update(&s_m1_ctx, M1_CTRL_TS_S);
             }
             theta_park = ang->get_theta(&s_m1_ctx);
+#if M1_HFI_ENABLE
             if (ang->post_park != NULL) {
 #if M1_HFI_MOTION_BYPASS_ENABLE
                 if (observer_get_stage() == OBS_STAGE_RUN) {
@@ -797,31 +792,34 @@ void motor_current_tick(bsp_axis_t *axis)
                 }
 #endif
             }
-        } else if (observer_sensed_fb_active() != 0u) {
-            observer_sensed_keep(theta_enc_park, M1_CTRL_TS_S);
-            theta_park = theta_enc_park;
+#endif /* M1_HFI_ENABLE */
         } else {
-            s_m1_obs->pre_park(theta_enc_park, M1_CTRL_TS_S);
-            theta_park = s_m1_obs->get_theta();
+#if M1_HFI_ENABLE
+            if (observer_sensed_fb_active() != 0u) {
+                observer_sensed_keep(theta_enc_park, M1_CTRL_TS_S);
+                theta_park = theta_enc_park;
+            } else {
+                s_m1_obs->pre_park(theta_enc_park, M1_CTRL_TS_S);
+                theta_park = s_m1_obs->get_theta();
 #if M1_HFI_MOTION_BYPASS_ENABLE
-            if (observer_get_stage() == OBS_STAGE_RUN) {
-                s_hfi_recon_theta = theta_park;
-                s_hfi_recon_theta_ok = 1u;
-            }
+                if (observer_get_stage() == OBS_STAGE_RUN) {
+                    s_hfi_recon_theta = theta_park;
+                    s_hfi_recon_theta_ok = 1u;
+                }
 #endif
 #if M1_HFI_QKICK_AFTER_LOCK_ENABLE
-            if (observer_consume_pi_reset() != 0u) {
-                /* 踢时只清 Iq PI，Id 积分保持 */
-                foc_pi_reset(&ctx->pi_iq);
-                ctx->uq_pi = 0.0f;
-            }
+                if (observer_consume_pi_reset() != 0u) {
+                    foc_pi_reset(&ctx->pi_iq);
+                    ctx->uq_pi = 0.0f;
+                }
 #endif
+            }
+#endif /* M1_HFI_ENABLE */
         }
     }
+#if M1_HFI_ENABLE
     /*
      * 进有感段（REV141 SENSED_PAIRS）第一拍：电流环 PI 与 Ud/Uq 全部清零。
-     * 不清会把无感/刹停段残留的积分带进有感段 —— 实测有感段 |U| 比无感大一倍、
-     * d 轴恒顶约 -5 V、δ 偏 37°。
      */
     if (observer_consume_sens_pi_clear() != 0u) {
         foc_pi_reset(&ctx->pi_id);
@@ -833,10 +831,6 @@ void motor_current_tick(bsp_axis_t *axis)
     {
 #if (M1_OUTER_THETA_FB_SRC == 2) && M1_OUTER_NEST_ENABLE && \
     (M1_OUTER_EXPT == M1_OUTER_EXPT_SIGNOFF)
-        /*
-         * 无感位控：签收武装后外环管模式/Iq；武装前仍让 HFI 写踢段电流。
-         * 禁止 speed_run_active 把外环抢成 ±1500 速度阶梯。
-         */
         if (motor_outer_signoff_is_armed() == 0u) {
             ctx->id_ref = observer_get_id_ref();
             ctx->iq_ref = observer_get_iq_ref();
@@ -855,7 +849,6 @@ void motor_current_tick(bsp_axis_t *axis)
                 ctx->omega_ref = rpm_cmd;
             }
             if (ctx->outer_mode != M1_OUTER_SPEED) {
-                /* ω* 先写 0 再切速度模式，避免 bumpless 把积分预成 -Kp·目标。 */
                 ctx->omega_ref = 0.0f;
                 motor_outer_set_mode(ctx, M1_OUTER_SPEED, 0.0f, 0.0f);
                 if (exp_owns_drive() == 0u) {
@@ -863,7 +856,6 @@ void motor_current_tick(bsp_axis_t *axis)
                 }
             }
         } else {
-            /* 速度环关：由 QKICK/HFI 写 id_ref/iq_ref/omega_ref */
             if (exp_owns_drive() == 0u) {
                 ctx->id_ref = observer_get_id_ref();
                 ctx->iq_ref = observer_get_iq_ref();
@@ -873,12 +865,11 @@ void motor_current_tick(bsp_axis_t *axis)
                 motor_outer_set_mode(ctx, M1_OUTER_DISABLED, 0.0f, 0.0f);
             }
         }
-        /* 段表在写转速。前馈保持 0，编码器转速和指令转速不进 HFI。 */
         observer_set_omega_ff_el(0.0f);
 #endif
     }
-#endif
-#endif
+#endif /* MOTION && SPEED_LOOP */
+#endif /* M1_HFI_ENABLE */
     dbg.foc_theta_el = theta_park;
 
 #if M1_EXP_FRAMEWORK_ENABLE
@@ -903,9 +894,7 @@ void motor_current_tick(bsp_axis_t *axis)
     ctx->id = id;
     ctx->iq = iq;
 
-#if M1_HFI_ENABLE
-    /* 有感对照不解调。无感始终 post_park；inj_off 时内部 hat_hold 走 coast。
-     * 标定链（Rs/L）锁轴：不跑 HFI 解调，避免与 l_hfi 双极注入抢状态。 */
+    /* D：解调走 angle_ops->post_park；无表时回落 s_m1_obs（HFI）。标定锁轴跳过。 */
     if (deadband_flow_id_cal_active() == 0u) {
         if (motor_angle_active() != NULL) {
             const angle_ops_t *ang = motor_angle_active();
@@ -913,10 +902,13 @@ void motor_current_tick(bsp_axis_t *axis)
             if (ang->post_park != NULL) {
                 ang->post_park(&s_m1_ctx, id, iq, i_alpha, i_beta);
             }
+#if M1_HFI_ENABLE
         } else if (observer_sensed_fb_active() == 0u) {
             s_m1_obs->post_park(id, iq, i_alpha, i_beta);
+#endif
         }
     }
+#if M1_HFI_ENABLE
 #if M1_HFI_IQ_AUTH_ENABLE
     /*
      * 注入仍开时扫权威限幅。交接后 inj_off：天花板已钉 HI（=速度环满幅），

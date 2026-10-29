@@ -9,13 +9,17 @@
  * Iq 限幅、ω 斜坡、Iq slew 的产品口径见
  * docs/规范_外环限幅与斜坡_出厂整定_2026-10-11.md；下列安培/斜坡数为台架临时。
  *
+ * @deprecated 双轨收口（F）：同值已抄入 config/routes/r_hfi_standstill.c；
+ * 新改只动 route 表。本头在 D/E（current/outer→ops）金样前暂留作宏门控。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #ifndef CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
 #define CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
 
+#undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            0
+#undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 0
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            0
@@ -23,9 +27,13 @@
 #define M1_RS_IDENT_ENABLE              0
 #define M1_VOFA_IDENT_DUMP_ENABLE       0
 
+#undef M1_SPEED_IDENT_ENABLE
 #define M1_SPEED_IDENT_ENABLE           0
+#undef M1_SPEED_IDENT_STEP_ENABLE
 #define M1_SPEED_IDENT_STEP_ENABLE      0
+#undef M1_SPEED_IDENT_BODE_ENABLE
 #define M1_SPEED_IDENT_BODE_ENABLE      0
+#undef M1_SPEED_PROFILE_ENABLE
 #define M1_SPEED_PROFILE_ENABLE         0
 
 #undef M1_SPEED_LOOP_ENABLE
@@ -54,7 +62,7 @@
 #undef M1_STARTUP_ENABLE
 #define M1_STARTUP_ENABLE               0
 
-#define M1_DEADBAND_ENABLE              0
+#define M1_DEADBAND_ENABLE              1
 #define M1_DEADBAND_LUT_BAKED_ENABLE    0
 #define M1_DEADBAND_NVM_ON_BOOT         0
 

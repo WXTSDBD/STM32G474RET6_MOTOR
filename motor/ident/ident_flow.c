@@ -12,12 +12,13 @@
 
 #include <stddef.h>
 
+#include "build_config.h"
 #include "deadband_service.h"
 #include "ident_module.h"
 #include "dbg_monitor.h"
 #include "motor_params_m1.h"
 
-#if M1_IDENT_ENABLE
+#if BUILD_IDENT && M1_IDENT_ENABLE
 
 typedef enum {
     IDENT_FLOW_DB_OFF = 0,
@@ -257,7 +258,7 @@ uint8_t ident_flow_deadband_fixed(void)
     return ident_flow_db_seg_is_fixed();
 }
 
-#else /* !M1_IDENT_ENABLE */
+#else /* !(BUILD_IDENT && M1_IDENT_ENABLE) */
 
 void ident_flow_init(motor_context_t *ctx)
 {
@@ -274,4 +275,4 @@ uint8_t ident_flow_deadband_fixed(void)
     return 0u;
 }
 
-#endif /* M1_IDENT_ENABLE */
+#endif /* BUILD_IDENT && M1_IDENT_ENABLE */

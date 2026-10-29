@@ -62,8 +62,13 @@ void motor_angle_note_enc(float theta_el);
 float motor_angle_enc_theta(void);
 uint8_t motor_angle_sensorless(void);
 
+void motor_outer_use(const outer_ops_t *ops);
+const outer_ops_t *motor_outer_active(void);
+
 extern const angle_ops_t g_angle_hfi;
 extern const angle_ops_t g_angle_enc;
+extern const outer_ops_t g_outer_speed;
+extern const outer_ops_t g_outer_torque;
 extern const motor_route_t g_route_hfi_standstill;
 extern const motor_route_t g_route_sensed_pos_mit;
 extern const motor_route_t g_route_sensorless_pos_mit;

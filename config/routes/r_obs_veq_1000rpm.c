@@ -29,7 +29,7 @@ const motor_route_t g_route_obs_veq_1000rpm = {
     &g_plant_m1_n5065,
     &s_gains,
     &g_angle_enc,
-    NULL,
+    &g_outer_speed,
     NULL,
     NULL,
     NULL,

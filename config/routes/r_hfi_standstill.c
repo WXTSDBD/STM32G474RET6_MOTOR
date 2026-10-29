@@ -7,6 +7,7 @@
  * （电流环 PI = Ld/Lq/Rs·ωc·Ts；速度环 KP/KI/斜坡见 profile）。
  * 斜坡：同向 500 rpm/s，减速和反向 800 rpm/s。
  * 上电角度源是无感。有感指针由段表在 mark 不低于 0x30 时换上。
+ * 外环挂 g_outer_speed（2 kHz 速度 PI）。
  * plant 共用 g_plant_m1_n5065。
  */
 #include "core/motor_route.h"
@@ -35,7 +36,7 @@ const motor_route_t g_route_hfi_standstill = {
     &g_plant_m1_n5065,
     &s_gains,
     &g_angle_hfi,
-    NULL,
+    &g_outer_speed,
     NULL,
     NULL,
     NULL,

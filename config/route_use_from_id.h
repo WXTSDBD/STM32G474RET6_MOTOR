@@ -5,6 +5,9 @@
  *
  * 须在 route_ids.h / bringup_active.h 之后纳入。AUTO / PASS0_RS / Bode 等
  * 不挂交付 profile 时全 0。bind 见 motor_route_for_boot。
+ *
+ * @deprecated 双轨收口（F）：数值源以 config/routes/r_*.c 为准；本头仅在
+ * profile 宏门控消亡前暂留。下一刀改为运行时 switch / NVM 选路后删除。
  */
 #ifndef CONFIG_ROUTE_USE_FROM_ID_H
 #define CONFIG_ROUTE_USE_FROM_ID_H

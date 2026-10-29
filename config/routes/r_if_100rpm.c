@@ -32,7 +32,7 @@ const motor_route_t g_route_if_100rpm = {
     &g_plant_m1_n5065,
     &s_gains,
     NULL,
-    NULL,
+    &g_outer_speed,
     NULL,
     NULL,
     NULL,
