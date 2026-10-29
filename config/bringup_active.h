@@ -3,32 +3,24 @@
  * @date 2026-10-06
  * @brief 联调实例选择。平时只改本文件。
  *
- * 2026-10-28：PASS0_RS = ALIGN → Rs + VESC HF-L×10（仅 l_hfi，无 VASI）；EXP_ID_CALIB_CHAIN。
- * VOFA：6 通道 @ 20 kHz（id iq ud uq flex mark）；layout=IDENT_DUTY 紧凑表。
+ * 改两处即可：
+ *   1) M1_ACTIVE_ROUTE_ID — 选哪张 route 表（USE_* profile 由 params 按 id 推导）
+ *   2) M1_BRINGUP_MODE — 标定/辨识配方（PASS0_RS 等）
+ * 现网：route=9 (r_id_cal_pass0_rs) + PASS0_RS 标定链。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 #ifndef CONFIG_BRINGUP_ACTIVE_H
 #define CONFIG_BRINGUP_ACTIVE_H
 
+#include "route_ids.h"
+
+/* ---- 选路（与 config/routes/r_*.c 的 route_id 对齐；1 与 9 已进链接） ---- */
+#undef M1_ACTIVE_ROUTE_ID
+#define M1_ACTIVE_ROUTE_ID  M1_ROUTE_ID_ID_CAL_PASS0_RS
+
 #undef M1_BRINGUP_MODE
 #define M1_BRINGUP_MODE  M1_BRINGUP_MODE_ID_CAL_PASS0_RS
-
-/* 不上 ±2000 HFI 交付 profile；HFI 数值见 PASS0_RS 内 m1_hfi_compile_nums.h。 */
-#undef M1_USE_HFI_STANDSTILL_PROFILE
-#define M1_USE_HFI_STANDSTILL_PROFILE   0
-#undef M1_USE_SENSED_POS_MIT_PROFILE
-#define M1_USE_SENSED_POS_MIT_PROFILE   0
-#undef M1_USE_SENSORLESS_POS_MIT_PROFILE
-#define M1_USE_SENSORLESS_POS_MIT_PROFILE 0
-#undef M1_USE_IF_100_PROFILE
-#define M1_USE_IF_100_PROFILE           0
-#undef M1_USE_SPEED_1000_PROFILE
-#define M1_USE_SPEED_1000_PROFILE       0
-#undef M1_USE_FLUX_ID_PROFILE
-#define M1_USE_FLUX_ID_PROFILE          0
-#undef M1_USE_OBS_VEQ_PROFILE
-#define M1_USE_OBS_VEQ_PROFILE          0
 
 #undef M1_EXP_FRAMEWORK_ENABLE
 #define M1_EXP_FRAMEWORK_ENABLE         1

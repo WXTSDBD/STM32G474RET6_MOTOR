@@ -7,8 +7,9 @@
  * 目标：全部工程只允许这 ≤15 个 BUILD_* 决定"编不编这套代码"；
  *       具体跑哪套算法由 route / ops 表 / 实验段表在**运行时**决定。
  *
- * 阶段 0：**只建文件，不接逻辑**（当前没有 .c include 它，hex 不变）。
- * 后续阶段 4 才把 180 个 M1_*_ENABLE 归并到这里（只改名不改值）。
+ * S0.5/S7：BUILD_IDENT → ident_module/flow、speed_ident_*。
+ * S8：BUILD_DEADBAND → FIXED 补偿；BUILD_DEADBAND_LUT → 建表 LUT（已下线）。
+ * Rs/l_hfi/deadband_id_cal/flow 标定链不走 DEADBAND 开关。
  */
 #ifndef CONFIG_BUILD_CONFIG_H
 #define CONFIG_BUILD_CONFIG_H
@@ -21,10 +22,16 @@
 #define BUILD_SMO               1   /* 滑模 + EMF-PLL（中高速） */
 #endif
 #ifndef BUILD_DEADBAND
-#define BUILD_DEADBAND          1   /* 死区补偿（含 LUT 运行时） */
+#define BUILD_DEADBAND          0   /* FIXED 死区；PASS0_RS 关，有感产品再开 */
+#endif
+#ifndef BUILD_DEADBAND_LUT
+#define BUILD_DEADBAND_LUT      0   /* 建表 LUT / telem_lut_dump；永久下线 */
 #endif
 #ifndef BUILD_IDENT
-#define BUILD_IDENT             1   /* 参数辨识（研发档 1 / 产品档 0） */
+#define BUILD_IDENT             0   /* Iq/速度辨识模块；PASS0_RS 不需要 */
+#endif
+#ifndef BUILD_FACTORY_TEST
+#define BUILD_FACTORY_TEST      0   /* 出厂自测序列；0=空壳，不改现网行为 */
 #endif
 #ifndef BUILD_EXP_TABLES
 #define BUILD_EXP_TABLES        1   /* 实验段表 */

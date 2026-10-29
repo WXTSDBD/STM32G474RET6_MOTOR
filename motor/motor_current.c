@@ -207,6 +207,8 @@ void motor_current_init(bsp_axis_t *axis)
     /* 实验开关初值 = 编译期能力宏；热路径再读 atrb，便于同次上电 A/B。 */
     s_m1_ctx.atrb = 0u;
     motor_open_sweep_init(&s_m1_ctx);
+    /* S4a：单一选路（bringup M1_ACTIVE_ROUTE_ID → motor_route_for_boot）。 */
+    motor_route_bind(&s_m1_ctx, motor_route_for_boot());
 #if M1_SPEED_LOOP_ENABLE && (!M1_IF_ENABLE || M1_IF_TO_OBS_ENABLE)
     motor_outer_loop_init(&s_m1_ctx);
 #endif
@@ -228,7 +230,6 @@ void motor_current_init(bsp_axis_t *axis)
 #endif
     s_m1_obs = observer_ops();
     s_m1_inj = observer_inj_ops();
-    motor_route_bind(&s_m1_ctx, &g_route_hfi_standstill);
 #elif M1_IDENT_ENABLE || M1_DEADBAND_FLOW_ENABLE || M1_SPEED_IDENT_ENABLE
     s_m1_ctx.mode = M1_CTRL_CURRENT_LOOP;
     s_m1_ctx.id_ref = 0.0f;
@@ -903,15 +904,18 @@ void motor_current_tick(bsp_axis_t *axis)
     ctx->iq = iq;
 
 #if M1_HFI_ENABLE
-    /* 有感对照不解调。无感始终 post_park；inj_off 时内部 hat_hold 走 coast。 */
-    if (motor_angle_active() != NULL) {
-        const angle_ops_t *ang = motor_angle_active();
+    /* 有感对照不解调。无感始终 post_park；inj_off 时内部 hat_hold 走 coast。
+     * 标定链（Rs/L）锁轴：不跑 HFI 解调，避免与 l_hfi 双极注入抢状态。 */
+    if (deadband_flow_id_cal_active() == 0u) {
+        if (motor_angle_active() != NULL) {
+            const angle_ops_t *ang = motor_angle_active();
 
-        if (ang->post_park != NULL) {
-            ang->post_park(&s_m1_ctx, id, iq, i_alpha, i_beta);
+            if (ang->post_park != NULL) {
+                ang->post_park(&s_m1_ctx, id, iq, i_alpha, i_beta);
+            }
+        } else if (observer_sensed_fb_active() == 0u) {
+            s_m1_obs->post_park(id, iq, i_alpha, i_beta);
         }
-    } else if (observer_sensed_fb_active() == 0u) {
-        s_m1_obs->post_park(id, iq, i_alpha, i_beta);
     }
 #if M1_HFI_IQ_AUTH_ENABLE
     /*

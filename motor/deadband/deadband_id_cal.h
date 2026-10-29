@@ -1,10 +1,10 @@
 /**
  * @file deadband_id_cal.h
  * @date 2026-10-06
- * @brief Id 锁轴扫表状态机：Pass0、commit、Iq 探路。
+ * @brief Rs → l_hfi 编排状态机（建表 Pass0 已下线）。
 
  *
- * tick 只允许从电流环节拍调用。
+ * tick 只允许从电流环节拍、经 deadband_flow 调用。
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
@@ -21,30 +21,14 @@ extern "C" {
 void deadband_id_cal_init(void);
 void deadband_id_cal_tick(motor_context_t *ctx);
 
-/** Pass0 结束回调；由实验表挂接，勿用新 M1_* 宏分叉。 */
 typedef void (*deadband_id_cal_pass0_cont_fn)(motor_context_t *ctx);
 void deadband_id_cal_set_pass0_continue(deadband_id_cal_pass0_cont_fn fn);
-/** 实验续接：commit → Rs → l_hfi（同 continue_rs_lhfi）。 */
-void deadband_id_cal_continue_rs_ldlq(motor_context_t *ctx);
-/** 实验续接：commit → Rs → VESC 旋转 HF+DFT 测 L。 */
 void deadband_id_cal_continue_rs_lhfi(motor_context_t *ctx);
 
-#if M1_ID_CAL_IQ_PROBE_ONLY_ENABLE
-/** 跳过 Pass0/align，直接进入 Iq 探路 OFF 段。 */
-void deadband_id_cal_boot_iq_probe_only(motor_context_t *ctx);
-#endif
-
 #if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
-/** 跳过 Pass0：ALIGN→HOLD→Rs→l_hfi（由 init 状态机接管）。 */
-void deadband_id_cal_boot_rs_ld_lq_only(motor_context_t *ctx);
+void deadband_id_cal_boot_rs_l_hfi_only(motor_context_t *ctx);
 #endif
 
-#if M1_L_HFI_IDENT_ENABLE && M1_DEADBAND_FLOW_LD_LQ_AFTER_OPEN_UD
-/** Pass0+Ud 阶梯后：保留 RAM LUT，ALIGN→HOLD→l_hfi（不 deadband_cal_reset）。 */
-void deadband_id_cal_reinit_ld_lq_chain(motor_context_t *ctx);
-#endif
-
-/** 状态机未进入 DONE */
 uint8_t deadband_id_cal_is_running(void);
 uint8_t deadband_id_cal_is_done(void);
 
@@ -77,19 +61,20 @@ uint8_t deadband_id_cal_in_rs_ident(void);
 static inline uint8_t deadband_id_cal_in_rs_ident(void) { return 0u; }
 #endif
 #if M1_L_HFI_IDENT_ENABLE
-uint8_t deadband_id_cal_in_ld_lq_ident(void);
-uint8_t deadband_id_cal_in_ld_lq_pre_decay(void);
-uint8_t deadband_id_cal_use_ld_lq_align_ud(void);
-static inline uint8_t deadband_id_cal_in_ld_lq_sweep(void)
+uint8_t deadband_id_cal_in_l_hfi_ident(void);
+uint8_t deadband_id_cal_in_l_hfi_pre_decay(void);
+uint8_t deadband_id_cal_use_l_hfi_align_ud(void);
+static inline uint8_t deadband_id_cal_in_l_hfi_sweep(void)
 {
-    return deadband_id_cal_in_ld_lq_ident();
+    return deadband_id_cal_in_l_hfi_ident();
 }
 #else
-static inline uint8_t deadband_id_cal_in_ld_lq_ident(void) { return 0u; }
-static inline uint8_t deadband_id_cal_in_ld_lq_pre_decay(void) { return 0u; }
-static inline uint8_t deadband_id_cal_in_ld_lq_sweep(void) { return 0u; }
-static inline uint8_t deadband_id_cal_use_ld_lq_align_ud(void) { return 0u; }
+static inline uint8_t deadband_id_cal_in_l_hfi_ident(void) { return 0u; }
+static inline uint8_t deadband_id_cal_in_l_hfi_pre_decay(void) { return 0u; }
+static inline uint8_t deadband_id_cal_in_l_hfi_sweep(void) { return 0u; }
+static inline uint8_t deadband_id_cal_use_l_hfi_align_ud(void) { return 0u; }
 #endif
+
 uint8_t deadband_id_cal_use_cal_pi_limits(void);
 float deadband_id_cal_clamp_id_ref(float ref);
 float deadband_id_cal_clamp_iq_ref(float ref);
@@ -103,13 +88,8 @@ void deadband_id_cal_consume_iq_bumpless_arm(void);
 
 uint8_t deadband_id_cal_should_capture(void);
 float deadband_id_cal_capture_id_ref(void);
-#if M1_ID_CAL_DUAL_ANGLE_ENABLE
-uint8_t deadband_id_cal_capture_append_dlut(void);
-#else
 static inline uint8_t deadband_id_cal_capture_append_dlut(void) { return 1u; }
-#endif
 void deadband_id_cal_clear_capture_pending(void);
-
 void deadband_id_cal_sync_dbg(void);
 
 #ifdef __cplusplus

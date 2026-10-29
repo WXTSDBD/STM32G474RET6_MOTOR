@@ -6,7 +6,8 @@
  * 对应设计：docs/方案_宏转实验表_设计_2026-10-25.md §5.2。
  * route = plant + gains + 五张 ops 表指针 + atrb（外环模式/初始指令）。
  *
- * 现网由 config/routes/r_hfi_standstill.c 提供一条 route。
+ * config/routes/r_*.c 均已进 MDK；上电由 motor_route_for_boot 按
+ * M1_ACTIVE_ROUTE_ID 选一条（未引用的表由链接器剔除）。
  * 角度指针的更换只允许在绑定和段边界，不在 20 kHz 里做。
  */
 #ifndef MOTOR_CORE_MOTOR_ROUTE_H
@@ -52,6 +53,8 @@ typedef struct {
  */
 void motor_route_bind(motor_context_t *ctx, const motor_route_t *route);
 const motor_route_t *motor_route_active(void);
+/** 上电选路：认 M1_ACTIVE_ROUTE_ID；未知 id 回落 standstill。 */
+const motor_route_t *motor_route_for_boot(void);
 
 void motor_angle_use(const angle_ops_t *ops);
 const angle_ops_t *motor_angle_active(void);
@@ -62,6 +65,14 @@ uint8_t motor_angle_sensorless(void);
 extern const angle_ops_t g_angle_hfi;
 extern const angle_ops_t g_angle_enc;
 extern const motor_route_t g_route_hfi_standstill;
+extern const motor_route_t g_route_sensed_pos_mit;
+extern const motor_route_t g_route_sensorless_pos_mit;
+extern const motor_route_t g_route_if_100rpm;
+extern const motor_route_t g_route_speed_1000rpm;
+extern const motor_route_t g_route_obs_veq_1000rpm;
+extern const motor_route_t g_route_flux_id_1000rpm;
+extern const motor_route_t g_route_bode_id_fc1000;
+extern const motor_route_t g_route_id_cal_pass0_rs;
 
 #ifdef __cplusplus
 }

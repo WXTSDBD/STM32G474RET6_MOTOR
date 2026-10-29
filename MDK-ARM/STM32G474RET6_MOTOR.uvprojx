@@ -1551,9 +1551,58 @@
               <FilePath>..\config\experiments\exp_calib_chain.c</FilePath>
             </File>
             <File>
+              <FileName>factory_runner.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\factory\factory_runner.c</FilePath>
+            </File>            <File>
+              <FileName>m1_n5065.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\plant\m1_n5065.c</FilePath>
+            </File>
+            <File>
               <FileName>r_hfi_standstill.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\config\routes\r_hfi_standstill.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_id_cal_pass0_rs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_id_cal_pass0_rs.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_sensed_pos_mit.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_sensed_pos_mit.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_sensorless_pos_mit.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_sensorless_pos_mit.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_if_100rpm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_if_100rpm.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_speed_1000rpm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_speed_1000rpm.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_obs_veq_1000rpm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_obs_veq_1000rpm.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_flux_id_1000rpm.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_flux_id_1000rpm.c</FilePath>
+            </File>
+            <File>
+              <FileName>r_bode_id_fc1000.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\config\routes\r_bode_id_fc1000.c</FilePath>
             </File>
             <File>
               <FileName>angle_route.c</FileName>
@@ -1570,7 +1619,7 @@
               <FileType>1</FileType>
               <FilePath>..\motor\ident\rs_ident.c</FilePath>
             </File>
-<File>
+            <File>
               <FileName>l_hfi_ident.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\ident\l_hfi_ident.c</FilePath>
@@ -1659,21 +1708,6 @@
               <FileName>deadband.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\deadband\deadband.c</FilePath>
-            </File>
-            <File>
-              <FileName>deadband_cal.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\deadband\deadband_cal.c</FilePath>
-            </File>
-            <File>
-              <FileName>deadband_geo.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\deadband\deadband_geo.c</FilePath>
-            </File>
-            <File>
-              <FileName>deadband_lut_baked_m1.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\motor\deadband\deadband_lut_baked_m1.c</FilePath>
             </File>
             <File>
               <FileName>deadband_service.c</FileName>

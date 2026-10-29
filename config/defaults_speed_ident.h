@@ -1,0 +1,81 @@
+/**
+ * @file defaults_speed_ident.h
+ * @date 2026-10-28
+ * @brief 速度环辨识默认宏（仅 M1_SPEED_IDENT_ENABLE=1 时由 motor_params 纳入）。
+ */
+#ifndef CONFIG_DEFAULTS_SPEED_IDENT_H
+#define CONFIG_DEFAULTS_SPEED_IDENT_H
+
+#if M1_IDENT_ENABLE
+#error "M1_SPEED_IDENT_ENABLE and M1_IDENT_ENABLE are mutually exclusive"
+#endif
+#if M1_ID_LOCK_CAL_SWEEP
+#error "M1_SPEED_IDENT_ENABLE requires M1_ID_LOCK_CAL_SWEEP=0"
+#endif
+#if !M1_SPEED_LOOP_ENABLE
+#error "M1_SPEED_IDENT_ENABLE requires M1_SPEED_LOOP_ENABLE=1"
+#endif
+
+#ifndef M1_SPEED_IDENT_STEP_ENABLE
+#define M1_SPEED_IDENT_STEP_ENABLE      1
+#endif
+#ifndef M1_SPEED_IDENT_STEP_LADDER_ENABLE
+#define M1_SPEED_IDENT_STEP_LADDER_ENABLE  0
+#endif
+#ifndef M1_SPEED_IDENT_OBS_FLOOR_PROBE
+#define M1_SPEED_IDENT_OBS_FLOOR_PROBE    0 /* 1=1000。00 。0rpm 。OBS 下限 */
+#endif
+#ifndef M1_SPEED_IDENT_BODE_ENABLE
+#define M1_SPEED_IDENT_BODE_ENABLE      1
+#endif
+#if !M1_SPEED_IDENT_STEP_ENABLE && !M1_SPEED_IDENT_BODE_ENABLE
+#error "M1_SPEED_IDENT_ENABLE requires STEP and/or BODE"
+#endif
+
+#ifndef M1_SPEED_IDENT_HOLD_S
+#define M1_SPEED_IDENT_HOLD_S           8.0f
+#endif
+#ifndef M1_SPEED_IDENT_RPM_START
+#define M1_SPEED_IDENT_RPM_START        100.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_ROUNDS
+#define M1_SPEED_IDENT_STEP_ROUNDS      1u
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM0
+#define M1_SPEED_IDENT_STEP_RPM0        500.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM1
+#define M1_SPEED_IDENT_STEP_RPM1        300.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM2
+#define M1_SPEED_IDENT_STEP_RPM2        700.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM3
+#define M1_SPEED_IDENT_STEP_RPM3        900.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM4
+#define M1_SPEED_IDENT_STEP_RPM4        800.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM5
+#define M1_SPEED_IDENT_STEP_RPM5        900.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_RPM6
+#define M1_SPEED_IDENT_STEP_RPM6        1000.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_DWELL_S
+#define M1_SPEED_IDENT_STEP_DWELL_S     8.0f
+#endif
+#ifndef M1_SPEED_IDENT_STEP_ZERO_DWELL_S
+#define M1_SPEED_IDENT_STEP_ZERO_DWELL_S  3.0f
+#endif
+#ifndef M1_SPEED_IDENT_BODE_RPM_BIAS
+#define M1_SPEED_IDENT_BODE_RPM_BIAS    500.0f
+#endif
+#ifndef M1_SPEED_IDENT_BODE_RPM_AMP
+#define M1_SPEED_IDENT_BODE_RPM_AMP     30.0f
+#endif
+#ifndef M1_SPEED_IDENT_BODE_CYCLES_PER_FREQ
+#define M1_SPEED_IDENT_BODE_CYCLES_PER_FREQ  10.0f
+#endif
+
+#endif /* CONFIG_DEFAULTS_SPEED_IDENT_H */
