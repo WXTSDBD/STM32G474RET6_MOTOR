@@ -2,7 +2,7 @@
  * @file defaults_id_cal.h
  * @date 2026-10-28
  * @brief Id 锁轴标定默认宏（仅 M1_ID_LOCK_CAL_SWEEP=1 时由 motor_params 纳入）。
- * @note 普通 #define；bringup_modes / profile 用 #undef+#define 覆盖。
+ * @note 普通 #define；recipe 用 #undef+#define 覆盖。
  *       PASS0_RS：本头在 bm_pass0_rs 之前纳入。
  */
 #ifndef CONFIG_DEFAULTS_ID_CAL_H

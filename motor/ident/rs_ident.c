@@ -225,4 +225,25 @@ void rs_ident_sync_dbg(void)
     DBG.rs_ident_round = s_round;
 }
 
+#else /* !M1_RS_IDENT_ENABLE */
+
+void rs_ident_init(void) {}
+void rs_ident_arm(void) {}
+float rs_ident_tick(float id_fb, float ud_pi)
+{
+    (void)id_fb;
+    (void)ud_pi;
+    return 0.0f;
+}
+uint8_t rs_ident_is_done(void) { return 1u; }
+uint8_t rs_ident_is_ok(void) { return 0u; }
+uint8_t rs_ident_open_seq_phase(void) { return 9u; }
+void rs_ident_get_result(rs_ident_result_t *out)
+{
+    if (out != 0) {
+        *out = (rs_ident_result_t){0};
+    }
+}
+void rs_ident_sync_dbg(void) {}
+
 #endif /* M1_RS_IDENT_ENABLE */

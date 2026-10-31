@@ -1,31 +1,27 @@
 /**
- * @file m1_hfi_standstill.profile.h
- * @date 2026-10-06
- * @brief 无感静止起动交付 profile：打开 HFI、运动旁路、观测速度反馈、编码器可选。
- *
- * 切回有感只改 bringup_active.h 里选哪份 profile。解调、PLL、注入仍在 hfi_sqwave.c。
- * 本文件只铺宏，不含函数。
- *
- * Iq 限幅、ω 斜坡、Iq slew 的产品口径见
- * docs/规范_外环限幅与斜坡_出厂整定_2026-10-11.md；下列安培/斜坡数为台架临时。
- *
- * @deprecated 双轨收口（F）：同值已抄入 config/routes/r_hfi_standstill.c；
- * 新改只动 route 表。本头在 D/E（current/outer→ops）金样前暂留作宏门控。
- * @note 本头为后补。源文件更早，诞生日期以 git 为准。
+ * @file recipe_hfi_standstill.h
+ * @date 2026-10-31
+ * @brief HFI standstill 交付配方（route 1）。纯宏，无嵌套 profile。
  */
+#ifndef CONFIG_RECIPES_RECIPE_HFI_STANDSTILL_H
+#define CONFIG_RECIPES_RECIPE_HFI_STANDSTILL_H
 
-#ifndef CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
-#define CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H
+#include "defaults_speed_loop.h"
 
 #undef M1_ID_LOCK_CAL_SWEEP
 #define M1_ID_LOCK_CAL_SWEEP            0
 #undef M1_IDENT_ENABLE
 #define M1_IDENT_ENABLE                 0
+#undef M1_ID_CAL_ALIGN_ENABLE
 #define M1_ID_CAL_ALIGN_ENABLE          0
 #define M1_ID_CAL_COMMIT_LUT            0
+#undef M1_L_HFI_IDENT_ENABLE
 #define M1_L_HFI_IDENT_ENABLE           0
 #define M1_RS_IDENT_ENABLE              0
 #define M1_VOFA_IDENT_DUMP_ENABLE       0
+
+#undef M1_CLOSURE_BRINGUP
+#define M1_CLOSURE_BRINGUP              0
 
 #undef M1_SPEED_IDENT_ENABLE
 #define M1_SPEED_IDENT_ENABLE           0
@@ -38,6 +34,8 @@
 
 #undef M1_SPEED_LOOP_ENABLE
 #define M1_SPEED_LOOP_ENABLE            1
+#undef M1_VOFA_IDENT_DUTY_12CH
+#define M1_VOFA_IDENT_DUTY_12CH         0
 /*
  * TODO(factory)：ω 斜坡 / Iq slew / 制动电流 — 出厂自算；现行联调临时，勿随 VBUS 臆改。
  * 慢慢刹优先平滑（2225）：反向全程同一慢 DECEL；关 DECEL_BRAKE，避免终值一刀负 Iq 空载失步。
@@ -290,13 +288,24 @@
 #undef M1_OUTER_IN_TIM6
 #define M1_OUTER_IN_TIM6                1   /* 1=外环在 TIM6 ISR；0=回退到 20 kHz 分频（旧行为） */
 
-/* ===== 实验框架：上电由 ±2000 段表写转速。Ud 锁角表本配置不武装。 ===== */
+/* ===== 实验框架：上电实验 id 只认 bringup_active 的 M1_BOOT_EXP_ID。 ===== */
 #undef M1_EXP_FRAMEWORK_ENABLE
-#define M1_EXP_FRAMEWORK_ENABLE         1   /* 表化实验已注册（exp_tables.c） */
-#undef M1_EXP_BOOT_UD_CAL
-#define M1_EXP_BOOT_UD_CAL              0
-#undef M1_EXP_BOOT_REV141
-#define M1_EXP_BOOT_REV141              1
+#define M1_EXP_FRAMEWORK_ENABLE         1
 
-#endif /* CONFIG_PROFILES_M1_HFI_STANDSTILL_PROFILE_H */
+#undef M1_EMF_SMO_ATAN_ENABLE
+#define M1_EMF_SMO_ATAN_ENABLE          0
+#undef M1_EMF_EMAG_FAST_ENABLE
+#define M1_EMF_EMAG_FAST_ENABLE         1
 
+#if !M1_HFI_ENABLE
+#error "recipe_hfi_standstill requires M1_HFI_ENABLE=1"
+#endif
+#if M1_EMF_PLL_ENABLE && !M1_EMF_SMO_ENABLE
+#error "hfi_standstill PLL path requires M1_EMF_SMO_ENABLE=1"
+#endif
+#if (M1_VOFA_OBS_PLL_12CH + M1_VOFA_OBS_SMO_12CH + M1_VOFA_OBS_VEQ_12CH + \
+     M1_VOFA_OBS_SMO_RAW_12CH + M1_VOFA_HFI_12CH + M1_VOFA_IF_12CH) > 1
+#error "Only one VOFA 12ch layout after recipe include"
+#endif
+
+#endif /* CONFIG_RECIPES_RECIPE_HFI_STANDSTILL_H */

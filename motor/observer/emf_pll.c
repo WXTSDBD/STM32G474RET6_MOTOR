@@ -4,6 +4,7 @@
  * @brief 反电势正交 Type-II PLL：sincos、PI、积分。热路径不用 atan2。
  *
  * 默认不进 Park。节拍限制见 emf_pll.h 文件头。
+ * 模块属 BUILD_SMO；细闸用 if (M1_*)。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -13,15 +14,12 @@
 #include <math.h>
 #include <stddef.h>
 
-#include "observer/obs_cfg.h"
-#include "obs_num.h"
-#include "motor_trig.h"
-#include "observer/obs_src.h"
-#if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
 #include "emf_smo.h"
-#endif
-
-#if M1_EMF_PLL_ENABLE
+#include "motor_params_m1.h"
+#include "motor_trig.h"
+#include "observer/obs_cfg.h"
+#include "observer/obs_src.h"
+#include "obs_num.h"
 
 #define EMF_PLL_PI       3.14159265358979323846f
 #define EMF_PLL_TWO_PI   6.28318530717958647692f
@@ -84,11 +82,15 @@ static float emf_pll_fast_atan2(float y, float x)
 /** 低通滞后。正转提前 θ̂，反转改为滞后。返回值从 θ̂ 里减去。 */
 static float emf_pll_lpf_phase_ff(float omega_el)
 {
-#if M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE
     float fe;
     float fc;
     float w;
 
+    if (!(M1_EMF_LPF_PHASE_FF_ENABLE && M1_EMF_SMO_ENABLE &&
+          M1_EMF_SMO_LPF_ENABLE)) {
+        (void)omega_el;
+        return 0.0f;
+    }
     fe = omega_el / EMF_PLL_TWO_PI;
     fc = emf_smo_get_lpf_hz();
     w = fe;
@@ -99,10 +101,6 @@ static float emf_pll_lpf_phase_ff(float omega_el)
         return 0.0f;
     }
     return -emf_pll_fast_atan2(fe, fc);
-#else
-    (void)omega_el;
-    return 0.0f;
-#endif
 }
 
 /**
@@ -113,6 +111,10 @@ void emf_pll_init(emf_pll_t *p)
 {
     const float wn = EMF_PLL_TWO_PI * g_obs_num.pll_fn_hz;
 
+    if (!M1_EMF_PLL_ENABLE) {
+        (void)p;
+        return;
+    }
     if (p == NULL) {
         return;
     }
@@ -129,6 +131,10 @@ void emf_pll_init(emf_pll_t *p)
  */
 void emf_pll_reset(emf_pll_t *p)
 {
+    if (!M1_EMF_PLL_ENABLE) {
+        (void)p;
+        return;
+    }
     if (p == NULL) {
         return;
     }
@@ -144,11 +150,6 @@ void emf_pll_reset(emf_pll_t *p)
 
 /**
  * @brief 用 eαβ 推进 PLL。
- * @param p PLL。不可为 NULL。
- * @param e_alpha 反电势 α，单位 V。
- * @param e_beta 反电势 β，单位 V。
- * @param theta_enc 对照电角，单位 rad。
- * @param dt 节拍，单位 s。
  */
 void emf_pll_update(emf_pll_t *p,
                     float e_alpha, float e_beta,
@@ -160,6 +161,14 @@ void emf_pll_update(emf_pll_t *p,
     float err;
     float omega_cmd;
 
+    if (!M1_EMF_PLL_ENABLE) {
+        (void)p;
+        (void)e_alpha;
+        (void)e_beta;
+        (void)theta_enc;
+        (void)dt;
+        return;
+    }
     if (p == NULL || dt <= 0.0f) {
         return;
     }
@@ -185,18 +194,16 @@ void emf_pll_update(emf_pll_t *p,
     if (observer_lo_src()->get_omega() < 0.0f) {
         err = -err;
     }
-#if M1_EMF_PLL_NORM_ENABLE
-    {
+    if (M1_EMF_PLL_NORM_ENABLE) {
         const float emag = sqrtf(e_alpha * e_alpha + e_beta * e_beta);
 
         /* 打开时与历史增益同口径：err/(|e|+eps)。 */
         p->emag = emag;
         err /= (emag + g_obs_num.pll_norm_eps);
+    } else {
+        /* T1：鉴相用原始正交误差，省 sqrt+除法；增益等效随 |e| 变。 */
+        p->emag = 0.0f;
     }
-#else
-    /* T1：鉴相用原始正交误差，省 sqrt+除法；增益等效随 |e| 变。 */
-    p->emag = 0.0f;
-#endif
     p->last_pd = err;
 
     p->integrator += p->ki * err * dt;
@@ -224,29 +231,3 @@ void emf_pll_update(emf_pll_t *p,
     }
     p->theta_err = emf_pll_wrap_pi(p->theta_hat - theta_enc);
 }
-
-#else /* !M1_EMF_PLL_ENABLE */
-
-void emf_pll_init(emf_pll_t *p)
-{
-    (void)p;
-}
-
-void emf_pll_reset(emf_pll_t *p)
-{
-    (void)p;
-}
-
-void emf_pll_update(emf_pll_t *p,
-                    float e_alpha, float e_beta,
-                    float theta_enc,
-                    float dt)
-{
-    (void)p;
-    (void)e_alpha;
-    (void)e_beta;
-    (void)theta_enc;
-    (void)dt;
-}
-
-#endif /* M1_EMF_PLL_ENABLE */

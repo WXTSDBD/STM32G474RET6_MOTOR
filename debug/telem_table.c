@@ -664,19 +664,20 @@ static const telem_ch_t *telem_table_find(uint8_t id)
 
 static uint8_t telem_table_default_layout(void)
 {
-#if M1_VOFA_OPT12
-    return TELEM_LAYOUT_OPT;
-#elif M1_VOFA_SIGNOFF_CH
-    return TELEM_LAYOUT_SIGNOFF;
-#elif M1_VOFA_IDENT_DUTY_12CH && !M1_SPEED_LOOP_ENABLE
-    return TELEM_LAYOUT_IDENT_DUTY;
-#elif M1_SPEED_LOOP_ENABLE && M1_VOFA_SPEED_CH8_11 && M1_PLL_ENABLE
-    return TELEM_LAYOUT_SPEED;
-#elif M1_SPEED_LOOP_ENABLE && M1_PLL_ENABLE && !M1_POS_MIT_COMBO_ENABLE
-    return TELEM_LAYOUT_SPEED;
-#else
+    /* 布局由配方宏在编译期常量化；写成 if 便于少 #if，不新增开关宏。 */
+    if (M1_VOFA_OPT12) {
+        return TELEM_LAYOUT_OPT;
+    }
+    if (M1_VOFA_SIGNOFF_CH) {
+        return TELEM_LAYOUT_SIGNOFF;
+    }
+    if (M1_VOFA_IDENT_DUTY_12CH && !M1_SPEED_LOOP_ENABLE) {
+        return TELEM_LAYOUT_IDENT_DUTY;
+    }
+    if (M1_SPEED_LOOP_ENABLE && M1_PLL_ENABLE) {
+        return TELEM_LAYOUT_SPEED;
+    }
     return TELEM_LAYOUT_FOC_DQ;
-#endif
 }
 
 void telem_table_init(void)

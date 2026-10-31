@@ -34,12 +34,10 @@ static uint8_t s_inj_on = 1u;
 static float s_pub_ss;
 /** 低通后的 SMO 机械转速，单位 rpm。 */
 static float s_pub_smo_rpm;
-#if M1_HFI_PUB_FREEZE_ENABLE
 /** 冻住检测窗起点转速，单位 rpm。 */
 static float s_freeze_rpm0;
 /** 冻住检测连续拍数。 */
 static uint16_t s_freeze_n;
-#endif
 
 /**
  * @brief 退回 HFI 发布并重新开注入（过零桥）。
@@ -53,9 +51,9 @@ static void hfi_pub_return_lo(void)
     s_inj_on = 1u;
     s_smo_w_init = 0u;
     s_pub_ss = 0.0f;
-#if M1_HFI_PUB_FREEZE_ENABLE
-    s_freeze_n = 0u;
-#endif
+if (M1_HFI_PUB_FREEZE_ENABLE) {
+        s_freeze_n = 0u;
+    }
     observer_lo_set_inj_scale(1.0f);
     observer_lo_set_iq_auth_hold(0u);
     observer_lo_set_hat_hold(0u);
@@ -77,9 +75,7 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
     float smo_rpm;
     float dw;
     float gate_rpm;
-#if M1_HFI_PUB_FREEZE_ENABLE
-    float smo_rpm_raw;
-#endif
+float smo_rpm_raw = 0.0f;
 
     if (s_smo_w_init == 0u) {
         s_smo_w_lp = omega_el;
@@ -122,10 +118,10 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
             if (s_hfi_pub_qual >= 2000u) {
                 s_hfi_pub_smo = 1u;
                 s_hfi_pub_a = (motor_absf(dth) < ang_snap) ? 1.0f : 0.0f;
-#if M1_HFI_PUB_FREEZE_ENABLE
-                s_freeze_n = 0u;
-                s_freeze_rpm0 = motor_absf(omega_el * rpm_scale);
-#endif
+if (M1_HFI_PUB_FREEZE_ENABLE) {
+                    s_freeze_n = 0u;
+                    s_freeze_rpm0 = motor_absf(omega_el * rpm_scale);
+                }
             }
         } else {
             s_hfi_pub_qual = 0u;
@@ -157,30 +153,30 @@ void hfi_pub_step(float theta_smo, float omega_el, float dth)
         } else {
             s_hfi_pub_dn = 0u;
         }
-#if M1_HFI_PUB_FREEZE_ENABLE
-        /* 中速带 ω 几乎不变：带载过零时 SMO 假速钉死，DOWN 永远等不到。 */
-        if (s_hfi_pub_smo != 0u) {
-            smo_rpm_raw = motor_absf(omega_el * rpm_scale);
-            if ((smo_rpm_raw >= M1_HFI_PUB_FREEZE_RPM_MIN) &&
-                (smo_rpm_raw <= M1_HFI_PUB_FREEZE_RPM_MAX)) {
-                if (motor_absf(smo_rpm_raw - s_freeze_rpm0) <
-                    M1_HFI_PUB_FREEZE_DRPM) {
-                    if (s_freeze_n < M1_HFI_PUB_FREEZE_N) {
-                        s_freeze_n++;
-                    }
-                    if (s_freeze_n >= M1_HFI_PUB_FREEZE_N) {
-                        hfi_pub_return_lo();
+if (M1_HFI_PUB_FREEZE_ENABLE) {
+            /* 中速带 ω 几乎不变：带载过零时 SMO 假速钉死，DOWN 永远等不到。 */
+            if (s_hfi_pub_smo != 0u) {
+                smo_rpm_raw = motor_absf(omega_el * rpm_scale);
+                if ((smo_rpm_raw >= M1_HFI_PUB_FREEZE_RPM_MIN) &&
+                    (smo_rpm_raw <= M1_HFI_PUB_FREEZE_RPM_MAX)) {
+                    if (motor_absf(smo_rpm_raw - s_freeze_rpm0) <
+                        M1_HFI_PUB_FREEZE_DRPM) {
+                        if (s_freeze_n < M1_HFI_PUB_FREEZE_N) {
+                            s_freeze_n++;
+                        }
+                        if (s_freeze_n >= M1_HFI_PUB_FREEZE_N) {
+                            hfi_pub_return_lo();
+                        }
+                    } else {
+                        s_freeze_n = 0u;
+                        s_freeze_rpm0 = smo_rpm_raw;
                     }
                 } else {
                     s_freeze_n = 0u;
                     s_freeze_rpm0 = smo_rpm_raw;
                 }
-            } else {
-                s_freeze_n = 0u;
-                s_freeze_rpm0 = smo_rpm_raw;
             }
         }
-#endif
     }
     /* 还在 HFI 上时不关注入。SMO 已发布且 SMO ω 到 INJ_OFF 才关。 */
     if ((s_hfi_pub_smo != 0u) && (s_hfi_pub_a >= 1.0f) &&

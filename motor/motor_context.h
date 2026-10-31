@@ -34,10 +34,8 @@ typedef enum {
     M1_CTRL_CURRENT_LOOP,
 } m1_ctrl_mode_t;
 
-/** 上电默认电流模式。默认闭环；profile 可覆盖。 */
-#ifndef M1_CTRL_MODE_DEFAULT
+/** 上电默认电流模式。默认闭环；配方用 #undef+#define 覆盖。 */
 #define M1_CTRL_MODE_DEFAULT M1_CTRL_CURRENT_LOOP
-#endif
 
 /**
  * 谁产生 iq_ref。DISABLED 时由启动、标定或 API 直接写。

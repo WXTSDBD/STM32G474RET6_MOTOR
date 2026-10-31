@@ -1554,7 +1554,8 @@
               <FileName>factory_runner.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\factory\factory_runner.c</FilePath>
-            </File>            <File>
+            </File>
+            <File>
               <FileName>m1_n5065.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\config\plant\m1_n5065.c</FilePath>
@@ -1608,6 +1609,61 @@
               <FileName>angle_route.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\motor\angle_route.c</FilePath>
+            </File>
+            <File>
+              <FileName>ff_noop.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\ff\ff_noop.c</FilePath>
+            </File>
+            <File>
+              <FileName>iref_zero_d.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\iref\iref_zero_d.c</FilePath>
+            </File>
+            <File>
+              <FileName>telem_ops_default.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\telem_ops_default.c</FilePath>
+            </File>
+            <File>
+              <FileName>outer_ops.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\outer\outer_ops.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_state.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_state.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_entry.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_entry.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_sample.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_sample.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_startup.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_startup.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_current.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_current.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_modulate.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_modulate.c</FilePath>
+            </File>
+            <File>
+              <FileName>isr_telem.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\motor\isr\isr_telem.c</FilePath>
             </File>
             <File>
               <FileName>ident_module.c</FileName>

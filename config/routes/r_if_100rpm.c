@@ -31,11 +31,14 @@ const motor_route_t g_route_if_100rpm = {
     4u,
     &g_plant_m1_n5065,
     &s_gains,
-    NULL,
+    &g_angle_enc,
     &g_outer_speed,
-    NULL,
-    NULL,
-    NULL,
+
+    &g_ff_noop,
+
+    &g_iref_zero_d,
+
+    &g_telem_opt,
     MOTOR_OUTER_SPEED,
     0u,
     { 0u, 0u },

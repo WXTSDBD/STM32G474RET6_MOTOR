@@ -64,11 +64,18 @@ uint8_t motor_angle_sensorless(void);
 
 void motor_outer_use(const outer_ops_t *ops);
 const outer_ops_t *motor_outer_active(void);
+const ff_ops_t *motor_ff_active(void);
+const iref_ops_t *motor_iref_active(void);
 
 extern const angle_ops_t g_angle_hfi;
 extern const angle_ops_t g_angle_enc;
 extern const outer_ops_t g_outer_speed;
 extern const outer_ops_t g_outer_torque;
+extern const outer_ops_t g_outer_pos;
+extern const outer_ops_t g_outer_mit;
+extern const ff_ops_t g_ff_noop;
+extern const iref_ops_t g_iref_zero_d;
+extern const telem_ops_t g_telem_opt;
 extern const motor_route_t g_route_hfi_standstill;
 extern const motor_route_t g_route_sensed_pos_mit;
 extern const motor_route_t g_route_sensorless_pos_mit;

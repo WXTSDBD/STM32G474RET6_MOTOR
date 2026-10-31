@@ -4,6 +4,7 @@
  * @brief Id/Iq PI 编排：限幅、无扰、标定和闭环分支。
  *
  * 算法在 foc_pi.c。节拍限制见 motor_foc_loop.h 文件头。
+ * 能力闸门用 if (M1_*)，由编译器常量折叠；不再用 #if 分岔。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -82,14 +83,12 @@ static void motor_foc_loop_pi_load_from_gains(motor_context_t *ctx)
     foc_pi_init(&ctx->pi_iq, g->iq.kp, g->iq.ki, -vmax, vmax, -vmax, vmax);
 }
 
-#if M1_IDENT_ENABLE
 static void motor_foc_loop_pi_apply_ident_limits(motor_context_t *ctx)
 {
     motor_foc_loop_pi_load(ctx,
                            M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
                            M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
 }
-#endif
 
 /**
  * @brief 按电机参数装 Id/Iq PI。
@@ -101,32 +100,30 @@ void motor_foc_loop_pi_init(motor_context_t *ctx)
         return;
     }
 
-#if M1_IDENT_ENABLE && M1_IDENT_ID_CAL_BEFORE_STEP
-    motor_foc_loop_pi_load(ctx,
-                           M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
-                           M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
-#elif M1_ID_LOCK_CAL_SWEEP
-    /* S4a：标定档优先吃 route gains（与 r_id_cal_pass0_rs 对齐）。 */
-    if (ctx->gains != NULL) {
-        motor_foc_loop_pi_load_from_gains(ctx);
-    } else {
+    if (M1_IDENT_ENABLE && M1_IDENT_ID_CAL_BEFORE_STEP) {
         motor_foc_loop_pi_load(ctx,
                                M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
                                M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
-    }
-#elif M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS
-    motor_foc_loop_pi_load(ctx,
-                           M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
-                           M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
-#else
-    if (ctx->gains != NULL) {
+    } else if (M1_ID_LOCK_CAL_SWEEP) {
+        /* S4a：标定档优先吃 route gains（与 r_id_cal_pass0_rs 对齐）。 */
+        if (ctx->gains != NULL) {
+            motor_foc_loop_pi_load_from_gains(ctx);
+        } else {
+            motor_foc_loop_pi_load(ctx,
+                                   M1_ID_CAL_PI_V_LIMIT_MIN, M1_ID_CAL_PI_V_LIMIT_V,
+                                   M1_ID_CAL_PI_INT_LIMIT_MIN, M1_ID_CAL_PI_INT_LIMIT_V);
+        }
+    } else if (M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS) {
+        motor_foc_loop_pi_load(ctx,
+                               M1_IDENT_PI_V_LIMIT_MIN, M1_IDENT_PI_V_LIMIT_V,
+                               M1_IDENT_PI_INT_LIMIT_MIN, M1_IDENT_PI_INT_LIMIT_V);
+    } else if (ctx->gains != NULL) {
         motor_foc_loop_pi_load_from_gains(ctx);
     } else {
         motor_foc_loop_pi_load(ctx,
                                M1_PI_V_LIMIT_MIN, M1_PI_V_LIMIT_V,
                                M1_PI_INT_LIMIT_MIN, M1_PI_INT_LIMIT_V);
     }
-#endif
 }
 
 /**
@@ -150,13 +147,13 @@ void motor_foc_loop_pi_reset(motor_context_t *ctx)
  */
 void motor_foc_loop_on_flow_tick(motor_context_t *ctx)
 {
-#if M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS
-    if (deadband_flow_consume_ident_pi_retune()) {
-        motor_foc_loop_pi_apply_ident_limits(ctx);
+    if (M1_IDENT_ENABLE && M1_IDENT_OVERRIDE_LIMITS) {
+        if (deadband_flow_consume_ident_pi_retune()) {
+            motor_foc_loop_pi_apply_ident_limits(ctx);
+        }
+    } else {
+        (void)ctx;
     }
-#else
-    (void)ctx;
-#endif
 }
 
 /**
@@ -169,21 +166,21 @@ void motor_foc_loop_dbg_id_ref(const motor_context_t *ctx)
     }
 
     if (ctx->mode == M1_CTRL_CURRENT_LOOP) {
-#if M1_ID_LOCK_CAL_SWEEP
-        if (deadband_flow_speed_ladder_active()) {
-            DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-            DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-        } else if (deadband_id_cal_use_cal_pi_limits()) {
-            DBG.foc_id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
-            DBG.foc_iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
+        if (M1_ID_LOCK_CAL_SWEEP) {
+            if (deadband_flow_speed_ladder_active()) {
+                DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+                DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            } else if (deadband_id_cal_use_cal_pi_limits()) {
+                DBG.foc_id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
+                DBG.foc_iq_ref = deadband_id_cal_clamp_id_ref(ctx->iq_ref);
+            } else {
+                DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+                DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+            }
         } else {
             DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
             DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
         }
-#else
-        DBG.foc_id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-        DBG.foc_iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-#endif
     } else {
         DBG.foc_id_ref = 0.0f;
         DBG.foc_iq_ref = 0.0f;
@@ -206,65 +203,93 @@ void motor_foc_loop_tick(motor_context_t *ctx,
 {
     float id_ref;
     float iq_ref;
+    uint8_t id_cal_active = 0u;
 
     if (ctx == NULL || startup == NULL) {
         return;
     }
 
-#if M1_ID_LOCK_CAL_SWEEP
-    if (deadband_id_cal_bumpless_arm()) {
-        const float ud_ff = g_m1_motor_cfg.rs_ohm * deadband_id_cal_bumpless_id_ref();
+    if (M1_ID_LOCK_CAL_SWEEP) {
+        if (deadband_id_cal_bumpless_arm()) {
+            const float ud_ff = g_m1_motor_cfg.rs_ohm * deadband_id_cal_bumpless_id_ref();
 
-        foc_pi_bumpless(&ctx->pi_id, ud_ff, deadband_id_cal_bumpless_id_ref(), id);
-        ctx->ud_pi = ud_ff;
-        if (!deadband_id_cal_iq_bumpless_arm()) {
-            foc_pi_bumpless(&ctx->pi_iq, 0.0f, ctx->iq_ref, iq);
-            ctx->uq_pi = 0.0f;
+            foc_pi_bumpless(&ctx->pi_id, ud_ff, deadband_id_cal_bumpless_id_ref(), id);
+            ctx->ud_pi = ud_ff;
+            if (!deadband_id_cal_iq_bumpless_arm()) {
+                foc_pi_bumpless(&ctx->pi_iq, 0.0f, ctx->iq_ref, iq);
+                ctx->uq_pi = 0.0f;
+            }
+            deadband_id_cal_consume_bumpless_arm();
         }
-        deadband_id_cal_consume_bumpless_arm();
-    }
-    if (deadband_id_cal_iq_bumpless_arm()) {
-        foc_pi_bumpless(&ctx->pi_iq, ctx->uq_pi, deadband_id_cal_iq_bumpless_ref(), iq);
-        deadband_id_cal_consume_iq_bumpless_arm();
-    }
-#endif
+        if (deadband_id_cal_iq_bumpless_arm()) {
+            foc_pi_bumpless(&ctx->pi_iq, ctx->uq_pi, deadband_id_cal_iq_bumpless_ref(), iq);
+            deadband_id_cal_consume_iq_bumpless_arm();
+        }
 
-#if M1_ID_LOCK_CAL_SWEEP
-    if (deadband_flow_id_cal_active()) {
-        uint8_t id_cal_pi_run = 1u;
+        id_cal_active = deadband_flow_id_cal_active();
+        if (id_cal_active != 0u) {
+            uint8_t id_cal_pi_run = 1u;
 
-#if M1_ID_CAL_ALIGN_ENABLE && M1_ID_CAL_FIX_THETA_ENABLE
-        if (deadband_id_cal_use_align_ud()) {
-            id_cal_pi_run = 0u;
-        }
-#endif
-#if M1_L_HFI_IDENT_ENABLE
-        if (deadband_id_cal_use_l_hfi_align_ud()) {
-            id_cal_pi_run = 0u;
-        }
-        /* l_hfi 注入段由 exp_hooks 写 ud/uq，PI 输出清零 */
-        if (deadband_id_cal_in_l_hfi_ident() != 0u) {
-            id_cal_pi_run = 0u;
-        }
-#endif
-        if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq &&
-            (!deadband_id_cal_bumpless_arm() ||
-             deadband_id_cal_in_rs_ident() ||
-             deadband_id_cal_in_l_hfi_pre_decay()) &&
-            id_cal_pi_run) {
-            if (deadband_id_cal_in_iq_probe()) {
-                iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-#if M1_ID_CAL_IQ_PROBE_ID_PI_ENABLE
-                id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-                ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
-#else
-                id_ref = 0.0f;
+            if (M1_ID_CAL_ALIGN_ENABLE && M1_ID_CAL_FIX_THETA_ENABLE) {
+                if (deadband_id_cal_use_align_ud()) {
+                    id_cal_pi_run = 0u;
+                }
+            }
+            if (M1_L_HFI_IDENT_ENABLE) {
+                if (deadband_id_cal_use_l_hfi_align_ud()) {
+                    id_cal_pi_run = 0u;
+                }
+                /* l_hfi 注入段由 exp_hooks 写 ud/uq，PI 输出清零 */
+                if (deadband_id_cal_in_l_hfi_ident() != 0u) {
+                    id_cal_pi_run = 0u;
+                }
+            }
+            if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq &&
+                (!deadband_id_cal_bumpless_arm() ||
+                 deadband_id_cal_in_rs_ident() ||
+                 deadband_id_cal_in_l_hfi_pre_decay()) &&
+                id_cal_pi_run) {
+                if (deadband_id_cal_in_iq_probe()) {
+                    iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+                    if (M1_ID_CAL_IQ_PROBE_ID_PI_ENABLE) {
+                        id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+                        ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
+                    } else {
+                        id_ref = 0.0f;
+                        ctx->ud_pi = 0.0f;
+                    }
+                    ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
+                } else if (deadband_id_cal_use_cal_pi_limits()) {
+                    id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
+                    iq_ref = deadband_id_cal_clamp_iq_ref(ctx->iq_ref);
+                    if (startup->pi_bumpless) {
+                        foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
+                        foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
+                    }
+                    ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
+                    ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
+                } else {
+                    id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
+                    iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
+                    if (startup->pi_bumpless) {
+                        foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
+                        foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
+                    }
+                    ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
+                    ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
+                }
+            } else {
                 ctx->ud_pi = 0.0f;
-#endif
-                ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
-            } else if (deadband_id_cal_use_cal_pi_limits()) {
-                id_ref = deadband_id_cal_clamp_id_ref(ctx->id_ref);
-                iq_ref = deadband_id_cal_clamp_iq_ref(ctx->iq_ref);
+                ctx->uq_pi = 0.0f;
+            }
+        }
+    }
+
+    if ((M1_ID_LOCK_CAL_SWEEP == 0) || (id_cal_active == 0u)) {
+        if (M1_IDENT_ENABLE) {
+            if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
+                id_ref = ctx->id_ref;
+                iq_ref = ctx->iq_ref;
                 if (startup->pi_bumpless) {
                     foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
                     foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
@@ -272,84 +297,22 @@ void motor_foc_loop_tick(motor_context_t *ctx,
                 ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
                 ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
             } else {
-                id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-                iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-                if (startup->pi_bumpless) {
-                    foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
-                    foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
-                }
-                ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
-                ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
+                ctx->ud_pi = 0.0f;
+                ctx->uq_pi = 0.0f;
             }
-        } else if (!deadband_flow_id_cal_active()) {
-            /* fall through to ident PI below */
-        } else {
+        } else if (M1_ID_LOCK_CAL_SWEEP) {
+            /* pure id cal：活跃段已在上面处理；非活跃清零 */
             ctx->ud_pi = 0.0f;
             ctx->uq_pi = 0.0f;
-        }
-    }
-    if (!deadband_flow_id_cal_active())
-#endif
-    {
-#if M1_IDENT_ENABLE
-        if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
-            id_ref = ctx->id_ref;
-            iq_ref = ctx->iq_ref;
-            if (startup->pi_bumpless) {
-                foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
-                foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
-            }
-            ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
-            ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
-        } else {
-            ctx->ud_pi = 0.0f;
-            ctx->uq_pi = 0.0f;
-        }
-#elif M1_ID_LOCK_CAL_SWEEP
-#if M1_DEADBAND_FLOW_ONE_SHOT && M1_SPEED_LOOP_ENABLE
-        if (deadband_flow_speed_ladder_active() &&
-            ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
+        } else if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
             id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-            iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-            if (startup->pi_bumpless) {
-                foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
-                foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
-            }
-            ctx->ud_pi = foc_pi_step(&ctx->pi_id, id_ref, id);
-            ctx->uq_pi = foc_pi_step(&ctx->pi_iq, iq_ref, iq);
-        } else {
-            /* Id 标定段：由 deadband_flow_id_cal_active 分支处理 */
-            ctx->ud_pi = 0.0f;
-            ctx->uq_pi = 0.0f;
-        }
-#else
-        /* pure id cal: handled above when deadband_flow_id_cal_active() */
-        ctx->ud_pi = 0.0f;
-        ctx->uq_pi = 0.0f;
-#endif
-#else
-        if (ctx->mode == M1_CTRL_CURRENT_LOOP && !startup->use_fixed_uq) {
-            id_ref = motor_foc_loop_clamp_ref(ctx->id_ref);
-#if M1_IF_ENABLE
-            iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-#elif M1_SPEED_IDENT_ENABLE
-            if (speed_ident_flow_is_armed() ||
-                ctx->outer_mode == M1_OUTER_SPEED ||
-                ctx->outer_mode == M1_OUTER_POSITION) {
+            if (M1_SPEED_LOOP_ENABLE &&
+                ((ctx->outer_mode == M1_OUTER_SPEED) ||
+                 (ctx->outer_mode == M1_OUTER_POSITION))) {
                 iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-            } else
-#endif
-#if !M1_IF_ENABLE && M1_SPEED_LOOP_ENABLE && !M1_SPEED_IDENT_ENABLE
-            if (ctx->outer_mode == M1_OUTER_SPEED ||
-                ctx->outer_mode == M1_OUTER_POSITION) {
-                iq_ref = motor_foc_loop_clamp_ref(ctx->iq_ref);
-            } else
-#endif
-#if !M1_IF_ENABLE
-            {
+            } else {
                 iq_ref = motor_foc_loop_clamp_ref(startup->iq_ref);
             }
-#endif
             if (startup->pi_bumpless) {
                 foc_pi_bumpless(&ctx->pi_iq, startup->uq_prev, iq_ref, iq);
                 foc_pi_bumpless(&ctx->pi_id, startup->ud_prev, id_ref, id);
@@ -360,32 +323,25 @@ void motor_foc_loop_tick(motor_context_t *ctx,
             ctx->ud_pi = 0.0f;
             ctx->uq_pi = 0.0f;
         }
-#endif
     }
-#if M1_ID_CAL_ALIGN_ENABLE && M1_ID_CAL_FIX_THETA_ENABLE
-    if (deadband_id_cal_use_align_ud()) {
-#if M1_ID_CAL_DUAL_ANGLE_ENABLE
-        ctx->ud_pi = deadband_id_cal_align_ud_v();
-#else
-        ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
-#endif
-        ctx->uq_pi = 0.0f;
-    } else if (deadband_id_cal_use_post_ident_hold_ud()) {
-        ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
-        ctx->uq_pi = 0.0f;
-    }
-#endif
 
+    if (M1_ID_LOCK_CAL_SWEEP) {
+        if (deadband_id_cal_use_align_ud()) {
+            ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
+            ctx->uq_pi = 0.0f;
+        } else if (deadband_id_cal_use_post_ident_hold_ud()) {
+            ctx->ud_pi = M1_ID_CAL_ALIGN_UD_V;
+            ctx->uq_pi = 0.0f;
+        }
+    }
 
     DBG.foc_ud_pi = ctx->ud_pi;
     DBG.foc_uq_pi = startup->use_fixed_uq ? startup->uq_out : ctx->uq_pi;
 
-#if M1_ID_LOCK_CAL_SWEEP
     (void)theta_enc_park;
-    if (deadband_flow_id_cal_active()) {
-        deadband_id_cal_sync_dbg();
+    if (M1_ID_LOCK_CAL_SWEEP) {
+        if (deadband_flow_id_cal_active()) {
+            deadband_id_cal_sync_dbg();
+        }
     }
-#else
-    (void)theta_enc_park;
-#endif
 }

@@ -4,6 +4,7 @@
  * @brief 电压方程反电势。系数在 init 预计算。
  *
  * 默认不进 Park。节拍限制见 emf_veq.h 文件头。
+ * 模块闸 BUILD_VEQ；现网 =0，整文件空桩。细闸用 if (M1_*)。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
@@ -13,9 +14,10 @@
 #include <math.h>
 #include <stddef.h>
 
+#include "motor_params_m1.h"
 #include "observer/obs_cfg.h"
 
-#if M1_EMF_VEQ_ENABLE
+#if BUILD_VEQ
 
 #define EMF_VEQ_PI       3.14159265358979323846f
 #define EMF_VEQ_TWO_PI   6.28318530717958647692f
@@ -41,17 +43,17 @@ static void emf_veq_coeff_init(void)
     const float ts = OBS_CTRL_TS_S;
 
     s_inv_ts = 1.0f / ts;
-#if M1_EMF_VEQ_LPF_ENABLE
-    s_lpf_alpha = 1.0f - expf(-EMF_VEQ_TWO_PI * M1_EMF_VEQ_LPF_HZ * ts);
-    if (s_lpf_alpha > 1.0f) {
+    if (M1_EMF_VEQ_LPF_ENABLE) {
+        s_lpf_alpha = 1.0f - expf(-EMF_VEQ_TWO_PI * M1_EMF_VEQ_LPF_HZ * ts);
+        if (s_lpf_alpha > 1.0f) {
+            s_lpf_alpha = 1.0f;
+        }
+        if (s_lpf_alpha < 0.0f) {
+            s_lpf_alpha = 0.0f;
+        }
+    } else {
         s_lpf_alpha = 1.0f;
     }
-    if (s_lpf_alpha < 0.0f) {
-        s_lpf_alpha = 0.0f;
-    }
-#else
-    s_lpf_alpha = 1.0f;
-#endif
     s_rpm_to_we = (EMF_VEQ_TWO_PI / 60.0f) * (float)OBS_POLE_PAIRS;
     s_coeff_ready = 1u;
 }
@@ -62,6 +64,10 @@ static void emf_veq_coeff_init(void)
  */
 void emf_veq_init(emf_veq_t *o)
 {
+    if (!M1_EMF_VEQ_ENABLE) {
+        (void)o;
+        return;
+    }
     if (s_coeff_ready == 0u) {
         emf_veq_coeff_init();
     }
@@ -74,6 +80,10 @@ void emf_veq_init(emf_veq_t *o)
  */
 void emf_veq_reset(emf_veq_t *o)
 {
+    if (!M1_EMF_VEQ_ENABLE) {
+        (void)o;
+        return;
+    }
     if (o == NULL) {
         return;
     }
@@ -95,13 +105,6 @@ void emf_veq_reset(emf_veq_t *o)
 
 /**
  * @brief 用已反 Park 的 uαβ 和 iαβ 估计反电势。
- * @param o 观测器。不可为 NULL。
- * @param i_alpha α 电流，单位 A。
- * @param i_beta β 电流，单位 A。
- * @param u_alpha α 电压，单位 V。须与 FOC 同一组正余弦。
- * @param u_beta β 电压，单位 V。
- * @param theta_enc 对照电角，单位 rad。
- * @param omega_mech_rpm 机械转速，单位 rpm。
  */
 void emf_veq_update(emf_veq_t *o,
                     float i_alpha, float i_beta,
@@ -116,6 +119,16 @@ void emf_veq_update(emf_veq_t *o,
     const float r = M1_EMF_VEQ_R_OHM;
     const float l = M1_EMF_VEQ_L_H;
 
+    if (!M1_EMF_VEQ_ENABLE) {
+        (void)o;
+        (void)i_alpha;
+        (void)i_beta;
+        (void)u_alpha;
+        (void)u_beta;
+        (void)theta_enc;
+        (void)omega_mech_rpm;
+        return;
+    }
     if (o == NULL) {
         return;
     }
@@ -150,43 +163,41 @@ void emf_veq_update(emf_veq_t *o,
     ea_raw = u_alpha - r * i_alpha - l * dia;
     eb_raw = u_beta - r * i_beta - l * dib;
 
-#if M1_EMF_VEQ_LPF_ENABLE
-    o->e_alpha += s_lpf_alpha * (ea_raw - o->e_alpha);
-    o->e_beta += s_lpf_alpha * (eb_raw - o->e_beta);
-#else
-    o->e_alpha = ea_raw;
-    o->e_beta = eb_raw;
-#endif
-
-#if M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO
-    /* PLL 直接吃 eαβ，热路径不再 sqrt/atan2。 */
-    (void)theta_enc;
-    (void)omega_mech_rpm;
-    o->emag = 0.0f;
-    o->theta_hat = 0.0f;
-    o->theta_err = 0.0f;
-    o->omega_el = 0.0f;
-    o->psi_inst = 0.0f;
-#else
-    {
-    float we;
-    float th_hat;
-
-    o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
-    th_hat = atan2f(-o->e_alpha, o->e_beta) - M1_EMF_VEQ_THETA_OFF_RAD;
-    o->theta_hat = emf_veq_wrap_pi(th_hat);
-    o->theta_err = emf_veq_wrap_pi(o->theta_hat - theta_enc);
-
-    we = omega_mech_rpm * s_rpm_to_we;
-    o->omega_el = we;
-    if (fabsf(we) > M1_EMF_VEQ_PSI_WMIN) {
-        o->psi_inst = o->emag / fabsf(we);
+    if (M1_EMF_VEQ_LPF_ENABLE) {
+        o->e_alpha += s_lpf_alpha * (ea_raw - o->e_alpha);
+        o->e_beta += s_lpf_alpha * (eb_raw - o->e_beta);
+    } else {
+        o->e_alpha = ea_raw;
+        o->e_beta = eb_raw;
     }
+
+    if (M1_EMF_PLL_ENABLE && !M1_EMF_PLL_USE_SMO) {
+        /* PLL 直接吃 eαβ，热路径不再 sqrt/atan2。 */
+        (void)theta_enc;
+        (void)omega_mech_rpm;
+        o->emag = 0.0f;
+        o->theta_hat = 0.0f;
+        o->theta_err = 0.0f;
+        o->omega_el = 0.0f;
+        o->psi_inst = 0.0f;
+    } else {
+        float we;
+        float th_hat;
+
+        o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
+        th_hat = atan2f(-o->e_alpha, o->e_beta) - M1_EMF_VEQ_THETA_OFF_RAD;
+        o->theta_hat = emf_veq_wrap_pi(th_hat);
+        o->theta_err = emf_veq_wrap_pi(o->theta_hat - theta_enc);
+
+        we = omega_mech_rpm * s_rpm_to_we;
+        o->omega_el = we;
+        if (fabsf(we) > M1_EMF_VEQ_PSI_WMIN) {
+            o->psi_inst = o->emag / fabsf(we);
+        }
     }
-#endif
 }
 
-#else /* !M1_EMF_VEQ_ENABLE */
+#else /* !BUILD_VEQ */
 
 void emf_veq_init(emf_veq_t *o)
 {
@@ -213,4 +224,4 @@ void emf_veq_update(emf_veq_t *o,
     (void)omega_mech_rpm;
 }
 
-#endif /* M1_EMF_VEQ_ENABLE */
+#endif /* BUILD_VEQ */

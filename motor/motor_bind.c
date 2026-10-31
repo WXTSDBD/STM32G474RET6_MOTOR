@@ -19,6 +19,9 @@ static const motor_route_t *s_route;
 static const angle_ops_t *s_angle;
 /** 当前外环。SPEED/TORQUE 热路径优先走这张表。 */
 static const outer_ops_t *s_outer;
+/** 前馈 / 电流给定（route 绑定时装上）。 */
+static const ff_ops_t *s_ff;
+static const iref_ops_t *s_iref;
 /** 本拍编码器电角，单位 rad。 */
 static float s_enc_theta;
 
@@ -32,6 +35,8 @@ void motor_route_bind(motor_context_t *ctx, const motor_route_t *route)
     s_route = route;
     s_angle = (route != NULL) ? route->angle : NULL;
     s_outer = (route != NULL) ? route->outer : NULL;
+    s_ff = (route != NULL) ? route->ff : NULL;
+    s_iref = (route != NULL) ? route->iref : NULL;
     if (ctx != NULL) {
         if (route != NULL) {
             ctx->plant = route->plant;
@@ -54,37 +59,32 @@ const motor_route_t *motor_route_active(void)
 
 /**
  * @brief 上电选路（S4a）：bringup 的 M1_ACTIVE_ROUTE_ID 优先。
- * @note 各分支为编译期互斥；现网只留一条引用，其余 r_*.o 由链接器剔除。
+ * @note ACTIVE_ROUTE_ID 为编译期常量；未引用的 r_*.o 仍由链接器剔除。
  */
 const motor_route_t *motor_route_for_boot(void)
 {
-#if M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_ID_CAL_PASS0_RS
-    return &g_route_id_cal_pass0_rs;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_HFI_STANDSTILL
-    return &g_route_hfi_standstill;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_SENSED_POS_MIT
-    return &g_route_sensed_pos_mit;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_SENSORLESS_POS_MIT
-    return &g_route_sensorless_pos_mit;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_IF_100RPM
-    return &g_route_if_100rpm;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_SPEED_1000RPM
-    return &g_route_speed_1000rpm;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_OBS_VEQ_1000RPM
-    return &g_route_obs_veq_1000rpm;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_FLUX_ID_1000RPM
-    return &g_route_flux_id_1000rpm;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_BODE_ID_FC1000
-    return &g_route_bode_id_fc1000;
-#elif M1_ACTIVE_ROUTE_ID == M1_ROUTE_ID_AUTO
-#if M1_ID_CAL_RS_LD_LQ_ONLY_ENABLE
-    return &g_route_id_cal_pass0_rs;
-#else
-    return &g_route_hfi_standstill;
-#endif
-#else
-    return &g_route_hfi_standstill;
-#endif
+    switch ((int)M1_ACTIVE_ROUTE_ID) {
+    case (int)M1_ROUTE_ID_ID_CAL_PASS0_RS:
+        return &g_route_id_cal_pass0_rs;
+    case (int)M1_ROUTE_ID_HFI_STANDSTILL:
+        return &g_route_hfi_standstill;
+    case (int)M1_ROUTE_ID_SENSED_POS_MIT:
+        return &g_route_sensed_pos_mit;
+    case (int)M1_ROUTE_ID_SENSORLESS_POS_MIT:
+        return &g_route_sensorless_pos_mit;
+    case (int)M1_ROUTE_ID_IF_100RPM:
+        return &g_route_if_100rpm;
+    case (int)M1_ROUTE_ID_SPEED_1000RPM:
+        return &g_route_speed_1000rpm;
+    case (int)M1_ROUTE_ID_OBS_VEQ_1000RPM:
+        return &g_route_obs_veq_1000rpm;
+    case (int)M1_ROUTE_ID_FLUX_ID_1000RPM:
+        return &g_route_flux_id_1000rpm;
+    case (int)M1_ROUTE_ID_BODE_ID_FC1000:
+        return &g_route_bode_id_fc1000;
+    default:
+        return &g_route_hfi_standstill;
+    }
 }
 
 /**
@@ -147,4 +147,20 @@ void motor_outer_use(const outer_ops_t *ops)
 const outer_ops_t *motor_outer_active(void)
 {
     return s_outer;
+}
+
+/**
+ * @brief 取当前前馈表。
+ */
+const ff_ops_t *motor_ff_active(void)
+{
+    return s_ff;
+}
+
+/**
+ * @brief 取当前电流给定表。
+ */
+const iref_ops_t *motor_iref_active(void)
+{
+    return s_iref;
 }

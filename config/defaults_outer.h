@@ -76,12 +76,12 @@
  * bringup_active / profile 用 #undef 覆盖。
  */
 #define M1_EXP_FRAMEWORK_ENABLE         0
-/** 1=上电跑 UD_CAL 段表。 */
-#define M1_EXP_BOOT_UD_CAL              0
-/** 1=上电跑 ±2000 段表。 */
-#define M1_EXP_BOOT_REV141              0
-/** 1=上电跑联合标定链（Pass0→Rs→L，EXP_ID_CALIB_CHAIN）。 */
-#define M1_EXP_BOOT_CALIB_CHAIN         0
+/**
+ * 上电实验 id（与 exp_def.h 的 EXP_ID_* 同值）。
+ * 0=不上电实验；3=REV141；4=UD_CAL；17=CALIB_CHAIN。
+ * bringup_active 用 #undef 覆盖。
+ */
+#define M1_BOOT_EXP_ID                  0u
 
 /**
  * 位置环位置反馈源：

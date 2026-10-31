@@ -12,21 +12,15 @@
 
 #include <stddef.h>
 
-#include "build_config.h"
 #include "motor_params_m1.h"
 
 /**
- * @brief 上电：init；BUILD_DEADBAND 且 ENABLE 时默认 FIXED。
+ * @brief 上电：init；现网 BUILD_DEADBAND=0，恒 OFF。
  */
 void deadband_service_boot(deadband_service_boot_t *boot)
 {
     deadband_init();
-
-#if BUILD_DEADBAND && M1_DEADBAND_ENABLE
-    deadband_service_apply_profile(DEADBAND_PROFILE_FIXED);
-#else
     deadband_service_apply_profile(DEADBAND_PROFILE_OFF);
-#endif
 
     if (boot != NULL) {
         boot->nvm_loaded = 0u;
@@ -49,11 +43,8 @@ void deadband_service_apply_profile(deadband_profile_t profile)
     case DEADBAND_PROFILE_LUT_RUNTIME: /* LUT 下线：与 FIXED 同归宿 */
     case DEADBAND_PROFILE_LUT_BAKED:
     case DEADBAND_PROFILE_LUT_NVM:
-#if BUILD_DEADBAND && M1_DEADBAND_ENABLE
-        deadband_set_mode(M1_DEADBAND_MODE_FIXED);
-#else
+        /* BUILD_DEADBAND=0：FIXED/LUT 请求也落到 OFF。 */
         deadband_set_mode(M1_DEADBAND_MODE_OFF);
-#endif
         deadband_set_runtime_apply_ud(0u);
         break;
 

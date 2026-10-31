@@ -4,14 +4,13 @@
  * @brief SMO 机械转速滑动平均。
  *
  * 给发布门槛用。不是观测器配置项。节拍限制见 hfi_spd_obs.h 文件头。
+ * 能力闸门用 if (M1_*)。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 #include "observer/hfi_spd_obs.h"
 #include "observer/obs_cfg.h"
 
-#if M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE && M1_EMF_PLL_ENABLE && \
-    (M1_EMF_SMO_ENABLE || M1_EMF_VEQ_ENABLE)
 /** 窗口采样，单位 rpm。 */
 static float s_smo_w_hist[HFI_SMO_W_MA_N];
 /** 窗口内求和，单位 rpm。 */
@@ -21,11 +20,20 @@ static uint16_t s_smo_w_i;
 /** 已经填入的格数，未满窗时当除数。 */
 static uint16_t s_smo_w_fill;
 
+static uint8_t hfi_smo_w_ma_enabled(void)
+{
+    return (M1_HFI_ENABLE && M1_HFI_MOTION_BYPASS_ENABLE && M1_EMF_PLL_ENABLE &&
+            (M1_EMF_SMO_ENABLE || M1_EMF_VEQ_ENABLE)) ? 1u : 0u;
+}
+
 /**
  * @brief 清窗口。不把历史数组逐格清零，下一步会覆盖。
  */
 void hfi_smo_w_ma_reset(void)
 {
+    if (!hfi_smo_w_ma_enabled()) {
+        return;
+    }
     s_smo_w_sum = 0.0f;
     s_smo_w_i = 0u;
     s_smo_w_fill = 0u;
@@ -38,6 +46,9 @@ void hfi_smo_w_ma_reset(void)
  */
 float hfi_smo_w_ma_step(float rpm)
 {
+    if (!hfi_smo_w_ma_enabled()) {
+        return rpm;
+    }
     if (s_smo_w_fill >= HFI_SMO_W_MA_N) {
         s_smo_w_sum -= s_smo_w_hist[s_smo_w_i];
     } else {
@@ -51,4 +62,3 @@ float hfi_smo_w_ma_step(float rpm)
     }
     return s_smo_w_sum / (float)s_smo_w_fill;
 }
-#endif

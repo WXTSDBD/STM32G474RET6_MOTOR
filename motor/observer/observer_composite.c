@@ -10,9 +10,10 @@
  */
 #include "observer/observer_composite.h"
 #include "observer/obs_cfg.h"
+#include "build_config.h"
 
-
-#if M1_HFI_ENABLE
+/* 模块闸：编不编进 HFI 聚合用 BUILD_HFI（非运行时 if）。 */
+#if BUILD_HFI
 #include "observer/hfi_sqwave.h"
 #include "observer/obs_angle.h"
 #include "observer/obs_inj.h"
@@ -531,4 +532,4 @@ uint8_t observer_take_polarity_flip(void)
 
 
 
-#endif /* M1_HFI_ENABLE */
+#endif /* BUILD_HFI */

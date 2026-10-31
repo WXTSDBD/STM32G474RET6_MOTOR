@@ -18,55 +18,28 @@
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
 
-#ifndef M1_L_HFI_DUTY_START
+/* 默认值；PASS0 recipe 用 #undef+#define 覆盖 REPEAT/INTER。 */
 #define M1_L_HFI_DUTY_START         0.02f
-#endif
-#ifndef M1_L_HFI_DUTY_GROW
 #define M1_L_HFI_DUTY_GROW          1.5f
-#endif
-#ifndef M1_L_HFI_DUTY_MAX
 #define M1_L_HFI_DUTY_MAX           0.35f
-#endif
-#ifndef M1_L_HFI_I_GOAL_A
 #define M1_L_HFI_I_GOAL_A           1.5f
-#endif
-#ifndef M1_L_HFI_MIN_DI_A
 #define M1_L_HFI_MIN_DI_A           0.01f
-#endif
-#ifndef M1_L_HFI_N_ANG
 #define M1_L_HFI_N_ANG              32u
-#endif
-#ifndef M1_L_HFI_MEAS_LAPS
 #define M1_L_HFI_MEAS_LAPS          20u
-#endif
-#ifndef M1_L_HFI_SETTLE_S
 #define M1_L_HFI_SETTLE_S           0.05f
-#endif
-#ifndef M1_L_HFI_GAP_S
 #define M1_L_HFI_GAP_S              0.01f
-#endif
-#ifndef M1_L_HFI_SCALE
 #define M1_L_HFI_SCALE              0.9f
-#endif
-#ifndef M1_L_HFI_L_MIN_H
 #define M1_L_HFI_L_MIN_H            20e-6f
-#endif
-#ifndef M1_L_HFI_L_MAX_H
 #define M1_L_HFI_L_MAX_H            0.001f
-#endif
-#ifndef M1_L_HFI_MIN_VALID_BINS
 #define M1_L_HFI_MIN_VALID_BINS     28u
-#endif
 #ifndef M1_L_HFI_REPEAT_N
 #define M1_L_HFI_REPEAT_N           1u
 #endif
 #ifndef M1_L_HFI_INTER_ROUND_S
 #define M1_L_HFI_INTER_ROUND_S      0.0f
 #endif
-#ifndef M1_L_HFI_RESULT_SHOUT_N
 /** 每轮结果 mark55 连发帧数（20 kHz 下 80≈4 ms，CSV 必能抓到）。 */
 #define M1_L_HFI_RESULT_SHOUT_N     80u
-#endif
 
 #define L_HFI_N                     ((int)M1_L_HFI_N_ANG)
 

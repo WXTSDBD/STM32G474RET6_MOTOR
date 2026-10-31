@@ -21,22 +21,11 @@
 extern "C" {
 #endif
 
-#ifndef ENCODER_CAL_UQ_LOCK
 /** 锁转子电压幅值 [V]；jeoc 里作 Ud（Uq=0），勿再当 Uq 用。 */
 #define ENCODER_CAL_UQ_LOCK 1.0f
-#endif
-
-#ifndef ENCODER_CAL_SETTLE_MS
 #define ENCODER_CAL_SETTLE_MS 400u
-#endif
-
-#ifndef ENCODER_CAL_SAMPLE_COUNT
 #define ENCODER_CAL_SAMPLE_COUNT 16u
-#endif
-
-#ifndef ENCODER_CAL_APPLY_PI_OFFSET
 #define ENCODER_CAL_APPLY_PI_OFFSET 0
-#endif
 
 /** 1=标定进行中，JEOC 走 encoder_cal_jeoc_tick。 */
 extern volatile uint8_t g_encoder_cal_active;

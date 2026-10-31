@@ -18,16 +18,16 @@ static m1_deadband_cfg_t s_cfg;
 
 static float deadband_phase_sign(float i, float i_zero)
 {
-#if M1_DEADBAND_I_ZERO_DISABLE
-    (void)i_zero;
-    if (i > 0.0f) {
-        return 1.0f;
+    if (M1_DEADBAND_I_ZERO_DISABLE) {
+        (void)i_zero;
+        if (i > 0.0f) {
+            return 1.0f;
+        }
+        if (i < 0.0f) {
+            return -1.0f;
+        }
+        return 0.0f;
     }
-    if (i < 0.0f) {
-        return -1.0f;
-    }
-    return 0.0f;
-#else
     if (i > i_zero) {
         return 1.0f;
     }
@@ -35,7 +35,6 @@ static float deadband_phase_sign(float i, float i_zero)
         return -1.0f;
     }
     return 0.0f;
-#endif
 }
 
 static void deadband_clamp_duty(float *d)

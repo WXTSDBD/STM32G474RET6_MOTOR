@@ -52,13 +52,11 @@ float motor_current_get_theta_fb_rad(void);
 
 void motor_current_pll_reset_now(void);
 
-#if M1_SPEED_LOOP_ENABLE
 void motor_current_outer_set_mode(bsp_axis_t *axis, m1_outer_mode_t mode);
 void motor_current_set_omega_ref_rpm(bsp_axis_t *axis, float rpm);
 void motor_current_set_theta_ref_rad(bsp_axis_t *axis, float theta_rad);
 void motor_current_arm_position_hold(bsp_axis_t *axis);
 void motor_current_set_iq_cmd(bsp_axis_t *axis, float iq_a);
-#endif
 
 #ifdef __cplusplus
 }

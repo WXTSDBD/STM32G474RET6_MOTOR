@@ -26,9 +26,7 @@ extern "C" {
  * 默认关：占带宽、VOFA 多一路，且运行时切 layout 未用上。
  * 真要运行时切表时再改为 1，并同步 VOFA/脚本。
  */
-#ifndef TELEM_FRAME_LAYOUT_ID
 #define TELEM_FRAME_LAYOUT_ID      0u
-#endif
 
 #define TELEM_LAYOUT_FOC_DQ        0u /* ia ib ic id iq θ ud uq … 旧统一前半 */
 #define TELEM_LAYOUT_SIGNOFF       1u /* 有感/MIT 签收 12ch */

@@ -4,19 +4,20 @@
  * @brief 电流滑模观测器。系数在 init 预计算。
  *
  * 默认不进 Park。节拍限制见 emf_smo.h 文件头。
+ * 能力闸门用 if (M1_*)；BUILD_SMO=0 时由工程不链本文件。
  *
  * @note 本头为后补。源文件更早，诞生日期以 git 为准。
  */
 
 #include "emf_smo.h"
 
+#include <math.h>
 #include <stddef.h>
 
 #include "motor_math.h"
+#include "motor_params_m1.h"
 #include "observer/obs_cfg.h"
 #include "obs_num.h"
-
-#if M1_EMF_SMO_ENABLE
 
 #define EMF_SMO_PI       3.14159265358979323846f
 #define EMF_SMO_TWO_PI   6.28318530717958647692f
@@ -39,6 +40,7 @@ static float s_inv_sat;
 static float s_rpm_to_fe;
 /** 1=系数已经算过。 */
 static uint8_t s_coeff_ready;
+
 static float emf_smo_wrap_pi(float x)
 {
     if (x > EMF_SMO_PI) {
@@ -105,18 +107,18 @@ static void emf_smo_coeff_init(void)
     s_disc_a = emf_smo_exp_neg(r * ts / l);
     s_disc_b = (1.0f - s_disc_a) / r;
     s_lpf_ts = ts;
-#if M1_EMF_SMO_LPF_ENABLE
-#if M1_EMF_SMO_LPF_LINEAR_ENABLE
-    s_lpf_hz = g_obs_num.smo_lpf_fc_min_hz;
-    s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, ts);
-#else
-    s_lpf_hz = g_obs_num.smo_lpf_hz;
-    s_lpf_alpha = emf_smo_alpha_from_hz(g_obs_num.smo_lpf_hz, ts);
-#endif
-#else
-    s_lpf_hz = 0.0f;
-    s_lpf_alpha = 1.0f;
-#endif
+    if (M1_EMF_SMO_LPF_ENABLE) {
+        if (M1_EMF_SMO_LPF_LINEAR_ENABLE) {
+            s_lpf_hz = g_obs_num.smo_lpf_fc_min_hz;
+            s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, ts);
+        } else {
+            s_lpf_hz = g_obs_num.smo_lpf_hz;
+            s_lpf_alpha = emf_smo_alpha_from_hz(g_obs_num.smo_lpf_hz, ts);
+        }
+    } else {
+        s_lpf_hz = 0.0f;
+        s_lpf_alpha = 1.0f;
+    }
     s_rpm_to_we = (EMF_SMO_TWO_PI / 60.0f) * (float)OBS_POLE_PAIRS;
     s_rpm_to_fe = ((float)OBS_POLE_PAIRS) / 60.0f;
     s_inv_sat = 1.0f / ((g_obs_num.smo_sat_a > 1.0e-6f) ? g_obs_num.smo_sat_a : 1.0e-6f);
@@ -129,6 +131,10 @@ static void emf_smo_coeff_init(void)
  */
 void emf_smo_init(emf_smo_t *o)
 {
+    if (!M1_EMF_SMO_ENABLE) {
+        (void)o;
+        return;
+    }
     if (s_coeff_ready == 0u) {
         emf_smo_coeff_init();
     }
@@ -141,6 +147,10 @@ void emf_smo_init(emf_smo_t *o)
  */
 void emf_smo_reset(emf_smo_t *o)
 {
+    if (!M1_EMF_SMO_ENABLE) {
+        (void)o;
+        return;
+    }
     if (o == NULL) {
         return;
     }
@@ -155,10 +165,10 @@ void emf_smo_reset(emf_smo_t *o)
     o->theta_hat = 0.0f;
     o->theta_err = 0.0f;
     o->omega_el = 0.0f;
-#if M1_EMF_SMO_LPF_LINEAR_ENABLE
-    s_lpf_hz = g_obs_num.smo_lpf_fc_min_hz;
-    s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, s_lpf_ts);
-#endif
+    if (M1_EMF_SMO_LPF_LINEAR_ENABLE) {
+        s_lpf_hz = g_obs_num.smo_lpf_fc_min_hz;
+        s_lpf_alpha = emf_smo_alpha_from_hz(s_lpf_hz, s_lpf_ts);
+    }
 }
 
 /**
@@ -168,39 +178,41 @@ void emf_smo_reset(emf_smo_t *o)
  */
 uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
 {
-#if M1_EMF_SMO_LPF_ENABLE && M1_EMF_SMO_LPF_LINEAR_ENABLE
-    float rpm;
-    float fe;
-    float fc;
-    float fc_q;
+    if (!(M1_EMF_SMO_ENABLE && M1_EMF_SMO_LPF_ENABLE &&
+          M1_EMF_SMO_LPF_LINEAR_ENABLE)) {
+        (void)omega_mech_rpm;
+        return 0u;
+    }
+    {
+        float rpm;
+        float fe;
+        float fc;
+        float fc_q;
 
-    if (s_coeff_ready == 0u) {
-        emf_smo_coeff_init();
-    }
+        if (s_coeff_ready == 0u) {
+            emf_smo_coeff_init();
+        }
 
-    rpm = omega_mech_rpm;
-    if (rpm < 0.0f) {
-        rpm = -rpm;
+        rpm = omega_mech_rpm;
+        if (rpm < 0.0f) {
+            rpm = -rpm;
+        }
+        /* fc = clip(k * fe, min, max), fe = |n| * p / 60 */
+        fe = rpm * s_rpm_to_fe;
+        fc = g_obs_num.smo_lpf_k * fe;
+        if (fc < g_obs_num.smo_lpf_fc_min_hz) {
+            fc = g_obs_num.smo_lpf_fc_min_hz;
+        } else if (fc > g_obs_num.smo_lpf_fc_max_hz) {
+            fc = g_obs_num.smo_lpf_fc_max_hz;
+        }
+        /* 量化到 1 Hz，避免每拍 expf */
+        fc_q = (float)((int)(fc + 0.5f));
+        if (fc_q != s_lpf_hz) {
+            s_lpf_hz = fc_q;
+            s_lpf_alpha = emf_smo_alpha_from_hz(fc_q, s_lpf_ts);
+        }
+        return 0u;
     }
-    /* fc = clip(k * fe, min, max), fe = |n| * p / 60 */
-    fe = rpm * s_rpm_to_fe;
-    fc = g_obs_num.smo_lpf_k * fe;
-    if (fc < g_obs_num.smo_lpf_fc_min_hz) {
-        fc = g_obs_num.smo_lpf_fc_min_hz;
-    } else if (fc > g_obs_num.smo_lpf_fc_max_hz) {
-        fc = g_obs_num.smo_lpf_fc_max_hz;
-    }
-    /* 量化到 1 Hz，避免每拍 expf */
-    fc_q = (float)((int)(fc + 0.5f));
-    if (fc_q != s_lpf_hz) {
-        s_lpf_hz = fc_q;
-        s_lpf_alpha = emf_smo_alpha_from_hz(fc_q, s_lpf_ts);
-    }
-    return 0u;
-#else
-    (void)omega_mech_rpm;
-    return 0u;
-#endif
 }
 
 /**
@@ -208,14 +220,13 @@ uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
  */
 float emf_smo_get_lpf_hz(void)
 {
-#if M1_EMF_SMO_ENABLE
+    if (!M1_EMF_SMO_ENABLE) {
+        return 0.0f;
+    }
     if (s_coeff_ready == 0u) {
         emf_smo_coeff_init();
     }
     return s_lpf_hz;
-#else
-    return 0.0f;
-#endif
 }
 
 /**
@@ -238,6 +249,16 @@ void emf_smo_update(emf_smo_t *o,
     float zb;
     const float k = g_obs_num.smo_k;
 
+    if (!M1_EMF_SMO_ENABLE) {
+        (void)o;
+        (void)i_alpha;
+        (void)i_beta;
+        (void)u_alpha;
+        (void)u_beta;
+        (void)theta_enc;
+        (void)omega_mech_rpm;
+        return;
+    }
     if (o == NULL) {
         return;
     }
@@ -267,70 +288,30 @@ void emf_smo_update(emf_smo_t *o,
     o->ihat_alpha = s_disc_a * o->ihat_alpha + s_disc_b * (u_alpha - za);
     o->ihat_beta = s_disc_a * o->ihat_beta + s_disc_b * (u_beta - zb);
 
-#if M1_EMF_SMO_LPF_ENABLE
-    o->e_alpha += s_lpf_alpha * (za - o->e_alpha);
-    o->e_beta += s_lpf_alpha * (zb - o->e_beta);
-#else
-    o->e_alpha = za;
-    o->e_beta = zb;
-#endif
-
-#if M1_EMF_SMO_ATAN_ENABLE
-    /* 仅对照/遥测路径要 |e| 与 θ̂；PLL 吃 eαβ 时整段跳过 */
-#if M1_EMF_EMAG_FAST_ENABLE
-    o->emag = motor_emag_approx(o->e_alpha, o->e_beta);
-#else
-    o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
-#endif
-    {
-        float th_hat;
-
-        th_hat = atan2f(-o->e_alpha, o->e_beta) - g_obs_num.smo_theta_off_rad;
-        o->theta_hat = emf_smo_wrap_pi(th_hat);
-        o->theta_err = emf_smo_wrap_pi(o->theta_hat - theta_enc);
+    if (M1_EMF_SMO_LPF_ENABLE) {
+        o->e_alpha += s_lpf_alpha * (za - o->e_alpha);
+        o->e_beta += s_lpf_alpha * (zb - o->e_beta);
+    } else {
+        o->e_alpha = za;
+        o->e_beta = zb;
     }
-#else
-    (void)theta_enc;
-#endif
+
+    if (M1_EMF_SMO_ATAN_ENABLE) {
+        /* 仅对照/遥测路径要 |e| 与 θ̂；PLL 吃 eαβ 时整段跳过 */
+        if (M1_EMF_EMAG_FAST_ENABLE) {
+            o->emag = motor_emag_approx(o->e_alpha, o->e_beta);
+        } else {
+            o->emag = sqrtf(o->e_alpha * o->e_alpha + o->e_beta * o->e_beta);
+        }
+        {
+            float th_hat;
+
+            th_hat = atan2f(-o->e_alpha, o->e_beta) - g_obs_num.smo_theta_off_rad;
+            o->theta_hat = emf_smo_wrap_pi(th_hat);
+            o->theta_err = emf_smo_wrap_pi(o->theta_hat - theta_enc);
+        }
+    } else {
+        (void)theta_enc;
+    }
     o->omega_el = omega_mech_rpm * s_rpm_to_we;
 }
-
-#else /* !M1_EMF_SMO_ENABLE */
-
-void emf_smo_init(emf_smo_t *o)
-{
-    (void)o;
-}
-
-void emf_smo_reset(emf_smo_t *o)
-{
-    (void)o;
-}
-
-uint8_t emf_smo_lpf_sched_update(float omega_mech_rpm)
-{
-    (void)omega_mech_rpm;
-    return 0u;
-}
-
-float emf_smo_get_lpf_hz(void)
-{
-    return 0.0f;
-}
-
-void emf_smo_update(emf_smo_t *o,
-                    float i_alpha, float i_beta,
-                    float u_alpha, float u_beta,
-                    float theta_enc,
-                    float omega_mech_rpm)
-{
-    (void)o;
-    (void)i_alpha;
-    (void)i_beta;
-    (void)u_alpha;
-    (void)u_beta;
-    (void)theta_enc;
-    (void)omega_mech_rpm;
-}
-
-#endif /* M1_EMF_SMO_ENABLE */
