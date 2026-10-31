@@ -9,6 +9,7 @@
 #include <stddef.h>
 
 #include "motor_outer_loop.h"
+#include "telemetry/obs_preset.h"
 
 /* table-driven experiment state: fixed angle / Id injection / angle source */
 static uint8_t s_angle_src;      /* 0=observer, 1=encoder */
@@ -134,6 +135,36 @@ void exp_act_angle_from_mark(uint8_t mark)
 }
 
 /**
+ * @brief 切观测预设：p0=preset_id，p1=decim（0=默认）。
+ */
+static void exp_act_set_obs_enter(motor_context_t *ctx, const exp_seg_t *seg)
+{
+    uint8_t id;
+    uint8_t decim;
+
+    (void)ctx;
+    if (seg == NULL) {
+        return;
+    }
+    id = (uint8_t)seg->p0;
+    decim = (uint8_t)seg->p1;
+    (void)obs_preset_apply(id, decim);
+}
+
+static void exp_act_set_obs_update(motor_context_t *ctx, const exp_seg_t *seg,
+                                   float t_s)
+{
+    (void)ctx;
+    (void)seg;
+    (void)t_s;
+}
+
+static const exp_action_ops_t g_exp_act_set_obs = {
+    exp_act_set_obs_enter,
+    exp_act_set_obs_update,
+};
+
+/**
  * @brief 按默认动作 id 取内建 ops。
  * @param act EXP_ACT_*。
  * @return ops；未知 id 为 NULL。
@@ -147,6 +178,8 @@ const exp_action_ops_t *exp_act_basic_lookup(uint8_t act)
         return &g_exp_act_omega_ref;
     case EXP_ACT_THETA_REF:
         return &g_exp_act_theta_ref;
+    case EXP_ACT_SET_OBS:
+        return &g_exp_act_set_obs;
     default:
         return NULL;
     }

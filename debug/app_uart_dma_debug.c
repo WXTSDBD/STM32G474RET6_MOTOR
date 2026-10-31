@@ -19,7 +19,6 @@
 #include "foc_svpwm.h"
 #include "encoder_spi_bus.h"
 #include "phase_detect.h"
-#include "bringup_bench.h"
 #include "motor_cfg.h"
 #include "motor_params_m1.h"
 #include "telem_ident_dump.h"
@@ -27,13 +26,17 @@
 #include "telem_table.h"
 #include "bsp_axes.h"
 #include "motor_math.h"
+#include "telemetry/obs_reg.h"
+#include "telemetry/obs_vars.h"
+#include "telemetry/obs_cli.h"
 #if M1_HFI_ENABLE
 #include "observer/hfi_sqwave.h"
 #endif
 #include <string.h>
 
 #define TELEM_BRINGUP_K              M1_TELEM_BRINGUP_K
-#define TELEM_BRINGUP_INCLUDE_SEQ    0u
+/** 1=帧首多 1 个 float 写 obs seq（JustFloat 对齐仍 4B）。 */
+#define TELEM_BRINGUP_INCLUDE_SEQ    1u
 #define TELEM_CPU_MHZ                160u
 
 /** 单缓。4KB，双缓冲。8KB SRAM */
@@ -44,11 +47,9 @@
  * D=2  。10kHz。2ch×52B 。520KB/s @ 6Mbps。
  * D=1  。20kHz；D=100 。200Hz（bringup 低压联调用）
  */
-#ifndef TELEM_BRINGUP_DECIMATION
 #define TELEM_BRINGUP_DECIMATION     M1_TELEM_BRINGUP_DECIMATION
-#endif
 
-#define TELEM_LAYOUT_ID_BYTES     0u
+#define TELEM_LAYOUT_ID_BYTES     ((TELEM_BRINGUP_INCLUDE_SEQ != 0u) ? 4u : 0u)
 
 #define TELEM_SMALL_FRAME_BYTES   (TELEM_LAYOUT_ID_BYTES + TELEM_BRINGUP_K * 4u + 4u)
 
@@ -80,12 +81,12 @@ static uint32_t s_decim_cnt;
 telem_dbg_t g_telem_dbg;
 
 /* ---- P-1 遥测快照化（2026-10-18 22:05 / 22:20 改环形）：ISR 只写 12xfloat，打包/DMA 交给任务侧 ---- */
-#ifndef TELEM_SNAP_DEPTH
-#define TELEM_SNAP_DEPTH             32u   /* 32 帧 ≈ 3.2 ms @10 kHz，够任务侧 1 ms 周期排空 */
-#endif
+/* 现网 DECIMATION=2 → 10 kHz 帧；深度 32。 */
+#define TELEM_SNAP_DEPTH             32u
 
 typedef struct {
     float vals[TELEM_BRINGUP_K];
+    float seq; /* OBS 帧序号；旧路径为 0 */
 } telem_snap_t;
 
 static telem_snap_t s_snap[TELEM_SNAP_DEPTH];
@@ -100,12 +101,14 @@ static void telem_snapshot_commit(const float vals[TELEM_BRINGUP_K])
     uint16_t nw = (uint16_t)((w + 1u) % TELEM_SNAP_DEPTH);
 
     memcpy(s_snap[w].vals, vals, sizeof(s_snap[w].vals));
+    s_snap[w].seq = (obs_session_active() != 0u) ? (float)obs_session_seq() : 0.0f;
     __DMB();
     if (nw == s_snap_r) {
         /* 环满：丢最旧一帧，计数记进 acquire_fail（P-1 起它同时表示遥测丢帧） */
         s_snap_r = (uint16_t)((s_snap_r + 1u) % TELEM_SNAP_DEPTH);
         s_snap_drop++;
         g_telem_dbg.acquire_fail++;
+        obs_drop_add(1u);
     }
     s_snap_w = nw;
 }
@@ -232,69 +235,25 @@ static void telem_seal_write_buf_ready(void)
     g_telem_dbg.seal_cnt++;
 }
 
-static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset, const float vals[TELEM_BRINGUP_K])
+static void telem_write_frame_vals(telem_buf_t *buf, uint16_t offset,
+                                  const float vals[TELEM_BRINGUP_K], float seq_f)
 {
     uint8_t *p = &buf->data[offset];
 
-
-
+#if TELEM_BRINGUP_INCLUDE_SEQ
+    memcpy(p, &seq_f, sizeof(seq_f));
+    p += sizeof(seq_f);
+#else
+    (void)seq_f;
+#endif
     memcpy(p, vals, sizeof(float) * TELEM_BRINGUP_K);
     p += sizeof(float) * TELEM_BRINGUP_K;
     memcpy(p, s_justfloat_tail, sizeof(s_justfloat_tail));
 }
 
-#if (M1_VOFA_UNIFIED_12CH != 0) && (M1_TELEM_BRINGUP_K >= 12u) && \
-    (M1_ID_LOCK_CAL_SWEEP || M1_IDENT_ENABLE || M1_SPEED_LOOP_ENABLE || \
-     M1_OPEN_UD_PRE_ID_CAL_ENABLE || M1_OPEN_UQ_PRE_ID_CAL_ENABLE)
-/** bringup 统一 12 通道（Id cal / ident / 开环阶梯共用） */
-static void telem_fill_foc_unified_12ch(float vals[TELEM_BRINGUP_K])
-{
-    {
-        const motor_context_t *ctx = NULL;
-        bsp_axis_t *ax = bsp_axis(BSP_AXIS_M1);
-
-        if ((ax != NULL) && (ax->motor_ctx != NULL)) {
-            ctx = (const motor_context_t *)ax->motor_ctx;
-        }
-        /* T-1：表驱动优先；LEGACY 才落下面旧 #elif */
-        if (telem_table_fill(vals, ctx) != 0u) {
-            return;
-        }
-    }
-
-    {
-        const motor_context_t *c = NULL;
-        bsp_axis_t *ax2 = bsp_axis(BSP_AXIS_M1);
-
-        if ((ax2 != NULL) && (ax2->motor_ctx != NULL)) {
-            c = (const motor_context_t *)ax2->motor_ctx;
-        }
-        vals[0] = (c != NULL) ? c->ia : 0.0f;
-        vals[1] = (c != NULL) ? c->ib : 0.0f;
-        vals[2] = (c != NULL) ? c->ic : 0.0f;
-        vals[3] = (c != NULL) ? c->id : 0.0f;
-        vals[4] = (c != NULL) ? c->iq : 0.0f;
-    }
-    vals[5] = dbg.foc_theta_el;
-    vals[6] = dbg.foc_ud_out;
-    vals[7] = dbg.foc_uq_out;
-    if (dbg.outer_mode == (uint8_t)M1_OUTER_POSITION ||
-        dbg.outer_mode == (uint8_t)M1_OUTER_MIT) {
-        vals[8] = dbg.outer_theta_err_rad;
-        vals[9] = dbg.outer_theta_mech_rad;
-        vals[10] = dbg.outer_theta_ref_rad;
-        vals[11] = dbg.outer_omega_ref;
-    } else {
-        vals[8] = dbg.pll_omega_mech_rpm;
-        vals[9] = dbg.outer_theta_mech_rad;
-        vals[10] = dbg.outer_omega_ref;
-        vals[11] = dbg.outer_omega_ref - dbg.pll_omega_mech_rpm;
-    }
-}
-#define TELEM_FOC_UNIFIED_12CH_ACTIVE  1
-#endif
-
-
+/**
+ * @brief 填一帧：obs 会话优先；相位标定仍走专用 6 路。
+ */
 static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
 {
     uint32_t k;
@@ -303,15 +262,6 @@ static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
         vals[k] = 0.0f;
     }
 
-
-
-
-
-
-
-
-
-
     if (g_phase_cal_active || g_cal_hold) {
         vals[0] = (float)dbg.adc_zeroed[0];
         vals[1] = (float)dbg.adc_zeroed[1];
@@ -319,21 +269,14 @@ static void telem_fill_small_frame_vals(float vals[TELEM_BRINGUP_K])
         vals[3] = (float)dbg.phase_cal_pwm_idx;
         vals[4] = (float)dbg.phase_cal_delta_idx;
         vals[5] = (float)dbg.phase_cal_st;
-#if TELEM_FOC_UNIFIED_12CH_ACTIVE
-        vals[6] = dbg.foc_ud_out;
-        vals[7] = dbg.foc_uq_pi;
-        vals[8] = dbg.foc_id_ref;
-        vals[9] = dbg.foc_iq_ref;
-        vals[10] = dbg.foc_svpwm_duty_dev;
-        vals[11] = (float)dbg.open_seq_phase;
-#endif
-    } else {
-#if TELEM_FOC_UNIFIED_12CH_ACTIVE
-        telem_fill_foc_unified_12ch(vals);
-#endif /* !TELEM_FOC_UNIFIED_12CH_ACTIVE */
+        return;
     }
 
-    /* P-1：打包移到任务侧 telem_bringup_pack_ready() */
+    /* 会话只在 RTOS 换；此处只采样。 */
+    if (obs_session_active() != 0u) {
+        obs_vars_tick_mirrors();
+        obs_sample(vals);
+    }
 }
 
 /**
@@ -365,11 +308,14 @@ static void telem_bringup_pack_ready(void)
         }
 
         memcpy(vals, s_snap[r].vals, sizeof(vals));
-        __DMB();
-        s_snap_r = (uint16_t)((r + 1u) % TELEM_SNAP_DEPTH);
+        {
+            float seq_f = s_snap[r].seq;
+            __DMB();
+            s_snap_r = (uint16_t)((r + 1u) % TELEM_SNAP_DEPTH);
 
-        off = buf->used_bytes;
-        telem_write_frame_vals(buf, off, vals);
+            off = buf->used_bytes;
+            telem_write_frame_vals(buf, off, vals, seq_f);
+        }
         buf->used_bytes = (uint16_t)(buf->used_bytes + TELEM_SMALL_FRAME_BYTES);
         g_telem_dbg.ch1_wire = g_telem_dbg.cyccnt_end;
         g_telem_dbg.ch2_wire = g_telem_dbg.isr_delta;
@@ -388,10 +334,14 @@ static void telem_bringup_pack_ready(void)
 void telem_bringup_tick(void)
 {
     float vals[TELEM_BRINGUP_K];
+    uint8_t decim = TELEM_BRINGUP_DECIMATION;
 
     g_telem_dbg.tick_total++;
+    if ((obs_session_active() != 0u) && (obs_session_decim() != 0u)) {
+        decim = obs_session_decim();
+    }
     s_decim_cnt++;
-    if (s_decim_cnt < TELEM_BRINGUP_DECIMATION) {
+    if (s_decim_cnt < decim) {
         g_telem_dbg.tick_decim_skip++;
         return;
     }
@@ -410,6 +360,11 @@ void telem_bringup_try_send(void)
 
     g_telem_dbg.try_send_calls++;
     telem_refresh_buf_snapshot();
+
+    /* 半双工听命令时停发，避免占住 RS485 */
+    if (obs_cli_telem_enabled() == 0u) {
+        return;
+    }
 
     if (telem_dma_busy()) {
         g_telem_dbg.dma_busy_skip++;
@@ -462,6 +417,7 @@ void telem_bringup_init(void)
 
     time_port_init(TELEM_CPU_MHZ);
     telem_table_init();
+    /* 会话换表只在 CLI_Shell_Task（RTOS），此处不调用 obs_session_set */
 
     for (i = 0u; i < 2u; i++) {
         s_bufs[i].used_bytes = 0u;

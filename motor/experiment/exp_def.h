@@ -34,6 +34,8 @@ extern "C" {
 #define EXP_ACT_WAIT        10u
 /** 转速指令写 0。p0=停转阈值 rpm，p1=停住后再保持的时间 s，dur_ms=超时 ms。 */
 #define EXP_ACT_STOP        11u
+/** 切观测会话预设。p0=OBS_PRESET_* / TELEM_LAYOUT_*，p1=decim（0=配方默认）。 */
+#define EXP_ACT_SET_OBS     12u
 
 /** 已注册实验 id。 */
 #define EXP_ID_NONE         0u

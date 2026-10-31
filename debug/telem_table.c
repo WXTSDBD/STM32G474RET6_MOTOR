@@ -31,6 +31,7 @@
 #include "observer/observer_composite.h"
 #include "app_axis_jeoc.h"
 #include "l_hfi_ident.h"
+#include "telemetry/obs_preset.h"
 
 static uint8_t s_layout = TELEM_LAYOUT_LEGACY;
 
@@ -690,12 +691,16 @@ void telem_table_init(void)
 
 void telem_set_layout(uint8_t layout_id)
 {
-    if ((layout_id != TELEM_LAYOUT_LEGACY) &&
-        (telem_table_find(layout_id) == NULL)) {
-        s_layout = telem_table_default_layout();
-        return;
+    uint8_t id = layout_id;
+
+    if ((id != TELEM_LAYOUT_LEGACY) && (telem_table_find(id) == NULL)) {
+        id = telem_table_default_layout();
     }
-    s_layout = layout_id;
+    s_layout = id;
+    /* 旧 layout API → obs 预设（仅 RTOS 路径调用） */
+    if (id != TELEM_LAYOUT_LEGACY) {
+        (void)obs_preset_apply(id, 0u);
+    }
 }
 
 uint8_t telem_get_layout(void)

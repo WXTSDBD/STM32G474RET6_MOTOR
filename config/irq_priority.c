@@ -24,6 +24,7 @@ void irq_priority_apply(void)
     HAL_NVIC_SetPriority(DMA1_Channel5_IRQn, IRQ_PRIO_DMA_LO, 0u);
     HAL_NVIC_SetPriority(DMA1_Channel6_IRQn, IRQ_PRIO_SPI3_DMA, 0u);
     HAL_NVIC_SetPriority(DMA1_Channel7_IRQn, IRQ_PRIO_SPI3_DMA, 0u);
+    HAL_NVIC_SetPriority(DMA1_Channel8_IRQn, IRQ_PRIO_UART, 0u);
 
     /* ADC FOC 节拍。 */
     HAL_NVIC_SetPriority(ADC1_2_IRQn, IRQ_PRIO_ADC_FOC, 0u);
